@@ -1,14 +1,14 @@
 # Ochsner Heat Pump → local control → Home Assistant — step-by-step
 
-What the hell is this repo?
+**What the hell is this repo?**
 
 It's a way to locally read and control Heatpump settings! All without Modbus or Cloud services required!
 
-How does it work?
+**How does it work?**
 
-Instead of interacting with the Heatpump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heatpump!
+Instead of interacting with the Heatpump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heatpump (which is even lessd documented since it is entirely reverse engineered)!
 
-The app uses the Siemens Climatixic cloud to send these json requests over to the heatpump, but the App on the Heatpump itself (which is the exact same app by the way) uses the local web interface from siemens on the heatpump to locally read or write values all without any cloud required. This Home Assistant Integration allows you to link a heatpump to automatically read and write all the same values as you would in the app. The only caveat here is that these values may be different for every single heat pump, and they have numeric names that may or may not be auto generated, so the only way to identify the ids of the values you want to access is to first download the heatpump configuration from the Ochsner cloud using your ochsner credentials.
+The app uses the Siemens ClimatixIC cloud to send these json requests over to the heatpump, but the App on the Heatpump itself (which is the exact same app by the way) uses the local web interface from siemens on the heatpump to locally read or write values all without any cloud required. This Home Assistant Integration allows you to link a heatpump to automatically read and write all the same values as you would in the app. The only caveat here is that these values may be different for every single heat pump, and they have numeric names that may or may not be auto generated, so the only way to identify the ids of the values you want to access is to first download the heatpump configuration from the Ochsner cloud using your ochsner credentials.
 
 The repo contains a script that allows you to use your ochsner account to download the entire heatpump config as a json, and then use various commands to scan through the json file in order to find the ids for all the settings you want to add into home assistant. Finally, there is the custom integration which you can use to add all these values into home assistant.
 
@@ -33,9 +33,9 @@ The overall flow is:
 ## 0) Prerequisites
 
 - Windows + Python 3.10+ installed
-- LAN access to the controller IP (example below uses `192.168.X.X`)
+- LAN access to the heatpump controller IP (example below uses `192.168.X.X`)
 
-If you don't know your Heatpump IP Address - check your router. It should list all clients somewhere. Make sure to assign it a static IP address in your local network.
+If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. It should list all clients somewhere. Make sure to assign it a static IP address in your local network.
 
 If you find a device in your router and connect to the ip in your browser, you'll receive a login screen. Abort the login prompt, and if you receive a 401 error from Siemens Building Technologies Climatix WEB Server V1.00, 2008 (that's the actual manufacturer of the Heatpump, not Ochsner), then you'll know you have the right one.
 
