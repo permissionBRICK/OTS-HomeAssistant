@@ -24,10 +24,6 @@ The overall flow is:
 3) Use the **generic local endpoint** (`jsongen.html`, `OA=<genericJsonId>`) to read/write values
 4) Add the IDs to Home Assistant (`sensors`, `numbers`, `selects`)
 
-> Note on filenames: your examples use `climatix_control.py`, but this repo’s script is `tools/climatix_local_api.py`.
-> If you want to keep your command lines identical, you can copy/rename it:
-> `copy .\tools\climatix_local_api.py .\climatix_control.py`
-
 ---
 
 ## 0) Prerequisites
