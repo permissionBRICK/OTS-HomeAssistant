@@ -31,7 +31,7 @@ The overall flow is:
 - Windows + Python 3.10+ installed
 - LAN access to the heatpump controller IP (example below uses `192.168.X.X`)
 
-If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. It should list all clients somewhere. Make sure to assign it a static IP address in your local network.
+If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. Make sure to assign it a static IP address in your local network.
 
 If you find a device in your router and connect to the ip in your browser, you'll receive a login screen. Abort the login prompt, and if you receive a 401 error from Siemens Building Technologies Climatix WEB Server V1.00, 2008 (that's the actual manufacturer of the Heatpump, not Ochsner), then you'll know you have the right one.
 
