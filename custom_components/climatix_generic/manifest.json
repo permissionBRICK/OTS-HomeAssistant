@@ -1,0 +1,11 @@
+{
+  "domain": "climatix_generic",
+  "name": "Climatix Generic (LAN)",
+  "version": "0.1.0",
+  "documentation": "https://example.invalid",
+  "requirements": [],
+  "codeowners": [],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "hub"
+}
