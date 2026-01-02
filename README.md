@@ -21,7 +21,7 @@ This repo contains:
 The overall flow is:
 1) Use OTS cloud credentials to fetch the **bundle JSON** (contains the bindings/IDs)
 2) Use the bundle to **search for points** (names like “Puffertemp”, “Heizkreis 1”, …)
-3) Use the **generic local endpoint** (`jsongen.html`, `OA=<genericJsonId>`) to read/write values
+3) Test the local JSON Interface to read or write these values, and verify them in the app
 4) Add the IDs to Home Assistant (`sensors`, `numbers`, `selects`)
 
 ---
@@ -106,7 +106,7 @@ From the output, copy the `genericId` (base64 ending in `=`) for the point you w
 
 ---
 
-## 5) Test writing a value (generic endpoint)
+## 5) Test writing a value
 
 Once you copied a `genericId` (OA), try a write:
 
@@ -183,3 +183,5 @@ After restart:
 ## Quick troubleshooting
 
 - If reads work but writes don’t: verify you’re using the `writeBinding` ID for writing.
+
+This was entirely reverse engineered from the app using AI. Technically it should be possible to properly redevelop this as an integration that just accepts ochsner credentials and automatically imports all available values into Home assistant, but I do have a full time job. If anyone wants to make a PR, feel free!
