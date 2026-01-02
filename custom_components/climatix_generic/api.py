@@ -66,15 +66,26 @@ class ClimatixGenericApi:
 
 
 def extract_first_value(payload: Dict[str, Any], generic_id: str) -> Optional[Any]:
-    """From {"values": {"<id>": [x,x]}} return the first element (raw)."""
+    """Return the raw value for one OA id.
+
+    Controllers can return either:
+    - {"values": {"<id>": [x, x]}}  (common)
+    - {"values": {"<id>": x}}       (also seen)
+    """
     values = payload.get("values")
     if not isinstance(values, dict):
         return None
-    arr = values.get(generic_id)
-    if not isinstance(arr, list) or not arr:
+    raw = values.get(generic_id)
+    if raw is None:
         return None
 
-    return arr[0]
+    if isinstance(raw, list):
+        if not raw:
+            return None
+        return raw[0]
+
+    # Some firmwares return a scalar directly.
+    return raw
 
 
 def extract_first_numeric_value(payload: Dict[str, Any], generic_id: str) -> Optional[float]:
