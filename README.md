@@ -178,7 +178,7 @@ After restart:
 - all entities appear under one device: **Climatix (<host>)**
 - entities have stable unique IDs (so you can rename/customize them in HA)
 
-[<img src="ha.png"]
+<img src="ha.png"/>
 ---
 
 ## Quick troubleshooting
