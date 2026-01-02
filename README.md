@@ -181,6 +181,11 @@ After restart:
 <img src="ha.png"/>
 ---
 
+## Disclaimer & Warning
+
+Tread with caution when writing random values, make sure you know the exact value you are trying to change and have correctly identified it. There don't seem to be any safeguards in this interface as there are with Modbus and you can change a lot more than just what is visible in the app.
+
+
 ## Quick troubleshooting
 
 - If reads work but writes don’t: verify you’re using the `writeBinding` ID for writing.
