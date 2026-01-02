@@ -1,4 +1,4 @@
-# Ochsner Heat Pump → local control → Home Assistant — step-by-step
+# Ochsner Heat Pump → local control → Home Assistant
 
 **What the hell is this repo?**
 
@@ -89,6 +89,8 @@ Tips:
 ## 4) Read values for many matches (and copy the `genericId` you need)
 
 `bundle-list-read` reads the **readBinding** rows only and prints a `val` column.
+
+This allows you to read a large list of not just Names, but also read their current values from the local API, thereby allowing you to more easily identify the correct ID by comparing the value against the current one in the App.
 
 Heizkreis example (read many matches inside Heizkreis 1):
 
