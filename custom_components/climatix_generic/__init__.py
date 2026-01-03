@@ -7,8 +7,7 @@ import voluptuous as vol
 
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import ClimatixGenericApi, ClimatixGenericConnection
@@ -17,6 +16,7 @@ from .const import (
     CONF_OPTIONS,
     CONF_READ_ID,
     CONF_SELECTS,
+    CONF_UUID,
     CONF_WRITE_ID,
     CONF_NAME,
     CONF_NUMBERS,
@@ -40,6 +40,7 @@ from .coordinator import ClimatixCoordinator
 _SENSOR_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): str,
+        vol.Optional(CONF_UUID): str,
         vol.Required(CONF_ID): str,
         vol.Optional(CONF_UNIT): str,
     }
@@ -48,6 +49,7 @@ _SENSOR_SCHEMA = vol.Schema(
 _NUMBER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): str,
+        vol.Optional(CONF_UUID): str,
         # Backwards compatible: either provide `id`, or provide `read_id` and/or `write_id`.
         vol.Optional(CONF_ID): str,
         vol.Optional(CONF_READ_ID): str,
@@ -62,6 +64,7 @@ _NUMBER_SCHEMA = vol.Schema(
 _SELECT_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): str,
+        vol.Optional(CONF_UUID): str,
         vol.Optional(CONF_ID): str,
         vol.Optional(CONF_READ_ID): str,
         vol.Optional(CONF_WRITE_ID): str,
@@ -94,11 +97,13 @@ async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
     if not cfg:
         return True
 
-    # Convert YAML config into a config entry.
-    # This is important for proper device grouping under Devices & Services.
-    if hass.config_entries.async_entries(DOMAIN):
+    hass.data.setdefault(DOMAIN, {})
+    if hass.data[DOMAIN].get("_import_started"):
         return True
+    hass.data[DOMAIN]["_import_started"] = True
 
+    # Ensure a config entry exists (and stays synced) so HA can register a Device.
+    # The config flow's import step updates the existing entry when YAML changes.
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
@@ -205,6 +210,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "api": api,
         "coordinator": coordinator,
         "host": host,
+        "port": port,
+        "base_url": f"http://{host}:{port}" if int(port) != 80 else f"http://{host}",
         "sensors": sensors,
         "numbers": numbers,
         "selects": selects,

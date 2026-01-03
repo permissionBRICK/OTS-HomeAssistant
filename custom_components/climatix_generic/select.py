@@ -4,23 +4,33 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.config_entries import ConfigEntry
 
 from .api import ClimatixGenericApi, extract_first_value
-from .const import CONF_NAME, CONF_OPTIONS, CONF_READ_ID, CONF_WRITE_ID, DOMAIN
+from .const import CONF_NAME, CONF_OPTIONS, CONF_READ_ID, CONF_UUID, CONF_WRITE_ID, DOMAIN
 from .coordinator import ClimatixCoordinator
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
-    store = hass.data[DOMAIN][entry.entry_id]
-    coordinator: ClimatixCoordinator = store["coordinator"]
-    api: ClimatixGenericApi = store["api"]
-    host: str = store["host"]
-    selects = store.get("selects", [])
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: Dict[str, Any],
+    async_add_entities,
+    discovery_info: Optional[Dict[str, Any]] = None,
+) -> None:
+    if not discovery_info:
+        return
 
-    entities = [ClimatixGenericSelect(coordinator, api=api, host=host, cfg=s) for s in selects]
+    coordinator: ClimatixCoordinator = hass.data[DOMAIN]["coordinator"]
+    api: ClimatixGenericApi = hass.data[DOMAIN]["api"]
+    host: str = hass.data[DOMAIN]["host"]
+    base_url: str = hass.data[DOMAIN].get("base_url", f"http://{host}")
+
+    entities = [
+        ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=s)
+        for s in discovery_info.get("selects", [])
+    ]
     async_add_entities(entities)
 
 
@@ -31,11 +41,13 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         *,
         api: ClimatixGenericApi,
         host: str,
+        base_url: str,
         cfg: Dict[str, Any],
     ) -> None:
         super().__init__(coordinator)
         self._api = api
         self._host = host
+        self._base_url = base_url
 
         self._attr_name = str(cfg[CONF_NAME])
 
@@ -55,7 +67,12 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         self._value_to_label: Dict[str, str] = {str(v): str(k) for k, v in self._label_to_value.items()}
 
         self._attr_options = list(self._label_to_value.keys())
-        self._attr_unique_id = f"{host}_select_oa_{self._read_id}".replace("=", "")
+        configured_uuid = cfg.get(CONF_UUID)
+        self._attr_unique_id = (
+            str(configured_uuid)
+            if configured_uuid
+            else f"{host}:select:{self._read_id}".replace("=", "")
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -64,6 +81,7 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
             name=f"Climatix ({self._host})",
             manufacturer="Siemens",
             model="Climatix",
+            configuration_url=self._base_url,
         )
 
     def _match_label_for_value(self, raw: Any) -> Optional[str]:
@@ -98,3 +116,18 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         value = self._label_to_value[option]
         await self._api.write(self._write_id, value)
         await self.coordinator.async_request_refresh()
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    store = hass.data[DOMAIN][entry.entry_id]
+    coordinator: ClimatixCoordinator = store["coordinator"]
+    api: ClimatixGenericApi = store["api"]
+    host: str = store["host"]
+    base_url: str = store.get("base_url", f"http://{host}")
+    selects = store.get("selects", [])
+
+    entities = [
+        ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=s)
+        for s in selects
+    ]
+    async_add_entities(entities)

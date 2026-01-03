@@ -17,6 +17,7 @@ CONF_NUMBERS = "numbers"
 CONF_SELECTS = "selects"
 
 CONF_NAME = "name"
+CONF_UUID = "uuid"
 CONF_ID = "id"  # genericJsonId (OA)
 CONF_READ_ID = "read_id"
 CONF_WRITE_ID = "write_id"
