@@ -49,7 +49,6 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Import from YAML so the integration becomes a config entry.
         host = user_input[CONF_HOST]
         await self.async_set_unique_id(f"{DOMAIN}:{host}")
-        self._abort_if_unique_id_configured()
 
         # Store entire YAML block (including entity configs) in the config entry.
         data = {
@@ -63,4 +62,18 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NUMBERS: list(user_input.get(CONF_NUMBERS, []) or []),
             CONF_SELECTS: list(user_input.get(CONF_SELECTS, []) or []),
         }
+
+        # If an entry already exists for this host, keep YAML as source-of-truth:
+        # update the entry data and reload so changes in configuration.yaml apply.
+        existing = None
+        for entry in self._async_current_entries():
+            if entry.unique_id == self.unique_id:
+                existing = entry
+                break
+        if existing is not None:
+            if dict(existing.data) != data:
+                self.hass.config_entries.async_update_entry(existing, data=data)
+                return self.async_abort(reason="updated")
+            return self.async_abort(reason="already_configured")
+
         return self.async_create_entry(title=f"Climatix ({host})", data=data)
