@@ -94,7 +94,18 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         return extract_first_numeric_value(data, self._read_id)
 
     async def async_set_native_value(self, value: float) -> None:
-        await self._api.write(self._write_id, float(value))
+        desired = float(value)
+
+        data = self.coordinator.data or {}
+        current = extract_first_numeric_value(data, self._read_id)
+        if current is not None:
+            try:
+                if abs(float(current) - desired) < 1e-6:
+                    return
+            except (TypeError, ValueError):
+                pass
+
+        await self._api.write(self._write_id, desired)
         await self.coordinator.async_request_refresh()
 
 
