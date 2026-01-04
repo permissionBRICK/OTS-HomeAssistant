@@ -114,8 +114,27 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         if option not in self._label_to_value:
             raise ValueError(f"Unknown option: {option}")
         value = self._label_to_value[option]
+
+        data = self.coordinator.data or {}
+        current_raw = extract_first_value(data, self._read_id)
+        if _values_equal(current_raw, value):
+            return
+
         await self._api.write(self._write_id, value)
         await self.coordinator.async_request_refresh()
+
+
+def _values_equal(a: Any, b: Any) -> bool:
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+
+    # Prefer numeric comparison (controller may return floats for integral values).
+    try:
+        return abs(float(a) - float(b)) < 1e-6
+    except (TypeError, ValueError):
+        return str(a) == str(b)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
