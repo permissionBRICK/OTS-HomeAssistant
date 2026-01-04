@@ -187,7 +187,7 @@ After restart:
 
 ## Disclaimer & Warning
 
-Tread with caution when writing random values, make sure you know the exact value you are trying to change and have correctly identified it. There don't seem to be any safeguards in this interface as there are with Modbus and you can change a lot more than just what is visible in the app.
+Tread with caution when writing random values, make sure you know the exact value you are trying to change and have correctly identified it. While there seem to be some limits and safeguards to writing certain implausible values, I have no idea how much of those are implemented in the UI of the app vs actually being verified by the backend.
 
 
 ## Quick troubleshooting
