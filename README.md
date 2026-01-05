@@ -134,7 +134,7 @@ Steps:
 1) In Home Assistant, go to **HACS**  **Integrations**.
 2) Open the menu (top right)  **Custom repositories**.
 3) Add this GitHub repo URL and set category to **Integration**.
-4) Search for **Climatix Generic (LAN)** in HACS and install.
+4) Search for **Ochsner Local OTS - Climatix Generic** in HACS and install.
 5) Restart Home Assistant.
 
 ### 6b) Alternative - install the custom integration manually
