@@ -1,8 +1,4 @@
 {
-  "name": "Climatix Generic (LAN)",
-  "content_in_root": false,
-  "render_readme": true,
-  "domains": [
-    "climatix_generic"
-  ]
+  "name": "Ochsner Local OTS - Climatix Generic",
+  "content_in_root": false
 }
