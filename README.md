@@ -124,7 +124,8 @@ If your “read” ID differs from your “write” ID:
 
 ---
 
-## 6a) Home Assistant: install via HACS (custom repository)
+## 6) Home Assistant: install the integration
+### 6a) Install via HACS - recommended
 
 Prereqs:
 - HACS is installed in Home Assistant.
@@ -136,13 +137,15 @@ Steps:
 4) Search for **Climatix Generic (LAN)** in HACS and install.
 5) Restart Home Assistant.
 
-## 6b) Home Assistant: Alternative - install the custom integration manually
+### 6b) Alternative - install the custom integration manually
 
-1) Copy this folder into your HA config directory:
+Copy this folder into your HA config directory:
 
 - `custom_components/climatix_generic/`
 
-2) Add configuration to `configuration.yaml`.
+
+## 7) Home Assistant: Configuration to set up the integration
+Add configuration to `configuration.yaml`.
 
 Sample config (covers sensor + number + select):
 
