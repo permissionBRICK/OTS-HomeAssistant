@@ -201,9 +201,6 @@ After restart:
 
 Tread with caution when writing random values, make sure you know the exact value you are trying to change and have correctly identified it. While there seem to be some limits and safeguards to writing certain implausible values, I have no idea how much of those are implemented in the UI of the app vs actually being verified by the backend.
 
-
-## Quick troubleshooting
-
-- If reads work but writes don’t: verify you’re using the `writeBinding` ID for writing.
+Also of note: The settings are saved inside the Siemens Climatix Controller inside the heatpump and that uses Flash storage - which means it has a limited number of erase cycles before the chip fails. Siemens documentation seems to claim this is at 100k (100,000) write cycles. Therefore, if you plan not to just make controls available to the UI but also automate some settings, calculate a rough estimate of how many write cycles this would cause in the worst case and ensure that over the lifetime of your heatpump you stay below that total number of writes. For example: an average of 10 writes per day would last you 30 years for the rated lifetime of the flash chip. But, of course if you only control the heatpump for the most expensive 4 months of the year, you get up to 30 writes for each of those days.
 
 This was entirely reverse engineered from the app using AI. Technically it should be possible to properly redevelop this as an integration that just accepts ochsner credentials and automatically imports all available values into Home assistant, but I do have a full time job. If anyone wants to make a PR, feel free!
