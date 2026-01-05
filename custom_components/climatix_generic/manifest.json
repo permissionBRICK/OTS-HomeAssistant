@@ -2,7 +2,7 @@
   "domain": "climatix_generic",
   "name": "Climatix Generic (LAN)",
   "version": "0.1.0",
-  "documentation": "https://example.invalid",
+  "documentation": "https://github.com/permissionBRICK/OTS-HomeAssistant",
   "requirements": [],
   "codeowners": [],
   "config_flow": true,
