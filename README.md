@@ -1,4 +1,4 @@
-# Ochsner local OTS - Climatix - Home Assistant custom integration
+# Ochsner local OTS - Climatix - (HACS)
 
 **What the hell is this repo?**
 
