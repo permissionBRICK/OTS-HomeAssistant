@@ -1,4 +1,4 @@
-# Ochsner Heat Pump → local control → Home Assistant
+# Ochsner local OTS - Climatix - Home Assistant custom integration
 
 **What the hell is this repo?**
 
