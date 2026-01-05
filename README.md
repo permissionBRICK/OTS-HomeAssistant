@@ -2,7 +2,7 @@
 
 **What the hell is this repo?**
 
-It's a way to locally read and control Heatpump settings! All without Modbus or Cloud services required!
+It's a way to locally read and control Ochsner Heatpump settings via Home Assistant! All without Modbus or Cloud services required!
 
 **How does it work?**
 
