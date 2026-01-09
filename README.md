@@ -117,13 +117,19 @@ Buffer example:
 python .\tools\climatix_local_api.py --host 192.168.X.X bundle-list-read --bundle .\bundle.json --wide --limit 20 --generic --filter "puffertem"
 ```
 
+You could also try to read all values at once and see if anything catches your interest:
+
+```powershell
+python .\tools\climatix_local_api.py --host 192.168.X.X bundle-list-read --bundle .\bundle.json --wide --limit 800 --generic
+```
+
 From the output, copy the `genericId` (base64 ending in `=`) for the point you want.
 
 ---
 
 ## 5) Test writing a value
 
-Once you copied a `genericId` (OA), try a write to see if it changes the correct corresponding setting in the app (should update within a few seconds):
+Once you copied a `genericId`, try a write to see if it changes the correct corresponding setting in the app (should update within a few seconds):
 
 ```powershell
 python .\tools\climatix_local_api.py --host 192.168.X.X write-generic --id ASMhEo58AAE= --value 23
