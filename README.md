@@ -106,7 +106,7 @@ This allows you to read a large list of not just Names, but also read their curr
 Heizkreis example (read many matches inside Heizkreis 1):
 
 ```powershell
-python .\tools\climatix_local_api.py --host 192.168.X.X  bundle-list-read --bundle .\bundle.json --filter "raum" --context-filter "Heizkreis 1" --wide --limit 20 --generic
+python .\tools\climatix_local_api.py --host 192.168.X.X  bundle-list-read --bundle .\bundle.json --wide --limit 20 --generic --filter "raum" --context-filter "Heizkreis 1"
 ```
 
 This returns a table with a list of all parameters matching the Category "Heizkreis 1" (and the name filter "raum"), and automatically queries all their current values from the local api, which you can compare against the App.
@@ -114,7 +114,7 @@ This returns a table with a list of all parameters matching the Category "Heizkr
 Buffer example:
 
 ```powershell
-python .\tools\climatix_local_api.py --host 192.168.X.X bundle-list-read --bundle .\bundle.json --filter "puffertem" --wide --limit 20 --generic
+python .\tools\climatix_local_api.py --host 192.168.X.X bundle-list-read --bundle .\bundle.json --wide --limit 20 --generic --filter "puffertem"
 ```
 
 From the output, copy the `genericId` (base64 ending in `=`) for the point you want.
