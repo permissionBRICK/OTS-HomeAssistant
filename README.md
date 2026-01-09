@@ -14,7 +14,10 @@ The only caveat here is that these values may be different for every single heat
 
 The repo contains a script that allows you to use your ochsner account to download the entire heatpump config as a json, and then use various commands to scan through the json file in order to find the ids for all the settings you want to add into home assistant. Finally, there is the custom integration which you can use to add all these values into home assistant.
 
-I've only tested this with an Air Hawk 518, but it is plausible this could work for many more heat pumps, as long as you can identify the correct values in the json file.
+This has been tested and confirmed working so far with:
+ - AirHawk 518C
+ - AirHawk 208C
+But it is plausible that it could work with Any Ochsner Heat Pump that uses the OTS app.
 
 This repo contains:
 - A Python CLI tool: `tools/climatix_local_api.py`
@@ -37,9 +40,9 @@ The only changes to the system are performed if you execute the write or write-g
 - Windows + Python 3.10+ installed
 - LAN access to the heatpump controller IP (example below uses `192.168.X.X`)
 
-If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. Make sure to assign it a static IP address in your local network.
+If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. Make sure to assign it a static IP address in your local network via your router.
 
-If you find a device in your router and connect to the ip in your browser, you'll receive a login screen. Abort the login prompt, and if you receive a 401 error from Siemens Building Technologies Climatix WEB Server V1.00, 2008 (that's the actual manufacturer of the Heatpump, not Ochsner), then you'll know you have the right one.
+If you connect to the ip in your browser, you'll receive a login screen. Abort the login prompt, and if you receive a 401 error from Siemens Building Technologies Climatix WEB Server V1.00, 2008 (that's the actual manufacturer of the Heatpump, not Ochsner), then you'll know you have the right one.
 
 ---
 
