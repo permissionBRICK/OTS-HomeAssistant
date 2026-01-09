@@ -17,7 +17,8 @@ The repo contains a script that allows you to use your ochsner account to downlo
 This has been tested and confirmed working so far with:
  - AirHawk 518C
  - AirHawk 208C
-But it is plausible that it could work with Any Ochsner Heat Pump that uses the OTS app.
+
+However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
 
 This repo contains:
 - A Python CLI tool: `tools/climatix_local_api.py`
