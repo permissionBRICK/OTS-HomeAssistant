@@ -22,11 +22,15 @@ This repo contains:
 
 The overall flow is:
 1) Use OTS cloud credentials to fetch the **bundle JSON** (contains the bindings/IDs)
-2) Use the bundle to **search for points** (names like “Puffertemp”, “Heizkreis 1”, …)
-3) Test the local JSON Interface to read or write these values, and verify them in the app
+2) Use the bundle to **search for data points** (names like “Puffertemp”, “Heizkreis 1”, …) and specifically find the IDs of each value / setting of interest
+3) Test the IDs against the local JSON Interface to read or write these values, and verify them in the app
 4) Add the IDs to Home Assistant (`sensors`, `numbers`, `selects`)
 
 ---
+
+**Important Note:** The goal of most of the steps below is to identify the correct genericId for each value you want to read / write. The commands don't have to be followed exactly, especially step 3-5 can be done in any order / combination you want. What's important is that you identify the correct ids and verify they work against your local heatpump IP. Any of the bundle-list commands are simply helper commands that allow you to search the json file more easily, but there are no changes being done here. 
+
+The only changes to the system are performed if you execute the write or write-generic command in order to check if you can correctly set the value you found in the app. Everything else just processes the local json file and gives you output on screen, or attempts to read the values you found and output them as well.
 
 ## 0) Prerequisites
 
@@ -39,7 +43,7 @@ If you find a device in your router and connect to the ip in your browser, you'l
 
 ---
 
-## 1) Retrieve `configID` + `siteID` from OTS cloud
+## 1) Retrieve `configID` + `siteID` from OTS cloud (optional)
 
 Run:
 
@@ -51,7 +55,7 @@ In the output, look at `plantInfos[...]` and copy:
 - `configID`
 - `siteID`
 
-(You can also just use `--plant-index 0` in the next step if you only have one plant.)
+(You can also skip this step and just use `--plant-index 0` in the next step if you only have one heat pump / plant.)
 
 ---
 
@@ -83,7 +87,8 @@ python .\tools\climatix_local_api.py bundle-list --bundle .\bundle.json --filter
 ```
 
 Tips:
-- Use `--context-filter "Heizkreis 1"` to narrow by heating circuit
+- Use `--filter "XXXXX"` (Replace XXXXX by any text) to filter values by their Name in the German version of the app.
+- Use `--context-filter "Heizkreis X"` to narrow by heating circuit X (1-9)
 - The table shows `genericId` (this is the id you need for the home assistant config)
 
 ---
@@ -100,6 +105,8 @@ Heizkreis example (read many matches inside Heizkreis 1):
 python .\tools\climatix_local_api.py --host 192.168.X.X  bundle-list-read --bundle .\bundle.json --filter "raum" --context-filter "Heizkreis 1" --wide --limit 20 --generic
 ```
 
+This returns a table with a list of all parameters matching the Category "Heizkreis 1" (and the name filter "raum"), and automatically queries all their current values from the local api, which you can compare against the App.
+
 Buffer example:
 
 ```powershell
@@ -112,7 +119,7 @@ From the output, copy the `genericId` (base64 ending in `=`) for the point you w
 
 ## 5) Test writing a value
 
-Once you copied a `genericId` (OA), try a write:
+Once you copied a `genericId` (OA), try a write to see if it changes the correct corresponding setting in the app (should update within a few seconds):
 
 ```powershell
 python .\tools\climatix_local_api.py --host 192.168.X.X write-generic --id ASMhEo58AAE= --value 23
