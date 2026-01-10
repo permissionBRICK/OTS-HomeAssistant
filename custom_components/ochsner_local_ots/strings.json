@@ -31,5 +31,18 @@
       "invalid_host": "Please enter a valid IP/hostname.",
       "not_supported": "Could not verify a supported Climatix controller at this IP (expected {\"Error\":7} from /jsongen.html)."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_scan_interval": "Please enter a polling interval of at least 1 second."
+    }
   }
 }

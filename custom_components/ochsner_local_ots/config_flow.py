@@ -51,6 +51,10 @@ CONF_LOCAL_IP = "local_ip"
 class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+        return ClimatixGenericOptionsFlowHandler(config_entry)
+
     def __init__(self) -> None:
         self._ots_user: Optional[str] = None
         self._ots_pass: Optional[str] = None
@@ -294,7 +298,11 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
             ents = await generate_entities_from_bundle(bundle=bundle, api=api, language=self._language, probe=True)
+            # Some OTS plant names are like "AIRHAWK518C11A - 523203292" (model + serial).
+            # Store only the model part as the HA device model.
             device_model = ots_plant_name
+            if " - " in device_model:
+                device_model = device_model.split(" - ", 1)[0].strip() or ots_plant_name
             _LOGGER.debug(
                 "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d",
                 plant_name,
@@ -385,3 +393,43 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
 
         return self.async_create_entry(title=f"Climatix ({host})", data=data)
+
+
+class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
+        errors: Dict[str, str] = {}
+
+        current = int(self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
+
+        if user_input is not None:
+            try:
+                interval = int(user_input.get(CONF_SCAN_INTERVAL, current))
+            except Exception:  # noqa: BLE001
+                errors["base"] = "invalid_scan_interval"
+            else:
+                if interval < 1:
+                    errors["base"] = "invalid_scan_interval"
+                else:
+                    return self.async_create_entry(title="", data={CONF_SCAN_INTERVAL: interval})
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default=current,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=3600,
+                        step=1,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="s",
+                    )
+                )
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
