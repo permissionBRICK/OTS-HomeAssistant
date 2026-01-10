@@ -361,6 +361,10 @@ def _walk_bundle_for_entities(
                         "context": list(context_stack),
                         "unit": obj.get("unit"),
                         "guiType": obj.get("guiType"),
+                        "dynamicVisibilityRules": obj.get("dynamicVisibilityRules"),
+                        "visibilityReferenceInverted": obj.get("visibilityReferenceInverted"),
+                        "permissions": obj.get("permissions"),
+                        "isOrderBased": obj.get("isOrderBased"),
                         "showName": obj.get("showName"),
                         "translateStates": obj.get("translateStates"),
                         "translateName": obj.get("translateName"),
@@ -982,6 +986,21 @@ async def generate_entities_from_bundle(
         name = e.get("name")
         if isinstance(name, str) and name and not name.startswith("#"):
             s += 100
+
+        # Tie-break duplicates using only visibility rules.
+        # Some bundles expose multiple UI widgets for the same OA readId; prefer the
+        # widget that is visible by default / has explicit visibility conditions.
+        dvr = e.get("dynamicVisibilityRules")
+        if isinstance(dvr, dict):
+            if dvr.get("defaultHidden") is False:
+                s += 50
+            rules = dvr.get("rules")
+            if isinstance(rules, list):
+                s += min(len(rules), 5)
+                for r in rules:
+                    if isinstance(r, dict) and "visibilityCondition" in r:
+                        s += 2
+
         if e.get("showName") is True:
             s += 30
         if isinstance(e.get("unit"), str) and str(e.get("unit") or "").strip():
