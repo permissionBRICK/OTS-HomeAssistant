@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ochsner Login",
+        "description": "Bitte gib deine Ochsner-(OTS)-Zugangsdaten ein. Diese werden nur während der Einrichtung verwendet, um deine Anlagen abzurufen, und werden nicht in Home Assistant gespeichert.",
+        "data": {
+          "ots_user": "Ochsner Benutzername",
+          "ots_pass": "Ochsner Passwort"
+        }
+      },
+      "select_plants": {
+        "title": "Anlagen auswählen",
+        "description": "Wähle eine Anlage zum Import aus.",
+        "data": {
+          "plants": "Anlagen"
+        }
+      },
+      "hosts": {
+        "title": "Lokale IP-Adresse",
+        "description": "Gib die lokale IP-Adresse für {plant} ein. Stelle sicher, dass diese IP im Router statisch/reserviert ist.",
+        "data": {
+          "local_ip": "Lokale IP-Adresse",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "auth": "Login fehlgeschlagen. Bitte Zugangsdaten prüfen.",
+      "no_selection": "Bitte auswählen welche Anlage importiert werden soll.",
+      "invalid_host": "Bitte eine gültige IP/Host eingeben.",
+      "not_supported": "An dieser IP konnte kein unterstützter Climatix-Regler verifiziert werden (erwartet {\"Error\":7} von /jsongen.html)."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    },
+    "error": {
+      "invalid_scan_interval": "Bitte ein Abfrageintervall von mindestens 1 Sekunde eingeben."
+    }
+  }
+}
