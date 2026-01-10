@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ochsner login",
+        "description": "Enter your Ochsner (OTS) login credentials. They are used only during setup to fetch your plants and are not stored in Home Assistant.",
+        "data": {
+          "ots_user": "Ochsner username",
+          "ots_pass": "Ochsner password"
+        }
+      },
+      "select_plants": {
+        "title": "Select plants",
+        "description": "Select a plant to import.",
+        "data": {
+          "plants": "Plants"
+        }
+      },
+      "hosts": {
+        "title": "Local IP address",
+        "description": "Enter the local IP address for {plant}. Make sure this IP is static/reserved in your router.",
+        "data": {
+          "local_ip": "Local IP address",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "auth": "Login failed. Check your credentials.",
+      "no_selection": "Select which heat pump to import.",
+      "invalid_host": "Please enter a valid IP/hostname.",
+      "not_supported": "Could not verify a supported Climatix controller at this IP (expected {\"Error\":7} from /jsongen.html)."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_scan_interval": "Please enter a polling interval of at least 1 second."
+    }
+  }
+}

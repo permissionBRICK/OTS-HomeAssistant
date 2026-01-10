@@ -1,11 +1,11 @@
 {
-  "domain": "climatix_generic",
-  "name": "Climatix Generic (Legacy)",
-  "version": "0.0.0",
+  "domain": "ochsner_local_ots",
+  "name": "Ochsner Local OTS",
+  "version": "0.1.0",
   "documentation": "https://example.invalid",
   "requirements": [],
   "codeowners": [],
-  "config_flow": false,
+  "config_flow": true,
   "iot_class": "local_polling",
   "integration_type": "device"
 }
