@@ -1,4 +1,4 @@
-# Ochsner Heat Pump → local control → Home Assistant
+# Ochsner local OTS - Climatix - (HACS)
 
 **What the hell is this repo?**
 
@@ -12,6 +12,12 @@ The issue is that in order to find the IDs that the local api needs in order to 
 
 Luckily, the newest version does all of this automatically, so the python tool is no longer needed!
 
+This has been tested and confirmed working so far with:
+ - AirHawk 518C
+ - AirHawk 208C
+
+However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
+
 ---
 
 
@@ -22,8 +28,8 @@ Prereqs:
 - HACS is installed in Home Assistant.
 
 Steps:
-1) In Home Assistant, go to **HACS**  **Integrations**.
-2) Open the menu (top right)  **Custom repositories**.
+1) In Home Assistant, go to **HACS** -> **Integrations**.
+2) Open the menu (top right) **Custom repositories**.
 3) Add this GitHub repo URL and set category to **Integration**.
 4) Search for **Ochsner Local OTS - Climatix Generic** in HACS and install.
 5) Restart Home Assistant.
