@@ -193,22 +193,36 @@ class ClimatixGenericWriteCounterSensor(SensorEntity, RestoreEntity):
         await super().async_added_to_hass()
 
         # Restore last known count.
+        restored_value: int | None = None
         restored = await self.async_get_last_state()
         if restored is not None and restored.state not in (None, "unknown", "unavailable"):
             try:
-                self._count = int(float(restored.state))
+                restored_value = int(float(restored.state))
+                self._count = restored_value
             except Exception:
                 self._count = 0
 
         store = self.hass.data.setdefault(DOMAIN, {}).setdefault(self._entry_id, {})
         counts = store.setdefault("write_counts", {})
-        try:
-            counts[self._host] = int(counts.get(self._host, self._count))
-        except Exception:
+
+        # IMPORTANT: During startup, the integration may have already initialized the
+        # in-memory counter dict with 0. Prefer the restored value (if any) so the
+        # counter persists across restarts.
+        if restored_value is not None:
+            counts[self._host] = restored_value
+        elif self._host not in counts:
             counts[self._host] = self._count
+        else:
+            try:
+                self._count = int(float(counts[self._host]))
+            except Exception:
+                counts[self._host] = self._count
 
         # Register so the write hook can call async_write_ha_state.
         store.setdefault("write_count_entities", {})[self._host] = self
+
+        # Push restored state immediately.
+        self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
         store = (self.hass.data.get(DOMAIN, {}) or {}).get(self._entry_id, {})

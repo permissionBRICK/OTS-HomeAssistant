@@ -261,9 +261,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ),
         )
 
-        # Maintain a per-controller write counter (persisted via a RestoreEntity sensor).
-        write_counts.setdefault(host, 0)
-
         async def _on_write(host_key: str = host) -> None:
             write_counts[host_key] = int(write_counts.get(host_key, 0)) + 1
             ent = write_count_entities.get(host_key)
