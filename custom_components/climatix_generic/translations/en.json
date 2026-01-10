@@ -1,0 +1,12 @@
+{
+  "issues": {
+    "legacy_yaml_domain": {
+      "title": "Obsolete YAML configuration detected",
+      "description": "Your configuration.yaml still contains the legacy `{old_domain}:` root key. This integration has been renamed and the old YAML key is obsolete.\n\nTo fix this, either:\n- Remove the `{old_domain}:` block and use the UI onboarding flow for `{new_domain}` instead, or\n- Rename the root key from `{old_domain}:` to `{new_domain}:` if you want to keep a manual YAML configuration."
+    },
+    "legacy_config_entry": {
+      "title": "Legacy integration detected",
+      "description": "A config entry from the legacy integration `{old_domain}` is still present. The integration was renamed to `{new_domain}`.\n\nRemove the legacy entry and set up `{new_domain}` again (UI onboarding recommended), or migrate your YAML root key if you used manual configuration."
+    }
+  }
+}

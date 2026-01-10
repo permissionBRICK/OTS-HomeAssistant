@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Login to Ochsner",
+        "description": "Enter your Ochsner (OTS) username and password. {note}",
+        "data": {
+          "ots_user": "Ochsner username",
+          "ots_pass": "Ochsner password"
+        }
+      },
+      "select_plants": {
+        "title": "Select plants",
+        "description": "Select a plant to import.",
+        "data": {
+          "plants": "Plants"
+        }
+      },
+      "hosts": {
+        "title": "Local IP address",
+        "description": "Enter the local IP address for {plant}. Ensure this IP is static/reserved in your router.",
+        "data": {
+          "local_ip": "Local IP address",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "auth": "Login failed. Check your credentials.",
+      "no_selection": "Select at least one plant.",
+      "invalid_host": "Please enter a valid IP/hostname.",
+      "not_supported": "Could not verify a supported Climatix controller at this IP (expected {\"Error\":7} from /jsongen.html)."
+    }
+  }
+}

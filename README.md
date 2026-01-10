@@ -8,124 +8,15 @@ It's a way to locally read and control Heatpump settings! All without Modbus or 
 
 Instead of interacting with the Heatpump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heatpump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
 
-The app uses the Siemens ClimatixIC cloud to send these json requests over to the heatpump, but the App on the display of the Heatpump itself (which is the exact same app by the way) uses the local web interface from siemens on the heatpump to locally read or write values all without any cloud required. This Home Assistant Integration allows you to link a heatpump to automatically read and write all the same values as you would in the app. 
+The issue is that in order to find the IDs that the local api needs in order to be able to know which values you want to write/read, you need to download and parse the configuration from the Ochsner cloud.
 
-The only caveat here is that these values may be different for every single heat pump, and they have numeric names that may or may not be auto generated, so the only way to identify the ids of the values you want to access is to first download the heatpump configuration from the Ochsner cloud using your ochsner credentials.
-
-The repo contains a script that allows you to use your ochsner account to download the entire heatpump config as a json, and then use various commands to scan through the json file in order to find the ids for all the settings you want to add into home assistant. Finally, there is the custom integration which you can use to add all these values into home assistant.
-
-I've only tested this with an Air Hawk 518, but it is plausible this could work for many more heat pumps, as long as you can identify the correct values in the json file.
-
-This repo contains:
-- A Python CLI tool: `tools/climatix_local_api.py`
-- A Home Assistant custom integration: `custom_components/climatix_generic/`
-
-The overall flow is:
-1) Use OTS cloud credentials to fetch the **bundle JSON** (contains the bindings/IDs)
-2) Use the bundle to **search for points** (names like “Puffertemp”, “Heizkreis 1”, …)
-3) Test the local JSON Interface to read or write these values, and verify them in the app
-4) Add the IDs to Home Assistant (`sensors`, `numbers`, `selects`)
+Luckily, the newest version does all of this automatically, so the python tool is no longer needed!
 
 ---
 
-## 0) Prerequisites
 
-- Windows + Python 3.10+ installed
-- LAN access to the heatpump controller IP (example below uses `192.168.X.X`)
-
-If you don't know your Heatpump IP Address - check the OTS App under Communication / Network Communication. Make sure to assign it a static IP address in your local network.
-
-If you find a device in your router and connect to the ip in your browser, you'll receive a login screen. Abort the login prompt, and if you receive a 401 error from Siemens Building Technologies Climatix WEB Server V1.00, 2008 (that's the actual manufacturer of the Heatpump, not Ochsner), then you'll know you have the right one.
-
----
-
-## 1) Retrieve `configID` + `siteID` from OTS cloud
-
-Run:
-
-```powershell
-python .\tools\climatix_local_api.py ots-login --ots-user <OTS_USER> --ots-pass <OTS_PASS>
-```
-
-In the output, look at `plantInfos[...]` and copy:
-- `configID`
-- `siteID`
-
-(You can also just use `--plant-index 0` in the next step if you only have one plant.)
-
----
-
-## 2) Download + decode the bundle.json
-
-Option A (simplest): choose a plant by index:
-
-```powershell
-python .\tools\climatix_local_api.py ots-download-bundle --ots-user <OTS_USER> --ots-pass <OTS_PASS> --plant-index 0 --out .\bundle.json
-```
-
-Option B: specify the IDs you copied from step 1:
-
-```powershell
-python .\tools\climatix_local_api.py ots-download-bundle --ots-user <OTS_USER> --ots-pass <OTS_PASS> --config-id <configID> --site-id <siteID> --out .\bundle.json
-```
-
-After this step you should have:
-- `bundle.json` in the repo root
-
----
-
-## 3) Find interesting registers (search the bundle)
-
-Example: find “Puffertemp”:
-
-```powershell
-python .\tools\climatix_local_api.py bundle-list --bundle .\bundle.json --filter "Puffertemp"
-```
-
-Tips:
-- Use `--context-filter "Heizkreis 1"` to narrow by heating circuit
-- The table shows `genericId` (this is the id you need for the home assistant config)
-
----
-
-## 4) Read values for many matches (and copy the `genericId` you need)
-
-`bundle-list-read` reads the **readBinding** rows only and prints a `val` column.
-
-This allows you to read a large list of not just Names, but also read their current values from the local API, thereby allowing you to more easily identify the correct ID by comparing the value against the current one in the App.
-
-Heizkreis example (read many matches inside Heizkreis 1):
-
-```powershell
-python .\tools\climatix_local_api.py --host 192.168.X.X  bundle-list-read --bundle .\bundle.json --filter "raum" --context-filter "Heizkreis 1" --wide --limit 20 --generic
-```
-
-Buffer example:
-
-```powershell
-python .\tools\climatix_local_api.py --host 192.168.X.X bundle-list-read --bundle .\bundle.json --filter "puffertem" --wide --limit 20 --generic
-```
-
-From the output, copy the `genericId` (base64 ending in `=`) for the point you want.
-
----
-
-## 5) Test writing a value
-
-Once you copied a `genericId` (OA), try a write:
-
-```powershell
-python .\tools\climatix_local_api.py --host 192.168.X.X write-generic --id ASMhEo58AAE= --value 23
-```
-
-If your “read” ID differs from your “write” ID:
-- use the `writeBinding` row’s `genericId` for writing
-- use the `readBinding` row’s `genericId` for reading
-
----
-
-## 6) Home Assistant: install the integration
-### 6a) Install via HACS - recommended
+## 1) Home Assistant: install the integration
+### 1a) Install via HACS - recommended
 
 Prereqs:
 - HACS is installed in Home Assistant.
@@ -134,70 +25,32 @@ Steps:
 1) In Home Assistant, go to **HACS**  **Integrations**.
 2) Open the menu (top right)  **Custom repositories**.
 3) Add this GitHub repo URL and set category to **Integration**.
-4) Search for **Climatix Generic (LAN)** in HACS and install.
+4) Search for **Ochsner Local OTS - Climatix Generic** in HACS and install.
 5) Restart Home Assistant.
 
-### 6b) Alternative - install the custom integration manually
+### 1b) Alternative - install the custom integration manually
 
 Copy this folder into your HA config directory:
 
-- `custom_components/climatix_generic/`
+- `custom_components/ochsner_local_ots/`
+
+After that restart Home Assistant.
+
+### 2) Add the integration into Home Assistant (New Automatic process via UI)
+
+Steps:
+1) Add a new integration via the HA UI
+2) Search for Ochsner Local OTS
+3) Enter your Ochsner OTS Credentials (they are not stored, they are just needed to retrieve the configuration from the cloud once)
+4) Select which Heatpump you want to add (in case you have multiple)
+5) Enter your local Heatpump IP Address (this is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
+6) Enter a Name for your Heatpump
+7) Click finish - This could take a few seconds while all the available values are automatically scanned and then imported.
+8) Done!
 
 
-## 7) Home Assistant: Configuration to set up the integration
-Add configuration to `configuration.yaml`.
-
-Sample config (covers sensor + number + select):
-
-```yaml
-climatix_generic:
-  host: 192.168.X.X
-  scan_interval: 10
-
-  sensors:
-    - name: Puffertemp Ist
-      id: <PASTE_READ_genericId_FROM_bundle-list-read>
-      unit: "°C"
-
-  numbers:
-    # If read/write use the same ID:
-    - name: Puffertemp Soll
-      id: <PASTE_genericId>
-      unit: "°C"
-      min: 0
-      max: 80
-      step: 0.5
-
-    # If read/write use different IDs:
-    - name: Raum Soll Heizkreis 1
-      read_id: <PASTE_READ_genericId>
-      write_id: <PASTE_WRITE_genericId>
-      unit: "°C"
-      min: 10
-      max: 30
-      step: 0.5
-
-  selects:
-    - name: Betriebswahl Heizkreis Radiatoren
-      read_id: <PASTE_READ_genericId>
-      write_id: <PASTE_WRITE_genericId>
-      options:
-        Komfort: 0
-        Aus: 1
-        Reduziert: 2
-        Standard: 3
-        Manuell: 4
-```
-Usually read and write ids will be identical for each parameter, but it is technically possible for them to differ for the same parameter, therefore they are configured separately.
 
 
-3) Restart Home Assistant.
-
-After restart:
-- all entities appear under one device: **Climatix (<host>)**
-- entities have stable unique IDs (so you can rename/customize them in HA)
-
-<img src="ha.png"/>
 ---
 
 ## Disclaimer & Warning

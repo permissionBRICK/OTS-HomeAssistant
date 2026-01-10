@@ -1,0 +1,50 @@
+DOMAIN = "ochsner_local_ots"
+
+DEFAULT_PORT = 80
+DEFAULT_USERNAME = "JSON"
+DEFAULT_PASSWORD = "SBTAdmin!"
+DEFAULT_PIN = "7659"
+DEFAULT_SCAN_INTERVAL_SEC = 10
+
+CONF_HOST = "host"
+CONF_PORT = "port"
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
+CONF_PIN = "pin"
+CONF_SCAN_INTERVAL = "scan_interval"
+CONF_SENSORS = "sensors"
+CONF_BINARY_SENSORS = "binary_sensors"
+CONF_NUMBERS = "numbers"
+CONF_SELECTS = "selects"
+
+# Multi-controller support (UI flow can add multiple plants/heatpumps under one config entry)
+CONF_CONTROLLERS = "controllers"
+CONF_PLANT_KEY = "plant_key"
+CONF_PLANT_NAME = "plant_name"
+CONF_CONFIG_ID = "config_id"
+CONF_SITE_ID = "site_id"
+CONF_BUNDLE_STORAGE_KEY = "bundle_storage_key"
+
+# Localization (used during onboarding entity generation)
+CONF_LANGUAGE = "language"
+
+# Per-controller device metadata
+CONF_DEVICE_MODEL = "device_model"
+
+CONF_NAME = "name"
+CONF_UUID = "uuid"
+CONF_ID = "id"  # genericJsonId (OA)
+CONF_READ_ID = "read_id"
+CONF_WRITE_ID = "write_id"
+CONF_OPTIONS = "options"
+CONF_UNIT = "unit"
+
+CONF_VALUE_MAP = "value_map"
+
+CONF_MIN = "min"
+CONF_MAX = "max"
+CONF_STEP = "step"
+
+# Optional grouping metadata (used by UI onboarding auto-generator)
+CONF_HEATING_CIRCUIT_UID = "heating_circuit_uid"
+CONF_HEATING_CIRCUIT_NAME = "heating_circuit_name"
