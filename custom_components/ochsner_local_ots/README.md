@@ -1,4 +1,4 @@
-# Climatix Generic (LAN) - Home Assistant custom integration
+# Ochsner Local OTS - Home Assistant custom integration
 
 This custom integration polls a Siemens Climatix controller via the **generic** LAN endpoint:
 
@@ -20,14 +20,14 @@ This integration automatically takes the **first element** (`36.5375`) so Home A
 
 Copy the folder:
 
-- `custom_components/climatix_generic`
+- `custom_components/ochsner_local_ots`
 
 into your Home Assistant config directory.
 
 ## Configuration (configuration.yaml)
 
 ```yaml
-climatix_generic:
+ochsner_local_ots:
   host: 192.168.178.80
   port: 80
   username: JSON

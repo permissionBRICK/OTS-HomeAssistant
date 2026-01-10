@@ -9,7 +9,16 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
 from .api import ClimatixGenericApi, extract_first_value
-from .const import CONF_NAME, CONF_OPTIONS, CONF_READ_ID, CONF_UUID, CONF_WRITE_ID, DOMAIN
+from .const import (
+    CONF_HEATING_CIRCUIT_NAME,
+    CONF_HEATING_CIRCUIT_UID,
+    CONF_NAME,
+    CONF_OPTIONS,
+    CONF_READ_ID,
+    CONF_UUID,
+    CONF_WRITE_ID,
+    DOMAIN,
+)
 from .coordinator import ClimatixCoordinator
 
 
@@ -48,6 +57,10 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         self._api = api
         self._host = host
         self._base_url = base_url
+        self._parent_device_name = str(cfg.get("device_name") or f"Climatix ({host})")
+        self._device_model = str(cfg.get("device_model") or "Climatix")
+        self._hc_uid = str(cfg.get(CONF_HEATING_CIRCUIT_UID) or "").strip()
+        self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
 
         self._attr_name = str(cfg[CONF_NAME])
 
@@ -76,11 +89,20 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
 
     @property
     def device_info(self) -> DeviceInfo:
+        if self._hc_uid:
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"{self._host}:hc:{self._hc_uid}")},
+                via_device=(DOMAIN, self._host),
+                name=self._hc_name or "Heating circuit",
+                manufacturer="Ochsner",
+                model=self._device_model,
+                configuration_url=self._base_url,
+            )
         return DeviceInfo(
             identifiers={(DOMAIN, self._host)},
-            name=f"Climatix ({self._host})",
-            manufacturer="Siemens",
-            model="Climatix",
+            name=self._parent_device_name,
+            manufacturer="Ochsner",
+            model=self._device_model,
             configuration_url=self._base_url,
         )
 
@@ -121,7 +143,11 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
             return
 
         await self._api.write(self._write_id, value)
-        await self.coordinator.async_request_refresh()
+        try:
+            await self.coordinator.async_refresh_ids([self._read_id])
+        except Exception:
+            # Fallback: refresh everything if the targeted read fails.
+            await self.coordinator.async_request_refresh()
 
 
 def _values_equal(a: Any, b: Any) -> bool:
@@ -139,14 +165,16 @@ def _values_equal(a: Any, b: Any) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]
-    coordinator: ClimatixCoordinator = store["coordinator"]
-    api: ClimatixGenericApi = store["api"]
-    host: str = store["host"]
-    base_url: str = store.get("base_url", f"http://{host}")
-    selects = store.get("selects", [])
-
-    entities = [
-        ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=s)
-        for s in selects
-    ]
+    controllers = store.get("controllers") or []
+    entities = []
+    for ctrl in controllers:
+        coordinator: ClimatixCoordinator = ctrl["coordinator"]
+        api: ClimatixGenericApi = ctrl["api"]
+        host: str = ctrl["host"]
+        base_url: str = ctrl.get("base_url", f"http://{host}")
+        device_name: str = ctrl.get("device_name", f"Climatix ({host})")
+        device_model: str = ctrl.get("device_model", "Climatix")
+        selects = ctrl.get("selects", [])
+        for s in selects:
+            entities.append(ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=dict(s, device_name=device_name, device_model=device_model)))
     async_add_entities(entities)
