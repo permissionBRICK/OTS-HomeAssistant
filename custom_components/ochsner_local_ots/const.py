@@ -16,6 +16,7 @@ CONF_SENSORS = "sensors"
 CONF_BINARY_SENSORS = "binary_sensors"
 CONF_NUMBERS = "numbers"
 CONF_SELECTS = "selects"
+CONF_TEXTS = "texts"
 
 # Multi-controller support (UI flow can add multiple plants/heatpumps under one config entry)
 CONF_CONTROLLERS = "controllers"
@@ -24,6 +25,10 @@ CONF_PLANT_NAME = "plant_name"
 CONF_CONFIG_ID = "config_id"
 CONF_SITE_ID = "site_id"
 CONF_BUNDLE_STORAGE_KEY = "bundle_storage_key"
+
+# Options
+CONF_RESCAN_ON_START = "rescan_on_start"
+CONF_RESCAN_NOW = "rescan_now"
 
 # Localization (used during onboarding entity generation)
 CONF_LANGUAGE = "language"

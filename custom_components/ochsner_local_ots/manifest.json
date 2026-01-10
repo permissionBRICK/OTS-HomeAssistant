@@ -2,12 +2,9 @@
   "domain": "ochsner_local_ots",
   "name": "Ochsner Local OTS",
   "version": "1.0.1",
-  "documentation": "https://github.com/permissionBRICK/OTS-HomeAssistant",
-  "issue_tracker": "https://github.com/permissionBRICK/OTS-HomeAssistant/issues",
+  "documentation": "https://example.invalid",
   "requirements": [],
-  "codeowners": [
-    "@permissionBRICK"
-  ],
+  "codeowners": [],
   "config_flow": true,
   "iot_class": "local_polling",
   "integration_type": "device"

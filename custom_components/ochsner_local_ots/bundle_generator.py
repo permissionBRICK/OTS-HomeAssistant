@@ -1121,6 +1121,7 @@ async def generate_entities_from_bundle(
     binary_sensors: List[Dict[str, Any]] = []
     numbers: List[Dict[str, Any]] = []
     selects: List[Dict[str, Any]] = []
+    texts: List[Dict[str, Any]] = []
 
     for e in entities:
         read_id = e.get("readId")
@@ -1303,6 +1304,21 @@ async def generate_entities_from_bundle(
             numbers.append(n_cfg)
             continue
 
+        # Writable non-numeric values (typically strings like IP address) -> expose as HA Text.
+        # We keep enums handled above (select/binary), and only use Text when a writeId exists.
+        if isinstance(write_id, str) and write_id and (not is_write_readonly) and ((not probe) or first is None or isinstance(first, str)):
+            t_cfg: Dict[str, Any] = {
+                "name": display_name,
+                "uuid": uuid_val,
+                "read_id": read_id,
+                "write_id": write_id,
+            }
+            if hc_uid:
+                t_cfg["heating_circuit_uid"] = hc_uid
+                t_cfg["heating_circuit_name"] = hc_name
+            texts.append(t_cfg)
+            continue
+
         s_cfg: Dict[str, Any] = {"name": display_name, "uuid": uuid_val, "id": read_id}
         if hc_uid:
             s_cfg["heating_circuit_uid"] = hc_uid
@@ -1313,10 +1329,17 @@ async def generate_entities_from_bundle(
 
     out: Dict[str, Any] = {
         # Avoid duplicates: if a value is controllable (number/select), don't also add it as a sensor.
-        "sensors": [s for s in sensors if str(s.get("id")) not in {str(n.get("read_id")) for n in numbers} and str(s.get("id")) not in {str(sel.get("read_id")) for sel in selects}],
+        "sensors": [
+            s
+            for s in sensors
+            if str(s.get("id")) not in {str(n.get("read_id")) for n in numbers}
+            and str(s.get("id")) not in {str(sel.get("read_id")) for sel in selects}
+            and str(s.get("id")) not in {str(t.get("read_id")) for t in texts}
+        ],
         "binary_sensors": binary_sensors,
         "numbers": numbers,
         "selects": selects,
+        "texts": texts,
     }
 
     return out

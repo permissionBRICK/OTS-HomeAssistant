@@ -37,7 +37,9 @@
       "init": {
         "title": "Optionen",
         "data": {
-          "scan_interval": "Abfrageintervall (Sekunden)"
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "rescan_on_start": "Bundle beim Start erneut scannen",
+          "rescan_now": "Jetzt scannen (fehlende Entitäten hinzufügen)"
         }
       }
     },

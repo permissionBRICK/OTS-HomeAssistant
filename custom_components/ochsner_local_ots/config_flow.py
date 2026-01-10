@@ -28,6 +28,9 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_SELECTS,
     CONF_SENSORS,
+    CONF_TEXTS,
+    CONF_RESCAN_NOW,
+    CONF_RESCAN_ON_START,
     DEFAULT_PASSWORD,
     DEFAULT_PIN,
     DEFAULT_PORT,
@@ -304,16 +307,17 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if " - " in device_model:
                 device_model = device_model.split(" - ", 1)[0].strip() or ots_plant_name
             _LOGGER.debug(
-                "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d",
+                "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d",
                 plant_name,
                 host,
                 len(ents.get("sensors", [])),
                 len(ents.get("binary_sensors", [])),
                 len(ents.get("numbers", [])),
                 len(ents.get("selects", [])),
+                len(ents.get("texts", [])),
             )
 
-            if not any(len(ents.get(k, [])) for k in ("sensors", "binary_sensors", "numbers", "selects")):
+            if not any(len(ents.get(k, [])) for k in ("sensors", "binary_sensors", "numbers", "selects", "texts")):
                 raise RuntimeError(
                     f"Probing succeeded but discovered 0 usable values for {plant_name} ({host}). "
                     "This usually means the controller rejected reads (auth/PIN/endpoint) or none of the bundle IDs exist on the device."
@@ -337,6 +341,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_BINARY_SENSORS: ents.get("binary_sensors", []),
                     CONF_NUMBERS: ents.get("numbers", []),
                     CONF_SELECTS: ents.get("selects", []),
+                    CONF_TEXTS: ents.get("texts", []),
                     CONF_BUNDLE_STORAGE_KEY: bundle_storage_key,
                 }
             )
@@ -377,6 +382,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_BINARY_SENSORS: list(user_input.get(CONF_BINARY_SENSORS, []) or []),
             CONF_NUMBERS: list(user_input.get(CONF_NUMBERS, []) or []),
             CONF_SELECTS: list(user_input.get(CONF_SELECTS, []) or []),
+            CONF_TEXTS: list(user_input.get(CONF_TEXTS, []) or []),
         }
 
         # If an entry already exists for this host, keep YAML as source-of-truth:
@@ -410,6 +416,8 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         errors: Dict[str, str] = {}
 
         current = int(self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
+        rescan_on_start = bool(self.config_entry.options.get(CONF_RESCAN_ON_START, False))
+        rescan_now_default = False
 
         if user_input is not None:
             try:
@@ -420,7 +428,16 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 if interval < 1:
                     errors["base"] = "invalid_scan_interval"
                 else:
-                    return self.async_create_entry(title="", data={CONF_SCAN_INTERVAL: interval})
+                    out = {
+                        CONF_SCAN_INTERVAL: interval,
+                        CONF_RESCAN_ON_START: bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start)),
+                    }
+
+                    # One-shot flag: if enabled, setup will rescan then clear it.
+                    if bool(user_input.get(CONF_RESCAN_NOW, False)):
+                        out[CONF_RESCAN_NOW] = True
+
+                    return self.async_create_entry(title="", data=out)
 
         schema = vol.Schema(
             {
@@ -435,7 +452,9 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                         mode=selector.NumberSelectorMode.BOX,
                         unit_of_measurement="s",
                     )
-                )
+                ),
+                vol.Optional(CONF_RESCAN_ON_START, default=rescan_on_start): selector.BooleanSelector(),
+                vol.Optional(CONF_RESCAN_NOW, default=rescan_now_default): selector.BooleanSelector(),
             }
         )
 
