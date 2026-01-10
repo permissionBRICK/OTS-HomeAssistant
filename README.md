@@ -10,7 +10,7 @@ Instead of interacting with the heat pump over the Interface that is offered via
 
 The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID, which can be found by downloading and parsing the configuration bundle of your heatpump from the Ochsner Cloud.
 
-Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once!
+Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once! The OTS Cloud is only required for initial setup. Once the integration has downloaded your config file, the integration works entirely local, no matter what happens to the Ochsner cloud in the future.
 
 This has been tested and confirmed working so far with:
  - AirHawk 518C
