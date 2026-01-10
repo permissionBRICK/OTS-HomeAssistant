@@ -149,7 +149,9 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
             # Keep legacy numeric behavior (so graphs/stats work for normal sensors).
             numeric = extract_first_numeric_value(data, self._id)
             if numeric is not None:
-                return _round_sensor_value(numeric)
+                if _is_temperature_unit(self._attr_native_unit_of_measurement):
+                    return _round_sensor_value(numeric)
+                return numeric
         return mapped
 
 
