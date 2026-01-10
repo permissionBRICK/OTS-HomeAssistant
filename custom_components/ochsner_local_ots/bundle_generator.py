@@ -11,6 +11,18 @@ from .api import ClimatixGenericApi
 _LOGGER = logging.getLogger(__name__)
 
 
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_html(s: str) -> str:
+    if not isinstance(s, str):
+        return str(s)
+    # Some translation entries are HTML snippets; we only need a short title.
+    s = _HTML_TAG_RE.sub("", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def _get_translation_tables(bundle_root: Any) -> tuple[Dict[str, Any], str, List[str]]:
     """Return (translations, fallback_lang, enabled_langs)."""
     if not isinstance(bundle_root, dict):
@@ -48,9 +60,25 @@ def _make_translator(bundle_root: Any, *, language: Optional[str]) -> Callable[[
     if prefer_default_labels:
         # Use bundle default/raw labels as-is. Many bundles already ship German
         # default names and the translation table can change wording.
+        #
+        # Exception: HTML widget section titles are referenced by keys like "HTML-..."
+        # and need a translation lookup to be meaningful.
+        lang = requested_lang.split("-")[0] if requested_lang else "DE"
+
         def tr(s: str) -> str:
             if not isinstance(s, str):
                 return s
+            if s.startswith("HTML-"):
+                entry = translations.get(s)
+                if isinstance(entry, str) and entry.strip():
+                    return entry.strip()
+                if isinstance(entry, dict):
+                    v = entry.get(lang) or entry.get(fallback_lang)
+                    if isinstance(v, str) and v.strip():
+                        return v.strip()
+                    for vv in entry.values():
+                        if isinstance(vv, str) and vv.strip():
+                            return vv.strip()
             return s.lstrip("#")
 
         return tr
@@ -334,6 +362,7 @@ def _walk_bundle_for_entities(
     *,
     path: str,
     context_stack: List[Dict[str, Any]],
+    active_section_source: str = "",
     out: List[Dict[str, Any]],
 ) -> None:
     if isinstance(obj, dict):
@@ -359,6 +388,7 @@ def _walk_bundle_for_entities(
                         "deviceName": ctx.get("name"),
                         "path": path,
                         "context": list(context_stack),
+                        "sectionSource": active_section_source or None,
                         "unit": obj.get("unit"),
                         "guiType": obj.get("guiType"),
                         "dynamicVisibilityRules": obj.get("dynamicVisibilityRules"),
@@ -395,16 +425,37 @@ def _walk_bundle_for_entities(
             if isinstance(v, str) and len(v) > 200000:
                 continue
             child_path = f"{path}/{k}" if path else str(k)
-            _walk_bundle_for_entities(v, path=child_path, context_stack=context_stack, out=out)
+            _walk_bundle_for_entities(
+                v,
+                path=child_path,
+                context_stack=context_stack,
+                active_section_source=active_section_source,
+                out=out,
+            )
 
         if pushed:
             context_stack.pop()
         return
 
     if isinstance(obj, list):
+        current_section_source = active_section_source
         for i, v in enumerate(obj):
+            # Within sibling lists, bundles often use HTML widgets as section headers.
+            # Track the active header source and attach it to following entities so
+            # we can prefix generic names like Istwert/Sollwert/Anforderung.
+            if isinstance(v, dict) and str(v.get("class") or "") == "HTMLWidgetInfo":
+                src = v.get("source")
+                if isinstance(src, str) and src.strip():
+                    current_section_source = src.strip()
+
             child_path = f"{path}[{i}]" if path else f"[{i}]"
-            _walk_bundle_for_entities(v, path=child_path, context_stack=context_stack, out=out)
+            _walk_bundle_for_entities(
+                v,
+                path=child_path,
+                context_stack=context_stack,
+                active_section_source=current_section_source,
+                out=out,
+            )
         return
 
 
@@ -551,6 +602,55 @@ def _heating_circuit_from_context(ctx: Any) -> Tuple[str, str]:
         # Fall back to the context name if uid is missing.
         return (uid_s or n), n
     return "", ""
+
+
+_GENERIC_ENTITY_NAMES = {
+    # German (very common in Climatix)
+    "istwert",
+    "sollwert",
+    "anforderung",
+    "status",
+    # English (in case translations are enabled)
+    "actual value",
+    "target value",
+    "request",
+}
+
+
+_SKIP_GROUP_PREFIXES = {
+    # Very generic containers that don't help disambiguate.
+    "floating screens",
+    "wärmemanagement",
+    "betriebsdaten",
+    "einstellungen",
+    "alarme",
+    "alarms",
+}
+
+
+def _best_group_prefix_from_context(ctx: Any) -> str:
+    """Return the nearest meaningful DeviceGroupInfo name for prefixing."""
+    if not isinstance(ctx, list) or not ctx:
+        return ""
+
+    # Exclude the leaf entity node itself.
+    candidates = ctx[:-1]
+    for one in reversed(candidates):
+        if not isinstance(one, dict):
+            continue
+        cls = str(one.get("class") or "")
+        if "DeviceGroupInfo" not in cls:
+            continue
+        name = one.get("name")
+        if not isinstance(name, str):
+            continue
+        n = name.strip().lstrip("#")
+        if not n:
+            continue
+        if n.lower() in _SKIP_GROUP_PREFIXES:
+            continue
+        return n
+    return ""
 
 
 def _looks_like_heating_circuit_name_value(name: str) -> bool:
@@ -1056,6 +1156,21 @@ async def generate_entities_from_bundle(
         if not hc_uid:
             hk = _heizkreis_from_context(e.get("context"))
             display_name = f"{hk} {name_s}" if hk and hk.lower() not in name_s.lower() else name_s
+
+        # Many Climatix values are named generically (e.g., Istwert/Sollwert/Anforderung).
+        # Prefer a nearby HTML section header (common in this bundle) to disambiguate.
+        if display_name.strip().lower() in _GENERIC_ENTITY_NAMES:
+            section_source = e.get("sectionSource")
+            section_title = ""
+            if isinstance(section_source, str) and section_source.strip():
+                section_title = _strip_html(translate(section_source)).lstrip("#").strip()
+
+            if section_title and section_title.lower() not in display_name.lower():
+                display_name = f"{section_title} - {display_name}"
+            else:
+                gp = _best_group_prefix_from_context(e.get("context"))
+                if gp and gp.lower() not in display_name.lower():
+                    display_name = f"{gp} {display_name}"
 
         # Remove noisy timestamp fragments.
         if _looks_like_datetime_part(display_name):

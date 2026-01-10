@@ -179,6 +179,9 @@ def _normalize_entities(data: Dict[str, Any]) -> Dict[str, Any]:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = dict(entry.data)
 
+    # Reload the entry when options change (e.g., polling interval).
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
     hass.data.setdefault(DOMAIN, {})
 
     session = async_get_clientsession(hass)
@@ -217,7 +220,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         username: str = str(ctrl.get(CONF_USERNAME, DEFAULT_USERNAME))
         password: str = str(ctrl.get(CONF_PASSWORD, DEFAULT_PASSWORD))
         pin: str = str(ctrl.get(CONF_PIN, DEFAULT_PIN))
-        scan_interval_sec: int = int(ctrl.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
+        override_scan_interval = entry.options.get(CONF_SCAN_INTERVAL)
+        if override_scan_interval is not None:
+            scan_interval_sec = int(override_scan_interval)
+        else:
+            scan_interval_sec = int(ctrl.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
 
         ents = _normalize_entities(ctrl)
         sensors = ents["sensors"]
@@ -318,6 +325,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
