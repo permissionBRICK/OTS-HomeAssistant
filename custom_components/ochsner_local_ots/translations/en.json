@@ -37,7 +37,9 @@
       "init": {
         "title": "Options",
         "data": {
-          "scan_interval": "Polling interval (seconds)"
+          "scan_interval": "Polling interval (seconds)",
+          "rescan_on_start": "Rescan bundle on startup",
+          "rescan_now": "Rescan now (add missing entities)"
         }
       }
     },
