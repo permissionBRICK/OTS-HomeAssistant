@@ -2,15 +2,15 @@
 
 **What the hell is this repo?**
 
-It's a way to locally read and control Heatpump settings! All without Modbus or Cloud services required!
+It's a way to locally read and control heat pump settings! All without Modbus or Cloud services required!
 
 **How does it work?**
 
-Instead of interacting with the Heatpump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heatpump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
+Instead of interacting with the heat pump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heat pump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
 
-The issue is that in order to find the IDs that the local api needs in order to be able to know which values you want to write/read, you need to download and parse the configuration from the Ochsner cloud.
+The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID, which can be found by downloading and parsing the configuration bundle of your heatpump from the Ochsner Cloud.
 
-Luckily, the newest version does all of this automatically, so the python tool is no longer needed!
+Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once!
 
 This has been tested and confirmed working so far with:
  - AirHawk 518C
