@@ -44,6 +44,27 @@ def _is_temperature_unit(unit: Any) -> bool:
     return False
 
 
+def _round_sensor_value(v: Any) -> Any:
+    """Round floats to 1 decimal only if they have >1 meaningful decimals."""
+    try:
+        f = float(v)
+    except Exception:
+        return v
+
+    # Leave integers (and near-integers) unchanged.
+    if abs(f - round(f)) < 1e-12:
+        return int(round(f))
+
+    r1 = round(f, 1)
+    # Only round if the value actually changes (i.e., there are extra decimals).
+    if abs(f - r1) > 1e-12:
+        # Avoid returning -0.0
+        if abs(r1) < 1e-12:
+            return 0.0
+        return r1
+    return f
+
+
 async def async_setup_platform(
     hass: HomeAssistant,
     config: Dict[str, Any],
@@ -128,7 +149,7 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
             # Keep legacy numeric behavior (so graphs/stats work for normal sensors).
             numeric = extract_first_numeric_value(data, self._id)
             if numeric is not None:
-                return numeric
+                return _round_sensor_value(numeric)
         return mapped
 
 
