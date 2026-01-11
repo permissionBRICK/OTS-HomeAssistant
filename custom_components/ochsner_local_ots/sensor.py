@@ -45,6 +45,16 @@ def _is_temperature_unit(unit: Any) -> bool:
     return False
 
 
+def _is_percent_unit(unit: Any) -> bool:
+    if not unit:
+        return False
+    u = str(unit).strip()
+    if not u:
+        return False
+    ul = u.lower()
+    return ul in {"%", "percent", "percentage"} or "%" in ul
+
+
 def _round_sensor_value(v: Any) -> Any:
     """Round floats to 1 decimal only if they have >1 meaningful decimals."""
     try:
@@ -150,7 +160,7 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
             # Keep legacy numeric behavior (so graphs/stats work for normal sensors).
             numeric = extract_first_numeric_value(data, self._id)
             if numeric is not None:
-                if _is_temperature_unit(self._attr_native_unit_of_measurement):
+                if _is_temperature_unit(self._attr_native_unit_of_measurement) or _is_percent_unit(self._attr_native_unit_of_measurement):
                     return _round_sensor_value(numeric)
                 return numeric
         return mapped
