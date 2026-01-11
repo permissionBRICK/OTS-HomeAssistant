@@ -68,4 +68,4 @@ Also of note: The settings are saved inside the Siemens Climatix Controller insi
 
 The integration offers a Flash Counter value that automatically keeps track of the total number of writes you issue against the heat pump controller, so if you automate anything, keep an eye on that number.
 
-This was entirely reverse engineered from the app using AI. Technically it should be possible to properly redevelop this as an integration that just accepts ochsner credentials and automatically imports all available values into Home assistant, but I do have a full time job. If anyone wants to make a PR, feel free!
+This was entirely reverse engineered from the app using AI. There are a lot of redundant code segments and strange hacks that the AI implemented in order to find the correct values / descriptions, but I don't have the time or energy to properly re-develop this by hand. If you find any issues, feel free to make a PR.
