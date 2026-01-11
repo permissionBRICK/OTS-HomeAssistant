@@ -13,8 +13,9 @@ The local API offers an interface that allows you to read and write almost any p
 Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once! The OTS Cloud is only required for initial setup. Once the integration has downloaded your config file, the integration works entirely local, no matter what happens to the Ochsner cloud in the future.
 
 This has been tested and confirmed working so far with:
- - AirHawk 518C
- - AirHawk 208C
+ - Air Hawk 518
+ - Air Hawk 208
+ - Air Falcon 212
 
 However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
 
