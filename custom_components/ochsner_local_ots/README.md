@@ -11,7 +11,7 @@ It supports:
 Values returned by Climatix often look like:
 
 ```json
-{"values": {"AyJn4iiJAAE=": [36.5375, 36.5375]}}
+{"values": {"A4J45due43C=": [36.5375, 36.5375]}}
 ```
 
 This integration automatically takes the **first element** (`36.5375`) so Home Assistant gets a plain numeric state.
@@ -28,7 +28,7 @@ into your Home Assistant config directory.
 
 ```yaml
 ochsner_local_ots:
-  host: 192.168.178.80
+  host: 192.168.1.123
   port: 80
   username: JSON
   password: SBTAdmin!
@@ -37,12 +37,12 @@ ochsner_local_ots:
 
   sensors:
     - name: Current Temp
-      id: AyJn4iiJAAE=
+      id: G4J45due5VC=
       unit: "°C"
 
   numbers:
     - name: Buffer Temp Setpoint
-      id: ACPxdC60AAE=
+      id: G4J45due43C=
       unit: "°C"
       min: 0
       max: 80
