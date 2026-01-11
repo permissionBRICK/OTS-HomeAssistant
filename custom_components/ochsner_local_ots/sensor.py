@@ -23,6 +23,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
+from .flash_warnings import async_maybe_create_flash_wear_notifications
 
 
 def _is_temperature_unit(unit: Any) -> bool:
@@ -246,6 +247,17 @@ class ClimatixGenericWriteCounterSensor(SensorEntity, RestoreEntity):
 
         # Push restored state immediately.
         self.async_write_ha_state()
+
+        # One-time flash wear warnings (persisted).
+        try:
+            await async_maybe_create_flash_wear_notifications(
+                self.hass,
+                entry_id=self._entry_id,
+                host=self._host,
+                count=self.native_value,
+            )
+        except Exception:
+            pass
 
     async def async_will_remove_from_hass(self) -> None:
         store = (self.hass.data.get(DOMAIN, {}) or {}).get(self._entry_id, {})

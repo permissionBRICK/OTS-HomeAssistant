@@ -1,7 +1,7 @@
 {
   "domain": "ochsner_local_ots",
   "name": "Ochsner Local OTS",
-  "version": "1.0.3",
+  "version": "1.0.1",
   "documentation": "https://example.invalid",
   "requirements": [],
   "codeowners": [],
