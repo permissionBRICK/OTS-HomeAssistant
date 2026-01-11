@@ -31,6 +31,7 @@ from .const import (
     CONF_TEXTS,
     CONF_RESCAN_NOW,
     CONF_RESCAN_ON_START,
+    CONF_REDOWNLOAD_BUNDLE,
     DEFAULT_PASSWORD,
     DEFAULT_PIN,
     DEFAULT_PORT,
@@ -38,6 +39,8 @@ from .const import (
     DEFAULT_USERNAME,
     DOMAIN,
 )
+
+from .bundle_refresh import async_redownload_bundles_and_merge
 
 from .bundle_generator import generate_entities_from_bundle
 from .ots_client import decode_ots_bundle_content, ots_getconfig, ots_login
@@ -412,12 +415,15 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             super().__init__()
             self._config_entry = config_entry
 
+        self._pending_options: Dict[str, Any] = {}
+
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}
 
         current = int(self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
         rescan_on_start = bool(self.config_entry.options.get(CONF_RESCAN_ON_START, False))
         rescan_now_default = False
+        redownload_default = False
 
         if user_input is not None:
             try:
@@ -437,6 +443,10 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                     if bool(user_input.get(CONF_RESCAN_NOW, False)):
                         out[CONF_RESCAN_NOW] = True
 
+                    if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
+                        self._pending_options = out
+                        return await self.async_step_redownload()
+
                     return self.async_create_entry(title="", data=out)
 
         schema = vol.Schema(
@@ -455,7 +465,46 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_RESCAN_ON_START, default=rescan_on_start): selector.BooleanSelector(),
                 vol.Optional(CONF_RESCAN_NOW, default=rescan_now_default): selector.BooleanSelector(),
+                vol.Optional(CONF_REDOWNLOAD_BUNDLE, default=redownload_default): selector.BooleanSelector(),
             }
         )
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    async def async_step_redownload(self, user_input: Optional[Dict[str, Any]] = None):
+        errors: Dict[str, str] = {}
+
+        if user_input is not None:
+            ots_user = str(user_input.get(CONF_OTS_USER) or "").strip()
+            ots_pass = str(user_input.get(CONF_OTS_PASS) or "")
+            if not ots_user or not ots_pass:
+                errors["base"] = "auth"
+            else:
+                ok, err_key, _added = await async_redownload_bundles_and_merge(
+                    self.hass,
+                    self.config_entry,
+                    ots_username=ots_user,
+                    ots_password=ots_pass,
+                )
+                if not ok:
+                    errors["base"] = err_key or "download_failed"
+                else:
+                    # We already updated entry.data; trigger exactly one reload.
+                    self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
+                    await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                    return self.async_create_entry(title="", data=self._pending_options)
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_OTS_USER): selector.TextSelector(),
+                vol.Required(CONF_OTS_PASS): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="redownload",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"note": "Credentials are not stored in Home Assistant."},
+        )

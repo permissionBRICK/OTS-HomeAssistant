@@ -49,6 +49,7 @@ from .const import (
 from .coordinator import ClimatixCoordinator
 
 from .bundle_generator import generate_entities_from_bundle
+from .flash_warnings import async_maybe_create_flash_wear_notifications
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -489,6 +490,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 except Exception:
                     # Never break writes due to counter UI.
                     pass
+
+            # Flash wear warnings (persisted; shown once per threshold).
+            try:
+                await async_maybe_create_flash_wear_notifications(
+                    hass,
+                    entry_id=entry.entry_id,
+                    host=host_key,
+                    count=int(write_counts.get(host_key, 0)),
+                )
+            except Exception:
+                pass
 
         api: Any = ClimatixGenericApiWriteHook(inner_api, on_write=_on_write)
 

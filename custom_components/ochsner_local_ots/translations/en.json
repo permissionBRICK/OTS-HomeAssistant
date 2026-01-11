@@ -39,12 +39,19 @@
         "data": {
           "scan_interval": "Polling interval (seconds)",
           "rescan_on_start": "Rescan bundle on startup",
-          "rescan_now": "Rescan now (add missing entities)"
+          "rescan_now": "Rescan now (add missing entities)",
+          "redownload_bundle": "Re-download bundle from OTS (add missing entities)"
         }
       }
     },
     "error": {
-      "invalid_scan_interval": "Please enter a polling interval of at least 1 second."
+      "invalid_scan_interval": "Please enter a polling interval of at least 1 second.",
+      "auth": "Login failed. Check your credentials.",
+      "download_failed": "Could not download a new bundle from OTS.",
+      "no_entities": "The new bundle produced 0 entities; keeping the existing bundle.",
+      "no_controllers": "This entry has no controllers to refresh.",
+      "no_bundle_key": "No stored bundle key found for this controller.",
+      "no_ots_ids": "Missing OTS config/site id for this controller."
     }
   }
 }

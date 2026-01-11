@@ -29,6 +29,7 @@ CONF_BUNDLE_STORAGE_KEY = "bundle_storage_key"
 # Options
 CONF_RESCAN_ON_START = "rescan_on_start"
 CONF_RESCAN_NOW = "rescan_now"
+CONF_REDOWNLOAD_BUNDLE = "redownload_bundle"
 
 # Localization (used during onboarding entity generation)
 CONF_LANGUAGE = "language"
