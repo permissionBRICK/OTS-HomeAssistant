@@ -1,28 +1,13 @@
 # Ochsner local OTS - Climatix - (HACS)
 
-**What the hell is this repo?**
+**What is this repo?**
 
-It's a way to locally read and control heat pump settings! All without Modbus or Cloud services required!
-
-**How does it work?**
-
-Instead of interacting with the heat pump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heat pump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
-
-The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID, which can be found by downloading and parsing the configuration bundle of your heatpump from the Ochsner Cloud.
-
-Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once! The OTS Cloud is only required for initial setup. Once the integration has downloaded your config file, the integration works entirely local, no matter what happens to the Ochsner cloud in the future.
-
-This has been tested and confirmed working so far with:
- - Air Hawk 518
- - Air Hawk 208
- - Air Falcon 212
-
-However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
+It's a way to locally read and control Ochsner heat pump settings via Home Assistant, allowing you to access all the same settings and values as the OTS app, all without Modbus or Cloud services required.
 
 ---
 
 
-## 1) Home Assistant: install the integration
+## 1) Installation
 ### 1a) Install via HACS - recommended
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=permissionBRICK&repository=OTS-HomeAssistant&category=integration)
 
@@ -57,11 +42,27 @@ Steps:
 8) Done!
 
 
-
-
 ---
 
+## How does this work?
+
+Instead of interacting with the heat pump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heat pump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
+
+The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID, which can be found by downloading and parsing the configuration bundle of your heatpump from the Ochsner Cloud.
+
+Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once! The OTS Cloud is only required for initial setup. Once the integration has downloaded your config file, the integration works entirely local, no matter what happens to the Ochsner cloud in the future.
+
+This has been tested and confirmed working so far with:
+ - Air Hawk 518
+ - Air Hawk 208
+ - Air Falcon 212
+
+However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
+
+
 ## Disclaimer & Warning
+
+This project is not affiliated with or endorsed by Ochsner.
 
 Tread with caution when changing random values, make sure you know the exact value you are trying to change and have correctly identified it. For the most part, the integration mostly seems to correctly parse the minimum / maximum for every value and map that to the UI so you can't set any temperature ranges that the heatpump wouldn't allow, but there are also some settings here which appear to be hidden in the app, and I have no idea what their effects might be if you try to use them.
 
