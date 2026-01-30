@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.sensor import SensorStateClass
 from homeassistant.core import HomeAssistant
@@ -16,6 +16,9 @@ from .const import (
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_ID,
+    CONF_DEVICE_CLASS,
+    CONF_ENTITY_OVERRIDES,
+    CONF_STATE_CLASS,
     CONF_NAME,
     CONF_UNIT,
     CONF_UUID,
@@ -53,6 +56,17 @@ def _is_percent_unit(unit: Any) -> bool:
         return False
     ul = u.lower()
     return ul in {"%", "percent", "percentage"} or "%" in ul
+
+
+def _maybe_int(v: Any) -> Any:
+    try:
+        f = float(v)
+    except Exception:
+        return v
+    r = round(f)
+    if abs(f - r) < 1e-6:
+        return int(r)
+    return v
 
 
 def _round_sensor_value(v: Any) -> Any:
@@ -97,7 +111,15 @@ async def async_setup_platform(
 
 
 class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity):
-    def __init__(self, coordinator: ClimatixCoordinator, *, host: str, base_url: str, cfg: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        coordinator: ClimatixCoordinator,
+        *,
+        host: str,
+        base_url: str,
+        cfg: Dict[str, Any],
+        entity_overrides: Optional[Dict[str, Any]] = None,
+    ) -> None:
         super().__init__(coordinator)
         self._host = host
         self._base_url = base_url
@@ -108,11 +130,37 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
         self._id = str(cfg[CONF_ID])
         self._attr_name = str(cfg[CONF_NAME])
         self._attr_native_unit_of_measurement = cfg.get(CONF_UNIT)
-        if _is_temperature_unit(self._attr_native_unit_of_measurement):
-            self._attr_icon = "mdi:thermometer"
         self._value_map: Dict[str, str] = {str(k): str(v) for k, v in (cfg.get(CONF_VALUE_MAP) or {}).items()}
         configured_uuid = cfg.get(CONF_UUID)
         self._attr_unique_id = str(configured_uuid) if configured_uuid else f"{host}:sensor:{self._id}".replace("=", "")
+
+        # Apply UI overrides (options flow). These are keyed by unique_id.
+        if isinstance(entity_overrides, dict):
+            ov = entity_overrides.get(self._attr_unique_id)
+            if isinstance(ov, dict):
+                if CONF_UNIT in ov:
+                    unit = ov.get(CONF_UNIT)
+                    self._attr_native_unit_of_measurement = str(unit) if unit not in (None, "") else None
+
+                dc = ov.get(CONF_DEVICE_CLASS)
+                if dc not in (None, ""):
+                    try:
+                        self._attr_device_class = SensorDeviceClass(str(dc))
+                    except Exception:
+                        # Invalid device class; ignore.
+                        pass
+
+                sc = ov.get(CONF_STATE_CLASS)
+                if sc not in (None, ""):
+                    try:
+                        self._attr_state_class = SensorStateClass(str(sc))
+                    except Exception:
+                        # Invalid state class; ignore.
+                        pass
+
+        # Icon heuristic (and keep old behavior) after overrides.
+        if getattr(self, "_attr_device_class", None) == SensorDeviceClass.TEMPERATURE or _is_temperature_unit(self._attr_native_unit_of_measurement):
+            self._attr_icon = "mdi:thermometer"
 
     def _map_value(self, raw: Any) -> Any:
         if raw is None or not self._value_map:
@@ -160,7 +208,16 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
             # Keep legacy numeric behavior (so graphs/stats work for normal sensors).
             numeric = extract_first_numeric_value(data, self._id)
             if numeric is not None:
-                if _is_temperature_unit(self._attr_native_unit_of_measurement) or _is_percent_unit(self._attr_native_unit_of_measurement):
+                unit = self._attr_native_unit_of_measurement
+                # Counters should be displayed as integers when possible.
+                try:
+                    sc = getattr(self, "_attr_state_class", None)
+                except Exception:
+                    sc = None
+                if sc in {SensorStateClass.TOTAL, SensorStateClass.TOTAL_INCREASING}:
+                    return _maybe_int(numeric)
+
+                if _is_temperature_unit(unit) or _is_percent_unit(unit):
                     return _round_sensor_value(numeric)
                 return numeric
         return mapped
@@ -169,6 +226,7 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]
     controllers = store.get("controllers") or []
+    entity_overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
     entities = []
     for ctrl in controllers:
         coordinator: ClimatixCoordinator = ctrl["coordinator"]
@@ -178,7 +236,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         device_model: str = ctrl.get("device_model", "Climatix")
         sensors = ctrl.get("sensors", [])
         for s in sensors:
-            entities.append(ClimatixGenericSensor(coordinator, host=host, base_url=base_url, cfg=dict(s, device_name=device_name, device_model=device_model)))
+            entities.append(
+                ClimatixGenericSensor(
+                    coordinator,
+                    host=host,
+                    base_url=base_url,
+                    cfg=dict(s, device_name=device_name, device_model=device_model),
+                    entity_overrides=entity_overrides,
+                )
+            )
 
         # Always add a write-counter sensor per controller.
         entities.append(ClimatixGenericWriteCounterSensor(entry_id=entry.entry_id, host=host, base_url=base_url, device_name=device_name, device_model=device_model))

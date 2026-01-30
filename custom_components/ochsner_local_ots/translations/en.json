@@ -40,7 +40,29 @@
           "scan_interval": "Polling interval (seconds)",
           "rescan_on_start": "Rescan bundle on startup",
           "rescan_now": "Rescan now (add missing entities)",
-          "redownload_bundle": "Re-download bundle from OTS (add missing entities)"
+          "redownload_bundle": "Re-download bundle from OTS (add missing entities)",
+          "configure_entities": "Configure sensor/number device class and unit"
+        }
+      },
+      "entity_override_select": {
+        "title": "Entity overrides",
+        "description": "Select an entity to override its device class and unit.",
+        "data": {
+          "entity": "Entity"
+        }
+      },
+      "entity_override_edit": {
+        "title": "Edit entity override",
+        "description": "Set overrides for the selected entity. Leave fields empty to keep defaults.",
+        "data": {
+          "clear": "Clear override",
+          "device_class": "Device class",
+          "state_class": "State class",
+          "unit": "Unit",
+          "min": "Minimum",
+          "max": "Maximum",
+          "step": "Step",
+          "edit_another": "Edit another entity"
         }
       }
     },
@@ -51,7 +73,9 @@
       "no_entities": "The new bundle produced 0 entities; keeping the existing bundle.",
       "no_controllers": "This entry has no controllers to refresh.",
       "no_bundle_key": "No stored bundle key found for this controller.",
-      "no_ots_ids": "Missing OTS config/site id for this controller."
+      "no_ots_ids": "Missing OTS config/site id for this controller.",
+      "no_selection": "Select an entity.",
+      "invalid_range": "Maximum must be greater than minimum."
     }
   }
 }

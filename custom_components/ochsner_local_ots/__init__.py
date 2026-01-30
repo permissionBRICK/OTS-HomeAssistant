@@ -31,6 +31,8 @@ from .const import (
     CONF_MIN,
     CONF_MAX,
     CONF_STEP,
+    CONF_BUNDLE_MIN,
+    CONF_BUNDLE_MAX,
     CONF_VALUE_MAP,
     CONF_CONTROLLERS,
     CONF_DEVICE_MODEL,
@@ -219,6 +221,9 @@ _NUMBER_SCHEMA = vol.Schema(
         # Only show sliders when min/max are explicitly provided.
         vol.Optional(CONF_MIN): vol.Coerce(float),
         vol.Optional(CONF_MAX): vol.Coerce(float),
+        # Bundle-provided bounds (used to constrain UI overrides)
+        vol.Optional(CONF_BUNDLE_MIN): vol.Coerce(float),
+        vol.Optional(CONF_BUNDLE_MAX): vol.Coerce(float),
         vol.Optional(CONF_STEP, default=0.5): vol.Coerce(float),
     }
 )
@@ -309,6 +314,14 @@ def _normalize_entities(data: Dict[str, Any]) -> Dict[str, Any]:
         nn = dict(n)
         nn[CONF_READ_ID] = str(read_id)
         nn[CONF_WRITE_ID] = str(write_id)
+
+        # Backwards compatible migration:
+        # Older configs used min/max as the only stored range. Treat those values
+        # as the bundle-provided bounds so the UI can later constrain overrides.
+        if nn.get(CONF_BUNDLE_MIN) is None and nn.get(CONF_MIN) is not None:
+            nn[CONF_BUNDLE_MIN] = nn.get(CONF_MIN)
+        if nn.get(CONF_BUNDLE_MAX) is None and nn.get(CONF_MAX) is not None:
+            nn[CONF_BUNDLE_MAX] = nn.get(CONF_MAX)
         normalized_numbers.append(nn)
 
     # Normalize selects to have explicit read_id/write_id.
@@ -385,6 +398,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 CONF_TEXTS: list(data.get(CONF_TEXTS, []) or []),
             }
         ]
+
+    # Persist bundle_min/bundle_max for older entries so the Options UI can
+    # enforce bounds even after upgrades.
+    migrated = False
+    migrated_controllers: List[Dict[str, Any]] = []
+    for ctrl in controllers:
+        ctrl_d = dict(ctrl)
+        nums = list(ctrl_d.get(CONF_NUMBERS, []) or [])
+        new_nums: List[Dict[str, Any]] = []
+        for n in nums:
+            if not isinstance(n, dict):
+                continue
+            nn = dict(n)
+            if nn.get(CONF_BUNDLE_MIN) is None and nn.get(CONF_MIN) is not None:
+                nn[CONF_BUNDLE_MIN] = nn.get(CONF_MIN)
+                migrated = True
+            if nn.get(CONF_BUNDLE_MAX) is None and nn.get(CONF_MAX) is not None:
+                nn[CONF_BUNDLE_MAX] = nn.get(CONF_MAX)
+                migrated = True
+            new_nums.append(nn)
+        ctrl_d[CONF_NUMBERS] = new_nums
+        migrated_controllers.append(ctrl_d)
+
+    if migrated:
+        try:
+            # Always store in multi-controller format going forward.
+            hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: migrated_controllers})
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Failed to persist migrated bundle bounds: %s", err)
+        controllers = migrated_controllers
 
     if (rescan_on_start or rescan_now) and controllers:
         updated_controllers, added_by_platform = await _async_rescan_from_stored_bundles(

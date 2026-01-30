@@ -1299,6 +1299,10 @@ async def generate_entities_from_bundle(
 
             # Only apply min/max when both are present and sensible.
             if mn is not None and mx is not None and mx > mn:
+                # Persist bundle-provided bounds separately so the UI can later
+                # constrain user-configured min/max within the real limits.
+                n_cfg["bundle_min"] = mn
+                n_cfg["bundle_max"] = mx
                 n_cfg["min"] = mn
                 n_cfg["max"] = mx
             numbers.append(n_cfg)

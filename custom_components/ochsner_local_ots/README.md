@@ -70,6 +70,20 @@ ochsner_local_ots:
 
 Restart Home Assistant after changing the config.
 
+## Configuration (UI)
+
+If you set up the integration via the UI, you can adjust **per-entity** metadata in:
+
+- Settings → Devices & services → Ochsner Local OTS → Options
+
+Enable `configure_entities` to:
+
+- Override `device_class` (e.g. `temperature`, `humidity`, `pressure`)
+- Override `unit` (e.g. `°C`, `%`)
+- Override `min`/`max`/`step` for `number` entities (clamped to `bundle_min`/`bundle_max`)
+
+These overrides are stored in the config entry **options** and applied after a reload.
+
 ## Notes
 
 - `id`/`read_id`/`write_id` must be the **genericJsonId** (the `OA` value), e.g. something that ends in `=`.

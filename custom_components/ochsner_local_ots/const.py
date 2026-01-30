@@ -47,9 +47,19 @@ CONF_UNIT = "unit"
 
 CONF_VALUE_MAP = "value_map"
 
+# Per-entity UI overrides (stored in config_entry.options)
+# Keyed by entity unique_id string.
+CONF_ENTITY_OVERRIDES = "entity_overrides"
+CONF_DEVICE_CLASS = "device_class"
+CONF_STATE_CLASS = "state_class"
+
 CONF_MIN = "min"
 CONF_MAX = "max"
 CONF_STEP = "step"
+
+# Bundle-provided bounds for writable numbers (used to constrain UI overrides)
+CONF_BUNDLE_MIN = "bundle_min"
+CONF_BUNDLE_MAX = "bundle_max"
 
 # Optional grouping metadata (used by UI onboarding auto-generator)
 CONF_HEATING_CIRCUIT_UID = "heating_circuit_uid"

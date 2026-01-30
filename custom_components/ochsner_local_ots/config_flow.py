@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
-from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 
@@ -18,8 +18,16 @@ from .const import (
     CONF_BUNDLE_STORAGE_KEY,
     CONF_CONFIG_ID,
     CONF_CONTROLLERS,
+    CONF_BUNDLE_MAX,
+    CONF_BUNDLE_MIN,
+    CONF_HEATING_CIRCUIT_NAME,
+    CONF_DEVICE_CLASS,
     CONF_DEVICE_MODEL,
+    CONF_ENTITY_OVERRIDES,
+    CONF_ID,
     CONF_LANGUAGE,
+    CONF_MAX,
+    CONF_MIN,
     CONF_NUMBERS,
     CONF_PIN,
     CONF_PLANT_KEY,
@@ -28,7 +36,12 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_SELECTS,
     CONF_SENSORS,
+    CONF_STEP,
+    CONF_STATE_CLASS,
     CONF_TEXTS,
+    CONF_UNIT,
+    CONF_UUID,
+    CONF_READ_ID,
     CONF_RESCAN_NOW,
     CONF_RESCAN_ON_START,
     CONF_REDOWNLOAD_BUNDLE,
@@ -420,10 +433,12 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}
 
-        current = int(self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
-        rescan_on_start = bool(self.config_entry.options.get(CONF_RESCAN_ON_START, False))
+        existing_options = dict(self.config_entry.options or {})
+        current = int(existing_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
+        rescan_on_start = bool(existing_options.get(CONF_RESCAN_ON_START, False))
         rescan_now_default = False
         redownload_default = False
+        edit_entities_default = False
 
         if user_input is not None:
             try:
@@ -434,10 +449,13 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 if interval < 1:
                     errors["base"] = "invalid_scan_interval"
                 else:
-                    out = {
-                        CONF_SCAN_INTERVAL: interval,
-                        CONF_RESCAN_ON_START: bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start)),
-                    }
+                    out = dict(existing_options)
+                    out[CONF_SCAN_INTERVAL] = interval
+                    out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
+
+                    # Ensure entity overrides always survive option updates.
+                    if CONF_ENTITY_OVERRIDES not in out:
+                        out[CONF_ENTITY_OVERRIDES] = {}
 
                     # One-shot flag: if enabled, setup will rescan then clear it.
                     if bool(user_input.get(CONF_RESCAN_NOW, False)):
@@ -446,6 +464,10 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                     if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
                         self._pending_options = out
                         return await self.async_step_redownload()
+
+                    if bool(user_input.get("configure_entities", False)):
+                        self._pending_options = out
+                        return await self.async_step_entity_override_select()
 
                     return self.async_create_entry(title="", data=out)
 
@@ -466,10 +488,373 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(CONF_RESCAN_ON_START, default=rescan_on_start): selector.BooleanSelector(),
                 vol.Optional(CONF_RESCAN_NOW, default=rescan_now_default): selector.BooleanSelector(),
                 vol.Optional(CONF_REDOWNLOAD_BUNDLE, default=redownload_default): selector.BooleanSelector(),
+                vol.Optional("configure_entities", default=edit_entities_default): selector.BooleanSelector(),
             }
         )
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    def _iter_controllers(self) -> List[Dict[str, Any]]:
+        raw = self.config_entry.data.get(CONF_CONTROLLERS)
+        if isinstance(raw, list) and raw:
+            return [c for c in raw if isinstance(c, dict)]
+
+        # Backwards compatible single-controller entry.
+        host = str(self.config_entry.data.get(CONF_HOST) or "").strip()
+        if not host:
+            return []
+        return [{CONF_HOST: host, CONF_SENSORS: list(self.config_entry.data.get(CONF_SENSORS, []) or []), CONF_NUMBERS: list(self.config_entry.data.get(CONF_NUMBERS, []) or [])}]
+
+    def _build_entity_choices(self) -> List[selector.SelectOptionDict]:
+        opts: List[selector.SelectOptionDict] = []
+
+        def _shorten(s: Optional[str], max_len: int = 40, tail_len: int = 10) -> Optional[str]:
+            if not s:
+                return s
+            s2 = str(s)
+            if len(s2) <= max_len:
+                return s2
+            if max_len <= 3:
+                return s2[:max_len]
+
+            # Center ellipsis, keep the last `tail_len` characters.
+            # Example (max_len=40, tail_len=10): prefix(27) + '...' + last10
+            tl = int(tail_len)
+            if tl < 0:
+                tl = 0
+            if tl > max_len - 3:
+                tl = max_len - 3
+
+            prefix_len = max_len - 3 - tl
+            if prefix_len < 1:
+                prefix_len = 1
+                tl = max_len - 3 - prefix_len
+                if tl < 0:
+                    tl = 0
+
+            if tl:
+                return f"{s2[:prefix_len]}...{s2[-tl:]}"
+            return f"{s2[:prefix_len]}..."
+
+        # Map unique_id -> entity_id for this config entry (to disambiguate duplicates).
+        unique_to_entity_id: Dict[str, str] = {}
+        try:
+            ent_reg = er.async_get(self.hass)
+            for ent in er.async_entries_for_config_entry(ent_reg, self.config_entry.entry_id):
+                if getattr(ent, "unique_id", None) and getattr(ent, "entity_id", None):
+                    unique_to_entity_id[str(ent.unique_id)] = str(ent.entity_id)
+        except Exception:
+            unique_to_entity_id = {}
+
+        controllers = self._iter_controllers()
+        for ctrl in controllers:
+            host = str(ctrl.get(CONF_HOST) or "").strip()
+            plant_name = str(ctrl.get(CONF_PLANT_NAME) or host or "controller")
+
+            for s in list(ctrl.get(CONF_SENSORS, []) or []):
+                if not isinstance(s, dict):
+                    continue
+                ent_id = str(s.get(CONF_ID) or "").strip()
+                if not ent_id:
+                    continue
+                uuid = str(s.get(CONF_UUID) or "").strip()
+                unique_id = uuid if uuid else f"{host}:sensor:{ent_id}".replace("=", "")
+                name = _shorten(str(s.get(CONF_NAME) or ent_id))
+                hc_name = str(s.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
+                hc_part = f" · {hc_name}" if hc_name else ""
+                ha_entity_id = unique_to_entity_id.get(unique_id)
+                ha_entity_id = _shorten(ha_entity_id, 60)
+                eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
+                opts.append(selector.SelectOptionDict(value=unique_id, label=f"sensor · {plant_name}{hc_part} · {name} ({eid_part})"))
+
+            for n in list(ctrl.get(CONF_NUMBERS, []) or []):
+                if not isinstance(n, dict):
+                    continue
+                read_id = str(n.get(CONF_READ_ID) or n.get(CONF_ID) or "").strip()
+                if not read_id:
+                    continue
+                uuid = str(n.get(CONF_UUID) or "").strip()
+                unique_id = uuid if uuid else f"{host}:number:{read_id}".replace("=", "")
+                name = _shorten(str(n.get(CONF_NAME) or read_id))
+                hc_name = str(n.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
+                hc_part = f" · {hc_name}" if hc_name else ""
+                ha_entity_id = unique_to_entity_id.get(unique_id)
+                ha_entity_id = _shorten(ha_entity_id, 60)
+                eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
+                opts.append(selector.SelectOptionDict(value=unique_id, label=f"number · {plant_name}{hc_part} · {name} ({eid_part})"))
+
+        # Stable ordering in UI.
+        opts.sort(key=lambda o: str(o.get("label") or ""))
+        return opts
+
+    def _find_number_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
+        controllers = self._iter_controllers()
+        for ctrl in controllers:
+            host = str(ctrl.get(CONF_HOST) or "").strip()
+            for n in list(ctrl.get(CONF_NUMBERS, []) or []):
+                if not isinstance(n, dict):
+                    continue
+                read_id = str(n.get(CONF_READ_ID) or n.get(CONF_ID) or "").strip()
+                if not read_id:
+                    continue
+                uuid = str(n.get(CONF_UUID) or "").strip()
+                unique_id = uuid if uuid else f"{host}:number:{read_id}".replace("=", "")
+                if unique_id == entity_unique_id:
+                    return n
+        return None
+
+    def _find_sensor_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
+        controllers = self._iter_controllers()
+        for ctrl in controllers:
+            host = str(ctrl.get(CONF_HOST) or "").strip()
+            for s in list(ctrl.get(CONF_SENSORS, []) or []):
+                if not isinstance(s, dict):
+                    continue
+                ent_id = str(s.get(CONF_ID) or "").strip()
+                if not ent_id:
+                    continue
+                uuid = str(s.get(CONF_UUID) or "").strip()
+                unique_id = uuid if uuid else f"{host}:sensor:{ent_id}".replace("=", "")
+                if unique_id == entity_unique_id:
+                    return s
+        return None
+
+    async def async_step_entity_override_select(self, user_input: Optional[Dict[str, Any]] = None):
+        errors: Dict[str, str] = {}
+
+        choices = self._build_entity_choices()
+        if not choices:
+            # Nothing to configure; just finish.
+            return self.async_create_entry(title="", data=self._pending_options or dict(self.config_entry.options or {}))
+
+        if user_input is not None:
+            entity_key = str(user_input.get("entity") or "").strip()
+            if not entity_key:
+                errors["base"] = "no_selection"
+            else:
+                self._pending_options = dict(self._pending_options or dict(self.config_entry.options or {}))
+                self._pending_options.setdefault(CONF_ENTITY_OVERRIDES, {})
+                self._pending_options["_editing_entity"] = entity_key
+                return await self.async_step_entity_override_edit()
+
+        schema = vol.Schema(
+            {
+                vol.Required("entity"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=choices,
+                        multiple=False,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="entity_override_select", data_schema=schema, errors=errors)
+
+    async def async_step_entity_override_edit(self, user_input: Optional[Dict[str, Any]] = None):
+        errors: Dict[str, str] = {}
+
+        pending = dict(self._pending_options or {})
+        entity_key = str(pending.get("_editing_entity") or "").strip()
+        if not entity_key:
+            return await self.async_step_init()
+
+        overrides = pending.get(CONF_ENTITY_OVERRIDES)
+        if not isinstance(overrides, dict):
+            overrides = {}
+
+        current_ov = overrides.get(entity_key) if isinstance(overrides.get(entity_key), dict) else {}
+        cur_unit = current_ov.get(CONF_UNIT)
+        cur_dc = current_ov.get(CONF_DEVICE_CLASS)
+
+        sensor_cfg = self._find_sensor_cfg_by_unique_id(entity_key)
+        is_sensor = isinstance(sensor_cfg, dict)
+        cur_sc = current_ov.get(CONF_STATE_CLASS) if is_sensor else None
+
+        number_cfg = self._find_number_cfg_by_unique_id(entity_key)
+        is_number = isinstance(number_cfg, dict)
+        bundle_min = None
+        bundle_max = None
+        cfg_min = None
+        cfg_max = None
+        cfg_step = None
+        if is_number:
+            bundle_min = number_cfg.get(CONF_BUNDLE_MIN)
+            bundle_max = number_cfg.get(CONF_BUNDLE_MAX)
+            # Backwards compatible: treat existing min/max as bundle bounds.
+            if bundle_min is None:
+                bundle_min = number_cfg.get(CONF_MIN)
+            if bundle_max is None:
+                bundle_max = number_cfg.get(CONF_MAX)
+            cfg_min = number_cfg.get(CONF_MIN)
+            cfg_max = number_cfg.get(CONF_MAX)
+            cfg_step = number_cfg.get(CONF_STEP)
+
+        cur_min = current_ov.get(CONF_MIN, cfg_min)
+        cur_max = current_ov.get(CONF_MAX, cfg_max)
+        cur_step = current_ov.get(CONF_STEP, cfg_step)
+
+        if user_input is not None:
+            clear = bool(user_input.get("clear", False))
+            unit = str(user_input.get(CONF_UNIT) or "").strip()
+            dc = str(user_input.get(CONF_DEVICE_CLASS) or "").strip()
+            sc = str(user_input.get(CONF_STATE_CLASS) or "").strip() if is_sensor else ""
+
+            min_v = user_input.get(CONF_MIN) if is_number else None
+            max_v = user_input.get(CONF_MAX) if is_number else None
+            step_v = user_input.get(CONF_STEP) if is_number else None
+
+            # Validate number ranges (only if both provided).
+            if is_number and not clear:
+                try:
+                    if min_v is not None and max_v is not None:
+                        if float(max_v) <= float(min_v):
+                            errors["base"] = "invalid_range"
+                except Exception:
+                    errors["base"] = "invalid_range"
+
+            if errors:
+                # Fall through to re-render form.
+                pass
+
+            if not errors:
+                # Build override dict; keep only non-empty values.
+                out_ov: Dict[str, Any] = {}
+                if unit:
+                    out_ov[CONF_UNIT] = unit
+                if dc:
+                    out_ov[CONF_DEVICE_CLASS] = dc
+                if is_sensor and sc:
+                    out_ov[CONF_STATE_CLASS] = sc
+                if is_number:
+                    if min_v not in (None, ""):
+                        try:
+                            min_f = float(min_v)
+                            if cfg_min is None or float(cfg_min) != min_f:
+                                out_ov[CONF_MIN] = min_f
+                        except Exception:
+                            pass
+                    if max_v not in (None, ""):
+                        try:
+                            max_f = float(max_v)
+                            if cfg_max is None or float(cfg_max) != max_f:
+                                out_ov[CONF_MAX] = max_f
+                        except Exception:
+                            pass
+                    if step_v not in (None, ""):
+                        try:
+                            step_f = float(step_v)
+                            if cfg_step is None or float(cfg_step) != step_f:
+                                out_ov[CONF_STEP] = step_f
+                        except Exception:
+                            pass
+
+                if clear or not out_ov:
+                    overrides.pop(entity_key, None)
+                else:
+                    overrides[entity_key] = out_ov
+
+                # Persist immediately so entity changes apply right away.
+                pending[CONF_ENTITY_OVERRIDES] = overrides
+                pending.pop("_editing_entity", None)
+                self._pending_options = pending
+
+                # Avoid duplicate reload: we'll reload explicitly after updating options.
+                self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
+                try:
+                    self.hass.config_entries.async_update_entry(self.config_entry, options=dict(pending))
+                except Exception:
+                    pass
+                self.hass.async_create_task(self.hass.config_entries.async_reload(self.config_entry.entry_id))
+
+                if bool(user_input.get("edit_another", True)):
+                    return await self.async_step_entity_override_select()
+
+                # Close the options flow (options already saved above).
+                self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
+                return self.async_create_entry(title="", data=pending)
+
+        device_class_options = [
+            selector.SelectOptionDict(value="", label="(no device class)"),
+            selector.SelectOptionDict(value="temperature", label="Temperature"),
+            selector.SelectOptionDict(value="humidity", label="Humidity"),
+            selector.SelectOptionDict(value="pressure", label="Pressure"),
+            selector.SelectOptionDict(value="power", label="Power"),
+            selector.SelectOptionDict(value="energy", label="Energy"),
+        ]
+
+        state_class_options = [
+            selector.SelectOptionDict(value="", label="(no state class)"),
+            selector.SelectOptionDict(value="measurement", label="Measurement"),
+            selector.SelectOptionDict(value="total", label="Total"),
+            selector.SelectOptionDict(value="total_increasing", label="Total increasing"),
+        ]
+
+        schema_dict: Dict[Any, Any] = {
+            vol.Optional("clear", default=False): selector.BooleanSelector(),
+            vol.Optional(CONF_DEVICE_CLASS, default=str(cur_dc or "")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=device_class_options,
+                    multiple=False,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(CONF_UNIT, default=str(cur_unit or "")): selector.TextSelector(),
+        }
+
+        if is_sensor:
+            schema_dict[vol.Optional(CONF_STATE_CLASS, default=str(cur_sc or ""))] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=state_class_options,
+                    multiple=False,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+
+        if is_number:
+            # Only allow min/max editing if we have sensible bundle bounds.
+            try:
+                bmn = float(bundle_min) if bundle_min is not None else None
+                bmx = float(bundle_max) if bundle_max is not None else None
+            except Exception:
+                bmn = bmx = None
+
+            if bmn is not None and bmx is not None and bmx > bmn:
+                schema_dict[vol.Optional(CONF_MIN, default=bmn if cur_min is None else float(cur_min))] = selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=bmn,
+                        max=bmx,
+                        step=0.1,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                )
+                schema_dict[vol.Optional(CONF_MAX, default=bmx if cur_max is None else float(cur_max))] = selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=bmn,
+                        max=bmx,
+                        step=0.1,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                )
+
+            # Step can always be overridden; keep it positive.
+            default_step = 1.0
+            if cur_step not in (None, ""):
+                try:
+                    default_step = float(cur_step)
+                except Exception:
+                    default_step = 1.0
+            schema_dict[vol.Optional(CONF_STEP, default=default_step)] = selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.000001,
+                    max=1_000_000,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            )
+
+        schema_dict[vol.Optional("edit_another", default=True)] = selector.BooleanSelector()
+        schema = vol.Schema(schema_dict)
+        return self.async_show_form(step_id="entity_override_edit", data_schema=schema, errors=errors)
 
     async def async_step_redownload(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}
