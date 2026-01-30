@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
@@ -27,6 +28,9 @@ from .const import (
 )
 from .coordinator import ClimatixCoordinator
 from .flash_warnings import async_maybe_create_flash_wear_notifications
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _is_temperature_unit(unit: Any) -> bool:
@@ -134,10 +138,25 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
         configured_uuid = cfg.get(CONF_UUID)
         self._attr_unique_id = str(configured_uuid) if configured_uuid else f"{host}:sensor:{self._id}".replace("=", "")
 
+        # Stable override key: do not depend on whether a bundle provides a UUID.
+        override_key = f"{host}:sensor:{self._id}".replace("=", "")
+
         # Apply UI overrides (options flow). These are keyed by unique_id.
         if isinstance(entity_overrides, dict):
-            ov = entity_overrides.get(self._attr_unique_id)
+            # Newer versions store overrides by stable override_key; older ones used unique_id.
+            ov = entity_overrides.get(override_key)
+            if not isinstance(ov, dict):
+                ov = entity_overrides.get(self._attr_unique_id)
             if isinstance(ov, dict):
+                _LOGGER.debug(
+                    "Applying overrides to sensor name=%s id=%s hc_uid=%s unique_id=%s override_key=%s override_keys=%s",
+                    self._attr_name,
+                    self._id,
+                    self._hc_uid,
+                    self._attr_unique_id,
+                    override_key,
+                    sorted([str(k) for k in ov.keys()]),
+                )
                 if CONF_UNIT in ov:
                     unit = ov.get(CONF_UNIT)
                     self._attr_native_unit_of_measurement = str(unit) if unit not in (None, "") else None
@@ -154,6 +173,12 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
                 if sc not in (None, ""):
                     try:
                         self._attr_state_class = SensorStateClass(str(sc))
+                        _LOGGER.debug(
+                            "Override state_class applied: sensor unique_id=%s override_key=%s state_class=%s",
+                            self._attr_unique_id,
+                            override_key,
+                            str(sc),
+                        )
                     except Exception:
                         # Invalid state class; ignore.
                         pass
@@ -227,6 +252,77 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     store = hass.data[DOMAIN][entry.entry_id]
     controllers = store.get("controllers") or []
     entity_overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
+
+    # Debug: summarize overrides and detect mismatches/duplicates.
+    try:
+        if isinstance(entity_overrides, dict):
+            _LOGGER.debug(
+                "Entry %s has entity_overrides count=%d (sample keys=%s)",
+                entry.entry_id,
+                len(entity_overrides),
+                sorted([str(k) for k in list(entity_overrides.keys())[:10]]),
+            )
+    except Exception:
+        pass
+
+    # Targeted debug for the reported problematic sensor id.
+    try:
+        watch_ids = {"AyNkcSiJAAE"}
+        for ctrl in controllers:
+            host: str = str(ctrl.get("host") or "")
+            for s in list(ctrl.get("sensors", []) or []):
+                if not isinstance(s, dict):
+                    continue
+                ent_id = str(s.get(CONF_ID) or "")
+                ent_id_clean = ent_id.strip().rstrip("=")
+                name = str(s.get(CONF_NAME) or "")
+                if any(w in ent_id_clean for w in watch_ids) or "schaltzyklen" in name.lower():
+                    stable_key = f"{host}:sensor:{ent_id.strip()}".replace("=", "")
+                    uuid = str(s.get(CONF_UUID) or "").strip()
+                    has_stable = isinstance(entity_overrides, dict) and stable_key in entity_overrides
+                    has_uuid = isinstance(entity_overrides, dict) and uuid and uuid in entity_overrides
+                    _LOGGER.debug(
+                        "Sensor candidate: name=%s id=%s uuid=%s stable_key=%s override_present(stable=%s uuid=%s)",
+                        name,
+                        ent_id,
+                        uuid,
+                        stable_key,
+                        has_stable,
+                        has_uuid,
+                    )
+    except Exception:
+        pass
+
+    # Detect duplicate stable override keys within this entry.
+    try:
+        stable_key_counts: Dict[str, int] = {}
+        stable_key_examples: Dict[str, str] = {}
+        for ctrl in controllers:
+            host: str = str(ctrl.get("host") or "")
+            for s in list(ctrl.get("sensors", []) or []):
+                if not isinstance(s, dict):
+                    continue
+                ent_id = str(s.get(CONF_ID) or "").strip()
+                if not ent_id:
+                    continue
+                stable_key = f"{host}:sensor:{ent_id}".replace("=", "")
+                stable_key_counts[stable_key] = int(stable_key_counts.get(stable_key, 0)) + 1
+                if stable_key not in stable_key_examples:
+                    name = str(s.get(CONF_NAME) or ent_id)
+                    hc = str(s.get(CONF_HEATING_CIRCUIT_UID) or "")
+                    stable_key_examples[stable_key] = f"{name} (hc_uid={hc})"
+
+        dups = {k: c for k, c in stable_key_counts.items() if c > 1}
+        if dups:
+            _LOGGER.warning(
+                "Duplicate sensor stable override keys detected in entry %s: %s. "
+                "Overrides may apply to multiple entities; consider using UUID-based unique_ids for disambiguation.",
+                entry.entry_id,
+                {k: {"count": v, "example": stable_key_examples.get(k)} for k, v in list(dups.items())[:10]},
+            )
+    except Exception:
+        pass
+
     entities = []
     for ctrl in controllers:
         coordinator: ClimatixCoordinator = ctrl["coordinator"]
