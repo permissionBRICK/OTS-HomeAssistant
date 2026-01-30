@@ -12,6 +12,10 @@ from .api import ClimatixGenericApi, extract_first_numeric_value
 from .const import (
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
+    CONF_BUNDLE_MAX,
+    CONF_BUNDLE_MIN,
+    CONF_DEVICE_CLASS,
+    CONF_ENTITY_OVERRIDES,
     CONF_ID,
     CONF_MAX,
     CONF_MIN,
@@ -74,6 +78,7 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         host: str,
         base_url: str,
         cfg: Dict[str, Any],
+        entity_overrides: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(coordinator)
         self._api = api
@@ -92,33 +97,108 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
             raise ValueError("Number config missing write_id (or id)")
         self._attr_name = str(cfg[CONF_NAME])
         self._attr_native_unit_of_measurement = cfg.get(CONF_UNIT)
-        if _is_temperature_unit(self._attr_native_unit_of_measurement):
-            self._attr_icon = "mdi:thermometer"
-
-        min_v = cfg.get(CONF_MIN)
-        max_v = cfg.get(CONF_MAX)
-        if min_v is not None and max_v is not None:
-            self._attr_native_min_value = float(min_v)
-            self._attr_native_max_value = float(max_v)
-            self._attr_mode = NumberMode.SLIDER
-        else:
-            # No configured range -> use a text box.
-            # HA's number service validates values with:
-            #   value < entity.min_value or value > entity.max_value
-            # so these must never be None.
-            self._attr_native_min_value = -1_000_000_000.0
-            self._attr_native_max_value = 1_000_000_000.0
-            self._attr_mode = NumberMode.BOX
-
-        step_v = cfg.get(CONF_STEP)
-        if step_v is not None:
-            self._attr_native_step = float(step_v)
         configured_uuid = cfg.get(CONF_UUID)
         self._attr_unique_id = (
             str(configured_uuid)
             if configured_uuid
             else f"{host}:number:{self._read_id}".replace("=", "")
         )
+
+        # Apply UI overrides (options flow). These are keyed by unique_id.
+        bundle_min = cfg.get(CONF_BUNDLE_MIN)
+        bundle_max = cfg.get(CONF_BUNDLE_MAX)
+        if bundle_min is None and cfg.get(CONF_MIN) is not None:
+            bundle_min = cfg.get(CONF_MIN)
+        if bundle_max is None and cfg.get(CONF_MAX) is not None:
+            bundle_max = cfg.get(CONF_MAX)
+
+        min_v = cfg.get(CONF_MIN)
+        max_v = cfg.get(CONF_MAX)
+        step_v = cfg.get(CONF_STEP)
+
+        if isinstance(entity_overrides, dict):
+            ov = entity_overrides.get(self._attr_unique_id)
+            if isinstance(ov, dict):
+                if CONF_UNIT in ov:
+                    unit = ov.get(CONF_UNIT)
+                    self._attr_native_unit_of_measurement = str(unit) if unit not in (None, "") else None
+
+                dc = ov.get(CONF_DEVICE_CLASS)
+                if dc not in (None, ""):
+                    # NumberDeviceClass is not available in all HA versions.
+                    try:
+                        from homeassistant.components.number import NumberDeviceClass  # type: ignore
+
+                        self._attr_device_class = NumberDeviceClass(str(dc))
+                    except Exception:
+                        pass
+
+                # Number range overrides (clamped to bundle bounds when known).
+                if CONF_MIN in ov and ov.get(CONF_MIN) not in (None, ""):
+                    try:
+                        min_v = float(ov.get(CONF_MIN))
+                    except Exception:
+                        pass
+                if CONF_MAX in ov and ov.get(CONF_MAX) not in (None, ""):
+                    try:
+                        max_v = float(ov.get(CONF_MAX))
+                    except Exception:
+                        pass
+                if CONF_STEP in ov and ov.get(CONF_STEP) not in (None, ""):
+                    try:
+                        step_v = float(ov.get(CONF_STEP))
+                    except Exception:
+                        pass
+
+        # Clamp to bundle-provided bounds if available.
+        try:
+            bmn = float(bundle_min) if bundle_min is not None else None
+            bmx = float(bundle_max) if bundle_max is not None else None
+        except Exception:
+            bmn = bmx = None
+
+        if bmn is not None and min_v is not None:
+            try:
+                min_v = max(float(min_v), bmn)
+            except Exception:
+                pass
+        if bmx is not None and max_v is not None:
+            try:
+                max_v = min(float(max_v), bmx)
+            except Exception:
+                pass
+
+        # Apply range/mode.
+        if min_v is not None and max_v is not None:
+            try:
+                mn_f = float(min_v)
+                mx_f = float(max_v)
+                if mx_f > mn_f:
+                    self._attr_native_min_value = mn_f
+                    self._attr_native_max_value = mx_f
+                    self._attr_mode = NumberMode.SLIDER
+                else:
+                    raise ValueError
+            except Exception:
+                self._attr_native_min_value = -1_000_000_000.0
+                self._attr_native_max_value = 1_000_000_000.0
+                self._attr_mode = NumberMode.BOX
+        else:
+            # No configured range -> use a text box.
+            self._attr_native_min_value = -1_000_000_000.0
+            self._attr_native_max_value = 1_000_000_000.0
+            self._attr_mode = NumberMode.BOX
+
+        if step_v is not None:
+            try:
+                step_f = float(step_v)
+                if step_f > 0:
+                    self._attr_native_step = step_f
+            except Exception:
+                pass
+
+        if _is_temperature_unit(self._attr_native_unit_of_measurement):
+            self._attr_icon = "mdi:thermometer"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -167,6 +247,7 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]
     controllers = store.get("controllers") or []
+    entity_overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
     entities = []
     for ctrl in controllers:
         coordinator: ClimatixCoordinator = ctrl["coordinator"]
@@ -177,5 +258,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         device_model: str = ctrl.get("device_model", "Climatix")
         numbers = ctrl.get("numbers", [])
         for n in numbers:
-            entities.append(ClimatixGenericNumber(coordinator, api=api, host=host, base_url=base_url, cfg=dict(n, device_name=device_name, device_model=device_model)))
+            entities.append(
+                ClimatixGenericNumber(
+                    coordinator,
+                    api=api,
+                    host=host,
+                    base_url=base_url,
+                    cfg=dict(n, device_name=device_name, device_model=device_model),
+                    entity_overrides=entity_overrides,
+                )
+            )
     async_add_entities(entities)

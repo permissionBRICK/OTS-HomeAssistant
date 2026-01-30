@@ -40,7 +40,29 @@
           "scan_interval": "Abfrageintervall (Sekunden)",
           "rescan_on_start": "Bundle beim Start erneut scannen",
           "rescan_now": "Jetzt scannen (fehlende Entitäten hinzufügen)",
-          "redownload_bundle": "Bundle von OTS neu herunterladen (fehlende Entitäten hinzufügen)"
+          "redownload_bundle": "Bundle von OTS neu herunterladen (fehlende Entitäten hinzufügen)",
+          "configure_entities": "Geräteklasse und Einheit für Sensoren/Nummern konfigurieren"
+        }
+      },
+      "entity_override_select": {
+        "title": "Entitäts-Overrides",
+        "description": "Wähle eine Entität aus, um Geräteklasse und Einheit zu überschreiben.",
+        "data": {
+          "entity": "Entität"
+        }
+      },
+      "entity_override_edit": {
+        "title": "Entitäts-Override bearbeiten",
+        "description": "Setze Overrides für die ausgewählte Entität. Leere Felder behalten die Standardwerte.",
+        "data": {
+          "clear": "Override löschen",
+          "device_class": "Geräteklasse",
+          "state_class": "Zustandsklasse",
+          "unit": "Einheit",
+          "min": "Minimum",
+          "max": "Maximum",
+          "step": "Schrittweite",
+          "edit_another": "Weitere Entität bearbeiten"
         }
       }
     },
@@ -51,7 +73,9 @@
       "no_entities": "Das neue Bundle hat 0 Entitäten geliefert; bestehendes Bundle bleibt erhalten.",
       "no_controllers": "Dieser Eintrag hat keine Controller zum Aktualisieren.",
       "no_bundle_key": "Kein gespeicherter Bundle-Key für diesen Controller gefunden.",
-      "no_ots_ids": "OTS Config-/Site-ID für diesen Controller fehlt."
+      "no_ots_ids": "OTS Config-/Site-ID für diesen Controller fehlt.",
+      "no_selection": "Bitte eine Entität auswählen.",
+      "invalid_range": "Maximum muss größer als Minimum sein."
     }
   }
 }
