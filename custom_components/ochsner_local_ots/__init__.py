@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
 from typing import Any, Dict, List
@@ -46,6 +47,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
     DEFAULT_USERNAME,
+    DELAY_RELOAD_SEC,
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
@@ -366,6 +368,27 @@ def _normalize_entities(data: Dict[str, Any]) -> Dict[str, Any]:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = dict(entry.data)
 
+    # Debug: log options presence at cold start/setup.
+    try:
+        opts = dict(entry.options or {})
+        ov = opts.get("entity_overrides")
+        if isinstance(ov, dict):
+            _LOGGER.debug(
+                "Setup entry %s starting: options keys=%s entity_overrides_count=%d",
+                entry.entry_id,
+                sorted([str(k) for k in opts.keys()]),
+                len(ov),
+            )
+        else:
+            _LOGGER.debug(
+                "Setup entry %s starting: options keys=%s entity_overrides_present=%s",
+                entry.entry_id,
+                sorted([str(k) for k in opts.keys()]),
+                isinstance(ov, dict),
+            )
+    except Exception:
+        pass
+
     # Reload the entry when options change (e.g., polling interval).
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
@@ -608,6 +631,46 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     if isinstance(skip, set) and entry.entry_id in skip:
         skip.discard(entry.entry_id)
         return
+
+    # Optional: delay reload once (used for options changes where we want to ensure
+    # HA has time to flush .storage before shutdown/restart).
+    delay_once = (hass.data.get(DOMAIN, {}) or {}).get("_delay_reload_once")
+    if isinstance(delay_once, set) and entry.entry_id in delay_once:
+        delay_once.discard(entry.entry_id)
+
+        async def _delayed_reload() -> None:
+            try:
+                await asyncio.sleep(int(DELAY_RELOAD_SEC))
+            except Exception:
+                return
+            try:
+                await hass.config_entries.async_reload(entry.entry_id)
+            except Exception:
+                return
+
+        hass.async_create_task(_delayed_reload())
+        return
+
+    # Debug: track option changes (especially entity overrides).
+    try:
+        opts = dict(entry.options or {})
+        ov = opts.get("entity_overrides")
+        if isinstance(ov, dict):
+            _LOGGER.debug(
+                "Update listener triggered for entry %s: options keys=%s entity_overrides_count=%d",
+                entry.entry_id,
+                sorted([str(k) for k in opts.keys()]),
+                len(ov),
+            )
+        else:
+            _LOGGER.debug(
+                "Update listener triggered for entry %s: options keys=%s entity_overrides_present=%s",
+                entry.entry_id,
+                sorted([str(k) for k in opts.keys()]),
+                isinstance(ov, dict),
+            )
+    except Exception:
+        pass
     await hass.config_entries.async_reload(entry.entry_id)
 
 

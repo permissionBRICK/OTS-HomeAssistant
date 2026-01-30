@@ -50,6 +50,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
     DEFAULT_USERNAME,
+    DELAY_RELOAD_SEC,
     DOMAIN,
 )
 
@@ -430,6 +431,24 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
 
         self._pending_options: Dict[str, Any] = {}
 
+    @staticmethod
+    def _clone_options(options: Dict[str, Any]) -> Dict[str, Any]:
+        """Return an options dict safe to mutate.
+
+        Home Assistant's config entry options are nested dicts. A shallow copy will
+        keep references to nested dicts (like entity_overrides). Mutating those in
+        place can change entry.options before async_update_entry(), causing HA to
+        consider the update a no-op and skip persisting to .storage.
+        """
+
+        out = dict(options or {})
+        ov = out.get(CONF_ENTITY_OVERRIDES)
+        if isinstance(ov, dict):
+            out[CONF_ENTITY_OVERRIDES] = {k: dict(v) if isinstance(v, dict) else v for k, v in ov.items()}
+        else:
+            out[CONF_ENTITY_OVERRIDES] = {}
+        return out
+
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}
 
@@ -558,14 +577,18 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 if not ent_id:
                     continue
                 uuid = str(s.get(CONF_UUID) or "").strip()
-                unique_id = uuid if uuid else f"{host}:sensor:{ent_id}".replace("=", "")
+                override_key = f"{host}:sensor:{ent_id}".replace("=", "")
                 name = _shorten(str(s.get(CONF_NAME) or ent_id))
                 hc_name = str(s.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
                 hc_part = f" · {hc_name}" if hc_name else ""
-                ha_entity_id = unique_to_entity_id.get(unique_id)
-                ha_entity_id = _shorten(ha_entity_id, 60)
+                # Entity registry keys by the entity's unique_id (which may be UUID-based
+                # or host+id-based depending on config/bundle).
+                ha_entity_id = unique_to_entity_id.get(uuid) if uuid else None
+                if not ha_entity_id:
+                    ha_entity_id = unique_to_entity_id.get(override_key)
+                ha_entity_id = _shorten(ha_entity_id)
                 eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
-                opts.append(selector.SelectOptionDict(value=unique_id, label=f"sensor · {plant_name}{hc_part} · {name} ({eid_part})"))
+                opts.append(selector.SelectOptionDict(value=override_key, label=f"sensor · {plant_name}{hc_part} · {name} ({eid_part} - {ent_id})"))
 
             for n in list(ctrl.get(CONF_NUMBERS, []) or []):
                 if not isinstance(n, dict):
@@ -574,14 +597,16 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 if not read_id:
                     continue
                 uuid = str(n.get(CONF_UUID) or "").strip()
-                unique_id = uuid if uuid else f"{host}:number:{read_id}".replace("=", "")
+                override_key = f"{host}:number:{read_id}".replace("=", "")
                 name = _shorten(str(n.get(CONF_NAME) or read_id))
                 hc_name = str(n.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
                 hc_part = f" · {hc_name}" if hc_name else ""
-                ha_entity_id = unique_to_entity_id.get(unique_id)
-                ha_entity_id = _shorten(ha_entity_id, 60)
+                ha_entity_id = unique_to_entity_id.get(uuid) if uuid else None
+                if not ha_entity_id:
+                    ha_entity_id = unique_to_entity_id.get(override_key)
+                ha_entity_id = _shorten(ha_entity_id)
                 eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
-                opts.append(selector.SelectOptionDict(value=unique_id, label=f"number · {plant_name}{hc_part} · {name} ({eid_part})"))
+                opts.append(selector.SelectOptionDict(value=override_key, label=f"number · {plant_name}{hc_part} · {name} ({eid_part} - {read_id})"))
 
         # Stable ordering in UI.
         opts.sort(key=lambda o: str(o.get("label") or ""))
@@ -597,9 +622,8 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 read_id = str(n.get(CONF_READ_ID) or n.get(CONF_ID) or "").strip()
                 if not read_id:
                     continue
-                uuid = str(n.get(CONF_UUID) or "").strip()
-                unique_id = uuid if uuid else f"{host}:number:{read_id}".replace("=", "")
-                if unique_id == entity_unique_id:
+                override_key = f"{host}:number:{read_id}".replace("=", "")
+                if override_key == entity_unique_id:
                     return n
         return None
 
@@ -613,9 +637,8 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 ent_id = str(s.get(CONF_ID) or "").strip()
                 if not ent_id:
                     continue
-                uuid = str(s.get(CONF_UUID) or "").strip()
-                unique_id = uuid if uuid else f"{host}:sensor:{ent_id}".replace("=", "")
-                if unique_id == entity_unique_id:
+                override_key = f"{host}:sensor:{ent_id}".replace("=", "")
+                if override_key == entity_unique_id:
                     return s
         return None
 
@@ -632,8 +655,8 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             if not entity_key:
                 errors["base"] = "no_selection"
             else:
-                self._pending_options = dict(self._pending_options or dict(self.config_entry.options or {}))
-                self._pending_options.setdefault(CONF_ENTITY_OVERRIDES, {})
+                base = self._pending_options or dict(self.config_entry.options or {})
+                self._pending_options = self._clone_options(base)
                 self._pending_options["_editing_entity"] = entity_key
                 return await self.async_step_entity_override_edit()
 
@@ -653,7 +676,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_entity_override_edit(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}
 
-        pending = dict(self._pending_options or {})
+        pending = self._clone_options(self._pending_options or {})
         entity_key = str(pending.get("_editing_entity") or "").strip()
         if not entity_key:
             return await self.async_step_init()
@@ -661,14 +684,21 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         overrides = pending.get(CONF_ENTITY_OVERRIDES)
         if not isinstance(overrides, dict):
             overrides = {}
+        else:
+            # Make sure we're never mutating a nested dict that still aliases entry.options.
+            overrides = dict(overrides)
 
-        current_ov = overrides.get(entity_key) if isinstance(overrides.get(entity_key), dict) else {}
-        cur_unit = current_ov.get(CONF_UNIT)
-        cur_dc = current_ov.get(CONF_DEVICE_CLASS)
+        # Overrides may be stored under either the stable override key (host+kind+id)
+        # or (legacy) under the entity unique_id (UUID-based). Prefer stable.
+        current_ov: Dict[str, Any] = {}
+        legacy_keys = [entity_key]
 
         sensor_cfg = self._find_sensor_cfg_by_unique_id(entity_key)
         is_sensor = isinstance(sensor_cfg, dict)
-        cur_sc = current_ov.get(CONF_STATE_CLASS) if is_sensor else None
+        if is_sensor and isinstance(sensor_cfg, dict):
+            uuid = str(sensor_cfg.get(CONF_UUID) or "").strip()
+            if uuid and uuid not in legacy_keys:
+                legacy_keys.append(uuid)
 
         number_cfg = self._find_number_cfg_by_unique_id(entity_key)
         is_number = isinstance(number_cfg, dict)
@@ -689,9 +719,20 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             cfg_max = number_cfg.get(CONF_MAX)
             cfg_step = number_cfg.get(CONF_STEP)
 
+        # Resolve current override (stable key first, then legacy UUID-based).
+        for k in legacy_keys:
+            v = overrides.get(k)
+            if isinstance(v, dict):
+                current_ov = v
+                break
+
+        cur_unit = current_ov.get(CONF_UNIT)
+        cur_dc = current_ov.get(CONF_DEVICE_CLASS)
         cur_min = current_ov.get(CONF_MIN, cfg_min)
         cur_max = current_ov.get(CONF_MAX, cfg_max)
         cur_step = current_ov.get(CONF_STEP, cfg_step)
+
+        cur_sc = current_ov.get(CONF_STATE_CLASS) if is_sensor else None
 
         if user_input is not None:
             clear = bool(user_input.get("clear", False))
@@ -749,28 +790,55 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                             pass
 
                 if clear or not out_ov:
-                    overrides.pop(entity_key, None)
+                    for k in legacy_keys:
+                        overrides.pop(k, None)
                 else:
                     overrides[entity_key] = out_ov
+                    # Clean up any legacy UUID-keyed override to avoid duplicates/confusion.
+                    for k in legacy_keys:
+                        if k != entity_key:
+                            overrides.pop(k, None)
+
+                try:
+                    _LOGGER.debug(
+                        "Saving entity override: entry_id=%s entity_key=%s is_sensor=%s is_number=%s legacy_keys=%s out_ov=%s overrides_count=%d",
+                        self.config_entry.entry_id,
+                        entity_key,
+                        is_sensor,
+                        is_number,
+                        legacy_keys,
+                        out_ov,
+                        len(overrides),
+                    )
+                except Exception:
+                    pass
 
                 # Persist immediately so entity changes apply right away.
                 pending[CONF_ENTITY_OVERRIDES] = overrides
                 pending.pop("_editing_entity", None)
                 self._pending_options = pending
 
-                # Avoid duplicate reload: we'll reload explicitly after updating options.
-                self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
+                edit_another = bool(user_input.get("edit_another", True))
+
+                # If the user keeps editing, persist options but skip reload to avoid churn.
+                # If this is the final save, request a delayed reload.
                 try:
-                    self.hass.config_entries.async_update_entry(self.config_entry, options=dict(pending))
+                    if edit_another:
+                        self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
+                    else:
+                        self.hass.data.setdefault(DOMAIN, {}).setdefault("_delay_reload_once", set()).add(self.config_entry.entry_id)
                 except Exception:
                     pass
-                self.hass.async_create_task(self.hass.config_entries.async_reload(self.config_entry.entry_id))
 
-                if bool(user_input.get("edit_another", True)):
+                try:
+                    self.hass.config_entries.async_update_entry(self.config_entry, options=dict(pending))
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.warning("Failed to persist options (entity overrides) for entry %s: %s", self.config_entry.entry_id, err)
+
+                if edit_another:
                     return await self.async_step_entity_override_select()
 
                 # Close the options flow (options already saved above).
-                self.hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(self.config_entry.entry_id)
                 return self.async_create_entry(title="", data=pending)
 
         device_class_options = [

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
@@ -28,6 +29,9 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _is_temperature_unit(unit: Any) -> bool:
@@ -104,6 +108,9 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
             else f"{host}:number:{self._read_id}".replace("=", "")
         )
 
+        # Stable override key: do not depend on whether a bundle provides a UUID.
+        override_key = f"{host}:number:{self._read_id}".replace("=", "")
+
         # Apply UI overrides (options flow). These are keyed by unique_id.
         bundle_min = cfg.get(CONF_BUNDLE_MIN)
         bundle_max = cfg.get(CONF_BUNDLE_MAX)
@@ -117,8 +124,20 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         step_v = cfg.get(CONF_STEP)
 
         if isinstance(entity_overrides, dict):
-            ov = entity_overrides.get(self._attr_unique_id)
+            # Newer versions store overrides by stable override_key; older ones used unique_id.
+            ov = entity_overrides.get(override_key)
+            if not isinstance(ov, dict):
+                ov = entity_overrides.get(self._attr_unique_id)
             if isinstance(ov, dict):
+                _LOGGER.debug(
+                    "Applying overrides to number name=%s read_id=%s hc_uid=%s unique_id=%s override_key=%s override_keys=%s",
+                    self._attr_name,
+                    self._read_id,
+                    self._hc_uid,
+                    self._attr_unique_id,
+                    override_key,
+                    sorted([str(k) for k in ov.keys()]),
+                )
                 if CONF_UNIT in ov:
                     unit = ov.get(CONF_UNIT)
                     self._attr_native_unit_of_measurement = str(unit) if unit not in (None, "") else None

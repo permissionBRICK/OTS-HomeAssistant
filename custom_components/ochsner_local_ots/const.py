@@ -6,6 +6,10 @@ DEFAULT_PASSWORD = "SBTAdmin!"
 DEFAULT_PIN = "7659"
 DEFAULT_SCAN_INTERVAL_SEC = 10
 
+# Delay (seconds) before reloading the integration after saving options/overrides.
+# This helps Home Assistant flush .storage updates before any restart/shutdown.
+DELAY_RELOAD_SEC = 3
+
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_USERNAME = "username"
