@@ -24,6 +24,7 @@ from .const import (
     CONF_UNIT,
     CONF_UUID,
     CONF_VALUE_MAP,
+    DISABLE_BY_DEFAULT_SENSOR_KEYWORDS,
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
@@ -133,6 +134,15 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
         self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
         self._id = str(cfg[CONF_ID])
         self._attr_name = str(cfg[CONF_NAME])
+
+        # Add-but-disable selected sensors by default (only on first creation).
+        try:
+            name_l = self._attr_name.lower()
+            if any(str(kw).lower() in name_l for kw in (DISABLE_BY_DEFAULT_SENSOR_KEYWORDS or [])):
+                self._attr_entity_registry_enabled_default = False
+        except Exception:
+            pass
+
         self._attr_native_unit_of_measurement = cfg.get(CONF_UNIT)
         self._value_map: Dict[str, str] = {str(k): str(v) for k, v in (cfg.get(CONF_VALUE_MAP) or {}).items()}
         configured_uuid = cfg.get(CONF_UUID)

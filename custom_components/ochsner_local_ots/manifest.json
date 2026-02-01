@@ -1,7 +1,7 @@
 {
   "domain": "ochsner_local_ots",
   "name": "Ochsner Local OTS",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "documentation": "https://github.com/permissionBRICK/OTS-HomeAssistant",
   "issue_tracker": "https://github.com/permissionBRICK/OTS-HomeAssistant/issues",
   "requirements": [],
