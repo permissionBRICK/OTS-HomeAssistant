@@ -4,11 +4,22 @@ DEFAULT_PORT = 80
 DEFAULT_USERNAME = "JSON"
 DEFAULT_PASSWORD = "SBTAdmin!"
 DEFAULT_PIN = "7659"
-DEFAULT_SCAN_INTERVAL_SEC = 10
+DEFAULT_SCAN_INTERVAL_SEC = 30
 
 # Delay (seconds) before reloading the integration after saving options/overrides.
 # This helps Home Assistant flush .storage updates before any restart/shutdown.
 DELAY_RELOAD_SEC = 3
+
+# Sensors whose name contains any of these keywords are added disabled by default.
+# This only affects the first time the entity is created in HA (entity registry).
+DISABLE_BY_DEFAULT_SENSOR_KEYWORDS = [
+	"Engy",
+	"ZH",
+	"JAZ_",
+	"schreitung",
+	"CprOpr",
+	"Rt-Sp",
+]
 
 CONF_HOST = "host"
 CONF_PORT = "port"
