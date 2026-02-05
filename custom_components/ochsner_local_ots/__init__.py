@@ -5,6 +5,7 @@ from datetime import timedelta
 import logging
 from typing import Any, Dict, List
 
+import aiohttp
 import voluptuous as vol
 
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
@@ -27,6 +28,7 @@ from .const import (
     CONF_NUMBERS,
     CONF_PIN,
     CONF_SCAN_INTERVAL,
+    CONF_POLLING_THRESHOLD,
     CONF_SENSORS,
     CONF_UNIT,
     CONF_MIN,
@@ -42,10 +44,16 @@ from .const import (
     CONF_LANGUAGE,
     CONF_RESCAN_NOW,
     CONF_RESCAN_ON_START,
+    CONF_ENTITY_OVERRIDES,
+    CONF_POLLING_MODE,
+    POLLING_MODE_AUTOMATIC,
+    POLLING_MODE_FAST,
+    POLLING_MODE_SLOW,
     DEFAULT_PASSWORD,
     DEFAULT_PIN,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
+    DEFAULT_POLLING_THRESHOLD,
     DEFAULT_USERNAME,
     DELAY_RELOAD_SEC,
     DOMAIN,
@@ -57,6 +65,27 @@ from .flash_warnings import async_maybe_create_flash_wear_notifications
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _combine_polling_modes(existing: str | None, new: str | None) -> str:
+    """Return the more-frequent mode among two.
+
+    Priority: fast > automatic > slow.
+    """
+
+    order = {
+        POLLING_MODE_SLOW: 0,
+        POLLING_MODE_AUTOMATIC: 1,
+        POLLING_MODE_FAST: 2,
+    }
+
+    e = str(existing or POLLING_MODE_AUTOMATIC)
+    n = str(new or POLLING_MODE_AUTOMATIC)
+    if e not in order:
+        e = POLLING_MODE_AUTOMATIC
+    if n not in order:
+        n = POLLING_MODE_AUTOMATIC
+    return e if order[e] >= order[n] else n
 
 
 _BUNDLE_STORE_VERSION = 1
@@ -394,6 +423,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
 
+    # Shared HA session used for setup-only tasks (OTS, bundle rescan, etc.).
     session = async_get_clientsession(hass)
 
     # Optional: rescan stored bundle(s) to add missing entities without removing existing ones.
@@ -507,6 +537,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             scan_interval_sec = int(ctrl.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
 
+        poll_threshold_opt = entry.options.get(CONF_POLLING_THRESHOLD)
+        try:
+            poll_threshold = int(poll_threshold_opt) if poll_threshold_opt is not None else int(DEFAULT_POLLING_THRESHOLD)
+        except Exception:
+            poll_threshold = int(DEFAULT_POLLING_THRESHOLD)
+        if poll_threshold < 10:
+            poll_threshold = 10
+        if poll_threshold > 120:
+            poll_threshold = 120
+
         ents = _normalize_entities(ctrl)
         sensors = ents["sensors"]
         binary_sensors = ents["binary_sensors"]
@@ -514,38 +554,104 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         selects = ents["selects"]
         texts = ents.get("texts", [])
 
+        # Per-entity overrides (options flow), keyed by stable override key.
+        entity_overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
+        if not isinstance(entity_overrides, dict):
+            entity_overrides = {}
+
         ids: List[str] = []
+        id_modes: Dict[str, str] = {}
+
+        def _mode_for_entity_key(entity_key: str) -> str:
+            if not entity_key:
+                return POLLING_MODE_AUTOMATIC
+            ov = entity_overrides.get(entity_key)
+            if not isinstance(ov, dict):
+                return POLLING_MODE_AUTOMATIC
+            mode = str(ov.get(CONF_POLLING_MODE) or POLLING_MODE_AUTOMATIC)
+            if mode not in {POLLING_MODE_AUTOMATIC, POLLING_MODE_FAST, POLLING_MODE_SLOW}:
+                return POLLING_MODE_AUTOMATIC
+            return mode
         for s in sensors:
             ent_id = s.get(CONF_ID)
             if ent_id and str(ent_id) not in ids:
-                ids.append(str(ent_id))
+                oa = str(ent_id)
+                ids.append(oa)
+
+            # Track polling modes per OA id (aggregate if multiple entities share the same OA).
+            try:
+                oa = str(ent_id or "").strip()
+                if oa:
+                    key = f"{host}:sensor:{oa}".replace("=", "")
+                    id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
+            except Exception:
+                pass
         for s in binary_sensors:
             ent_id = s.get(CONF_ID)
             if ent_id and str(ent_id) not in ids:
-                ids.append(str(ent_id))
+                oa = str(ent_id)
+                ids.append(oa)
+            try:
+                oa = str(ent_id or "").strip()
+                if oa:
+                    key = f"{host}:binary_sensor:{oa}".replace("=", "")
+                    id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
+            except Exception:
+                pass
         for n in numbers:
             ent_id = n.get(CONF_READ_ID)
             if ent_id and str(ent_id) not in ids:
-                ids.append(str(ent_id))
+                oa = str(ent_id)
+                ids.append(oa)
+            try:
+                oa = str(ent_id or "").strip()
+                if oa:
+                    key = f"{host}:number:{oa}".replace("=", "")
+                    id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
+            except Exception:
+                pass
         for s in selects:
             ent_id = s.get(CONF_READ_ID)
             if ent_id and str(ent_id) not in ids:
-                ids.append(str(ent_id))
+                oa = str(ent_id)
+                ids.append(oa)
+            try:
+                oa = str(ent_id or "").strip()
+                if oa:
+                    key = f"{host}:select:{oa}".replace("=", "")
+                    id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
+            except Exception:
+                pass
         for t in texts:
             ent_id = t.get(CONF_READ_ID)
             if ent_id and str(ent_id) not in ids:
                 ids.append(str(ent_id))
 
-        inner_api = ClimatixGenericApi(
-            session,
-            ClimatixGenericConnection(
-                host=host,
-                port=port,
-                username=username,
-                password=password,
-                pin=pin,
+        # Dedicated session for controller polling: do not keep connections open.
+        # We cannot use HA's async_create_clientsession here because it always injects
+        # its own connector; we need force_close=True.
+        ctrl_session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(
+                force_close=True,
+                enable_cleanup_closed=True,
             ),
+            headers={"Connection": "close"},
         )
+
+        try:
+            inner_api = ClimatixGenericApi(
+                ctrl_session,
+                ClimatixGenericConnection(
+                    host=host,
+                    port=port,
+                    username=username,
+                    password=password,
+                    pin=pin,
+                ),
+            )
+        except Exception:
+            await ctrl_session.close()
+            raise
 
         async def _on_write(host_key: str = host) -> None:
             write_counts[host_key] = int(write_counts.get(host_key, 0)) + 1
@@ -574,6 +680,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             api=api,
             ids=ids,
+            id_modes=id_modes,
+            poll_threshold=poll_threshold,
             update_interval=timedelta(seconds=scan_interval_sec),
         )
         await coordinator.async_config_entry_first_refresh()
@@ -583,6 +691,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             {
                 "api": api,
                 "coordinator": coordinator,
+                "session": ctrl_session,
                 "host": host,
                 "port": port,
                 "base_url": base_url,
@@ -677,5 +786,20 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "number", "select", "text"])
     if unload_ok:
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        # Close per-controller sessions so we don't hold any connections.
+        try:
+            controllers = (store or {}).get("controllers") if isinstance(store, dict) else None
+            if isinstance(controllers, list):
+                for ctrl in controllers:
+                    if not isinstance(ctrl, dict):
+                        continue
+                    sess = ctrl.get("session")
+                    if sess is not None:
+                        try:
+                            await sess.close()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
     return unload_ok

@@ -36,8 +36,10 @@
     "step": {
       "init": {
         "title": "Options",
+        "description": "Gated polling default threshold is 20. You can increase it if you see connection errors.",
         "data": {
           "scan_interval": "Polling interval (seconds)",
+          "polling_threshold": "Polling / auto delay multiplier",
           "rescan_on_start": "Rescan bundle on startup",
           "rescan_now": "Rescan now (add missing entities)",
           "redownload_bundle": "Re-download bundle from OTS (add missing entities)",
@@ -68,6 +70,7 @@
     },
     "error": {
       "invalid_scan_interval": "Please enter a polling interval of at least 1 second.",
+      "invalid_polling_threshold": "Please enter a gated polling threshold between 10 and 120.",
       "no_selection": "Select an entity.",
       "invalid_range": "Maximum must be greater than minimum."
     }

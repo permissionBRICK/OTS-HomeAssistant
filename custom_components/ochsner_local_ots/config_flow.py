@@ -34,6 +34,7 @@ from .const import (
     CONF_PLANT_NAME,
     CONF_SITE_ID,
     CONF_SCAN_INTERVAL,
+    CONF_POLLING_THRESHOLD,
     CONF_SELECTS,
     CONF_SENSORS,
     CONF_STEP,
@@ -45,10 +46,15 @@ from .const import (
     CONF_RESCAN_NOW,
     CONF_RESCAN_ON_START,
     CONF_REDOWNLOAD_BUNDLE,
+    CONF_POLLING_MODE,
+    POLLING_MODE_AUTOMATIC,
+    POLLING_MODE_FAST,
+    POLLING_MODE_SLOW,
     DEFAULT_PASSWORD,
     DEFAULT_PIN,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
+    DEFAULT_POLLING_THRESHOLD,
     DEFAULT_USERNAME,
     DELAY_RELOAD_SEC,
     DOMAIN,
@@ -454,6 +460,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
 
         existing_options = dict(self.config_entry.options or {})
         current = int(existing_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
+        poll_threshold_cur = int(existing_options.get(CONF_POLLING_THRESHOLD, DEFAULT_POLLING_THRESHOLD))
         rescan_on_start = bool(existing_options.get(CONF_RESCAN_ON_START, False))
         rescan_now_default = False
         redownload_default = False
@@ -468,27 +475,41 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 if interval < 1:
                     errors["base"] = "invalid_scan_interval"
                 else:
-                    out = dict(existing_options)
-                    out[CONF_SCAN_INTERVAL] = interval
-                    out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
+                    try:
+                        poll_threshold = int(user_input.get(CONF_POLLING_THRESHOLD, poll_threshold_cur))
+                    except Exception:  # noqa: BLE001
+                        errors["base"] = "invalid_polling_threshold"
+                        poll_threshold = poll_threshold_cur
 
-                    # Ensure entity overrides always survive option updates.
-                    if CONF_ENTITY_OVERRIDES not in out:
-                        out[CONF_ENTITY_OVERRIDES] = {}
+                    if not errors and (poll_threshold < 10 or poll_threshold > 120):
+                        errors["base"] = "invalid_polling_threshold"
 
-                    # One-shot flag: if enabled, setup will rescan then clear it.
-                    if bool(user_input.get(CONF_RESCAN_NOW, False)):
-                        out[CONF_RESCAN_NOW] = True
+                    if errors:
+                        # Fall through to re-render form.
+                        pass
+                    else:
+                        out = dict(existing_options)
+                        out[CONF_SCAN_INTERVAL] = interval
+                        out[CONF_POLLING_THRESHOLD] = poll_threshold
+                        out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
 
-                    if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
-                        self._pending_options = out
-                        return await self.async_step_redownload()
+                        # Ensure entity overrides always survive option updates.
+                        if CONF_ENTITY_OVERRIDES not in out:
+                            out[CONF_ENTITY_OVERRIDES] = {}
 
-                    if bool(user_input.get("configure_entities", False)):
-                        self._pending_options = out
-                        return await self.async_step_entity_override_select()
+                        # One-shot flag: if enabled, setup will rescan then clear it.
+                        if bool(user_input.get(CONF_RESCAN_NOW, False)):
+                            out[CONF_RESCAN_NOW] = True
 
-                    return self.async_create_entry(title="", data=out)
+                        if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
+                            self._pending_options = out
+                            return await self.async_step_redownload()
+
+                        if bool(user_input.get("configure_entities", False)):
+                            self._pending_options = out
+                            return await self.async_step_entity_override_select()
+
+                        return self.async_create_entry(title="", data=out)
 
         schema = vol.Schema(
             {
@@ -502,6 +523,17 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                         step=1,
                         mode=selector.NumberSelectorMode.BOX,
                         unit_of_measurement="s",
+                    )
+                ),
+                vol.Optional(
+                    CONF_POLLING_THRESHOLD,
+                    default=poll_threshold_cur,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=10,
+                        max=120,
+                        step=1,
+                        mode=selector.NumberSelectorMode.BOX,
                     )
                 ),
                 vol.Optional(CONF_RESCAN_ON_START, default=rescan_on_start): selector.BooleanSelector(),
@@ -522,7 +554,15 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         host = str(self.config_entry.data.get(CONF_HOST) or "").strip()
         if not host:
             return []
-        return [{CONF_HOST: host, CONF_SENSORS: list(self.config_entry.data.get(CONF_SENSORS, []) or []), CONF_NUMBERS: list(self.config_entry.data.get(CONF_NUMBERS, []) or [])}]
+        return [
+            {
+                CONF_HOST: host,
+                CONF_SENSORS: list(self.config_entry.data.get(CONF_SENSORS, []) or []),
+                CONF_BINARY_SENSORS: list(self.config_entry.data.get(CONF_BINARY_SENSORS, []) or []),
+                CONF_NUMBERS: list(self.config_entry.data.get(CONF_NUMBERS, []) or []),
+                CONF_SELECTS: list(self.config_entry.data.get(CONF_SELECTS, []) or []),
+            }
+        ]
 
     def _build_entity_choices(self) -> List[selector.SelectOptionDict]:
         opts: List[selector.SelectOptionDict] = []
@@ -590,6 +630,29 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
                 opts.append(selector.SelectOptionDict(value=override_key, label=f"sensor · {plant_name}{hc_part} · {name} ({eid_part} - {ent_id})"))
 
+            for bs in list(ctrl.get(CONF_BINARY_SENSORS, []) or []):
+                if not isinstance(bs, dict):
+                    continue
+                ent_id = str(bs.get(CONF_ID) or "").strip()
+                if not ent_id:
+                    continue
+                uuid = str(bs.get(CONF_UUID) or "").strip()
+                override_key = f"{host}:binary_sensor:{ent_id}".replace("=", "")
+                name = _shorten(str(bs.get(CONF_NAME) or ent_id))
+                hc_name = str(bs.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
+                hc_part = f" · {hc_name}" if hc_name else ""
+                ha_entity_id = unique_to_entity_id.get(uuid) if uuid else None
+                if not ha_entity_id:
+                    ha_entity_id = unique_to_entity_id.get(override_key)
+                ha_entity_id = _shorten(ha_entity_id)
+                eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
+                opts.append(
+                    selector.SelectOptionDict(
+                        value=override_key,
+                        label=f"binary_sensor · {plant_name}{hc_part} · {name} ({eid_part} - {ent_id})",
+                    )
+                )
+
             for n in list(ctrl.get(CONF_NUMBERS, []) or []):
                 if not isinstance(n, dict):
                     continue
@@ -607,6 +670,29 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 ha_entity_id = _shorten(ha_entity_id)
                 eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
                 opts.append(selector.SelectOptionDict(value=override_key, label=f"number · {plant_name}{hc_part} · {name} ({eid_part} - {read_id})"))
+
+            for sel in list(ctrl.get(CONF_SELECTS, []) or []):
+                if not isinstance(sel, dict):
+                    continue
+                read_id = str(sel.get(CONF_READ_ID) or sel.get(CONF_ID) or "").strip()
+                if not read_id:
+                    continue
+                uuid = str(sel.get(CONF_UUID) or "").strip()
+                override_key = f"{host}:select:{read_id}".replace("=", "")
+                name = _shorten(str(sel.get(CONF_NAME) or read_id))
+                hc_name = str(sel.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
+                hc_part = f" · {hc_name}" if hc_name else ""
+                ha_entity_id = unique_to_entity_id.get(uuid) if uuid else None
+                if not ha_entity_id:
+                    ha_entity_id = unique_to_entity_id.get(override_key)
+                ha_entity_id = _shorten(ha_entity_id)
+                eid_part = f" · {ha_entity_id}" if ha_entity_id else ""
+                opts.append(
+                    selector.SelectOptionDict(
+                        value=override_key,
+                        label=f"select · {plant_name}{hc_part} · {name} ({eid_part} - {read_id})",
+                    )
+                )
 
         # Stable ordering in UI.
         opts.sort(key=lambda o: str(o.get("label") or ""))
@@ -627,6 +713,21 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                     return n
         return None
 
+    def _find_select_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
+        controllers = self._iter_controllers()
+        for ctrl in controllers:
+            host = str(ctrl.get(CONF_HOST) or "").strip()
+            for sel in list(ctrl.get(CONF_SELECTS, []) or []):
+                if not isinstance(sel, dict):
+                    continue
+                read_id = str(sel.get(CONF_READ_ID) or sel.get(CONF_ID) or "").strip()
+                if not read_id:
+                    continue
+                override_key = f"{host}:select:{read_id}".replace("=", "")
+                if override_key == entity_unique_id:
+                    return sel
+        return None
+
     def _find_sensor_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
         controllers = self._iter_controllers()
         for ctrl in controllers:
@@ -640,6 +741,21 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 override_key = f"{host}:sensor:{ent_id}".replace("=", "")
                 if override_key == entity_unique_id:
                     return s
+        return None
+
+    def _find_binary_sensor_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
+        controllers = self._iter_controllers()
+        for ctrl in controllers:
+            host = str(ctrl.get(CONF_HOST) or "").strip()
+            for bs in list(ctrl.get(CONF_BINARY_SENSORS, []) or []):
+                if not isinstance(bs, dict):
+                    continue
+                ent_id = str(bs.get(CONF_ID) or "").strip()
+                if not ent_id:
+                    continue
+                override_key = f"{host}:binary_sensor:{ent_id}".replace("=", "")
+                if override_key == entity_unique_id:
+                    return bs
         return None
 
     async def async_step_entity_override_select(self, user_input: Optional[Dict[str, Any]] = None):
@@ -700,6 +816,13 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             if uuid and uuid not in legacy_keys:
                 legacy_keys.append(uuid)
 
+        binary_sensor_cfg = self._find_binary_sensor_cfg_by_unique_id(entity_key)
+        is_binary_sensor = isinstance(binary_sensor_cfg, dict)
+        if is_binary_sensor and isinstance(binary_sensor_cfg, dict):
+            uuid = str(binary_sensor_cfg.get(CONF_UUID) or "").strip()
+            if uuid and uuid not in legacy_keys:
+                legacy_keys.append(uuid)
+
         number_cfg = self._find_number_cfg_by_unique_id(entity_key)
         is_number = isinstance(number_cfg, dict)
         bundle_min = None
@@ -719,6 +842,13 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             cfg_max = number_cfg.get(CONF_MAX)
             cfg_step = number_cfg.get(CONF_STEP)
 
+        select_cfg = self._find_select_cfg_by_unique_id(entity_key)
+        is_select = isinstance(select_cfg, dict)
+        if is_select and isinstance(select_cfg, dict):
+            uuid = str(select_cfg.get(CONF_UUID) or "").strip()
+            if uuid and uuid not in legacy_keys:
+                legacy_keys.append(uuid)
+
         # Resolve current override (stable key first, then legacy UUID-based).
         for k in legacy_keys:
             v = overrides.get(k)
@@ -733,12 +863,19 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         cur_step = current_ov.get(CONF_STEP, cfg_step)
 
         cur_sc = current_ov.get(CONF_STATE_CLASS) if is_sensor else None
+        cur_polling = str(current_ov.get(CONF_POLLING_MODE) or POLLING_MODE_AUTOMATIC)
+        if cur_polling not in {POLLING_MODE_AUTOMATIC, POLLING_MODE_FAST, POLLING_MODE_SLOW}:
+            cur_polling = POLLING_MODE_AUTOMATIC
 
         if user_input is not None:
             clear = bool(user_input.get("clear", False))
             unit = str(user_input.get(CONF_UNIT) or "").strip()
             dc = str(user_input.get(CONF_DEVICE_CLASS) or "").strip()
             sc = str(user_input.get(CONF_STATE_CLASS) or "").strip() if is_sensor else ""
+
+            polling = str(user_input.get(CONF_POLLING_MODE) or POLLING_MODE_AUTOMATIC)
+            if polling not in {POLLING_MODE_AUTOMATIC, POLLING_MODE_FAST, POLLING_MODE_SLOW}:
+                polling = POLLING_MODE_AUTOMATIC
 
             min_v = user_input.get(CONF_MIN) if is_number else None
             max_v = user_input.get(CONF_MAX) if is_number else None
@@ -760,6 +897,8 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             if not errors:
                 # Build override dict; keep only non-empty values.
                 out_ov: Dict[str, Any] = {}
+                if polling and polling != POLLING_MODE_AUTOMATIC:
+                    out_ov[CONF_POLLING_MODE] = polling
                 if unit:
                     out_ov[CONF_UNIT] = unit
                 if dc:
@@ -857,17 +996,33 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             selector.SelectOptionDict(value="total_increasing", label="Total increasing"),
         ]
 
+        polling_options = [
+            selector.SelectOptionDict(value=POLLING_MODE_AUTOMATIC, label="Automatic"),
+            selector.SelectOptionDict(value=POLLING_MODE_FAST, label="Fast"),
+            selector.SelectOptionDict(value=POLLING_MODE_SLOW, label="Slow"),
+        ]
+
         schema_dict: Dict[Any, Any] = {
             vol.Optional("clear", default=False): selector.BooleanSelector(),
-            vol.Optional(CONF_DEVICE_CLASS, default=str(cur_dc or "")): selector.SelectSelector(
+            vol.Optional(CONF_POLLING_MODE, default=str(cur_polling)): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=polling_options,
+                    multiple=False,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+
+        # Only show unit/device_class overrides where they make sense today.
+        if is_sensor or is_number:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=str(cur_dc or ""))] = selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=device_class_options,
                     multiple=False,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
-            ),
-            vol.Optional(CONF_UNIT, default=str(cur_unit or "")): selector.TextSelector(),
-        }
+            )
+            schema_dict[vol.Optional(CONF_UNIT, default=str(cur_unit or ""))] = selector.TextSelector()
 
         if is_sensor:
             schema_dict[vol.Optional(CONF_STATE_CLASS, default=str(cur_sc or ""))] = selector.SelectSelector(

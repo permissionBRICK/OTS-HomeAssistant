@@ -6,6 +6,10 @@ DEFAULT_PASSWORD = "SBTAdmin!"
 DEFAULT_PIN = "7659"
 DEFAULT_SCAN_INTERVAL_SEC = 30
 
+# Gated polling: poll again when a per-OA counter reaches this threshold.
+# Used by Automatic and Slow modes.
+DEFAULT_POLLING_THRESHOLD = 20
+
 # Delay (seconds) before reloading the integration after saving options/overrides.
 # This helps Home Assistant flush .storage updates before any restart/shutdown.
 DELAY_RELOAD_SEC = 3
@@ -27,6 +31,7 @@ CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_PIN = "pin"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_POLLING_THRESHOLD = "polling_threshold"
 CONF_SENSORS = "sensors"
 CONF_BINARY_SENSORS = "binary_sensors"
 CONF_NUMBERS = "numbers"
@@ -67,6 +72,12 @@ CONF_VALUE_MAP = "value_map"
 CONF_ENTITY_OVERRIDES = "entity_overrides"
 CONF_DEVICE_CLASS = "device_class"
 CONF_STATE_CLASS = "state_class"
+
+# Per-entity polling behavior override (stored in entity_overrides)
+CONF_POLLING_MODE = "polling_mode"
+POLLING_MODE_AUTOMATIC = "automatic"
+POLLING_MODE_FAST = "fast"
+POLLING_MODE_SLOW = "slow"
 
 CONF_MIN = "min"
 CONF_MAX = "max"
