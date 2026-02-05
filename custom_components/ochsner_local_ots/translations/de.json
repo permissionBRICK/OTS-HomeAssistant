@@ -36,8 +36,10 @@
     "step": {
       "init": {
         "title": "Optionen",
+        "description": "Standard-Schwelle für gedrosselte Abfragen ist 20. Du kannst sie erhöhen, falls Verbindungsfehler auftreten.",
         "data": {
           "scan_interval": "Abfrageintervall (Sekunden)",
+          "polling_threshold": "Polling / auto Verzögerung Multiplikator",
           "rescan_on_start": "Bundle beim Start erneut scannen",
           "rescan_now": "Jetzt scannen (fehlende Entitäten hinzufügen)",
           "redownload_bundle": "Bundle von OTS neu herunterladen (fehlende Entitäten hinzufügen)",
@@ -68,6 +70,7 @@
     },
     "error": {
       "invalid_scan_interval": "Bitte ein Abfrageintervall von mindestens 1 Sekunde eingeben.",
+      "invalid_polling_threshold": "Bitte eine Schwelle zwischen 10 und 120 eingeben.",
       "auth": "Login fehlgeschlagen. Bitte Zugangsdaten prüfen.",
       "download_failed": "Neues Bundle konnte nicht von OTS geladen werden.",
       "no_entities": "Das neue Bundle hat 0 Entitäten geliefert; bestehendes Bundle bleibt erhalten.",
