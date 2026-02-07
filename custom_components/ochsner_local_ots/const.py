@@ -10,6 +10,9 @@ DEFAULT_SCAN_INTERVAL_SEC = 30
 # Used by Automatic and Slow modes.
 DEFAULT_POLLING_THRESHOLD = 20
 
+# Chunk size for controller read requests (OA parameters per HTTP call)
+DEFAULT_MAX_IDS_PER_READ_REQUEST = 40
+
 # Delay (seconds) before reloading the integration after saving options/overrides.
 # This helps Home Assistant flush .storage updates before any restart/shutdown.
 DELAY_RELOAD_SEC = 3
@@ -32,6 +35,7 @@ CONF_PASSWORD = "password"
 CONF_PIN = "pin"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_POLLING_THRESHOLD = "polling_threshold"
+CONF_MAX_IDS_PER_READ_REQUEST = "max_ids_per_read_request"
 CONF_SENSORS = "sensors"
 CONF_BINARY_SENSORS = "binary_sensors"
 CONF_NUMBERS = "numbers"

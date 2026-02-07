@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from datetime import timedelta
 import random
+import time
 from typing import Any, Dict, List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import ClimatixGenericApi
-from .api import extract_first_value
+from .api import ClimatixGenericApi, extract_first_value
 from .const import (
-    CONF_POLLING_MODE,
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
     POLLING_MODE_SLOW,
@@ -59,6 +59,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             str(k): str(v) for k, v in (id_modes or {}).items() if k
         }
         self._poll_state: Dict[str, _PollState] = {}
+
         try:
             pt = int(poll_threshold)
         except Exception:
@@ -69,8 +70,86 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             pt = 120
         self._poll_threshold: int = pt
 
+        # Diagnostics: actual HTTP requests (GET attempts) and requested OA values.
+        # (Counts since integration start / entry setup.)
+        self._read_http_requests_total: int = 0
+        self._read_values_total: int = 0
+        # Rolling 5-minute average based on cumulative samples.
+        # Stores (monotonic_ts, http_requests_total, values_total)
+        self._read_samples: deque[tuple[float, int, int]] = deque()
+
+    def _append_read_sample(self) -> None:
+        now = time.monotonic()
+        self._read_samples.append(
+            (now, int(self._read_http_requests_total), int(self._read_values_total))
+        )
+
+        # Prune samples older than ~6 minutes to keep memory bounded.
+        cutoff = now - 360.0
+        while self._read_samples and self._read_samples[0][0] < cutoff:
+            self._read_samples.popleft()
+
+    def _note_http_request(self) -> None:
+        self._read_http_requests_total += 1
+        self._append_read_sample()
+
+    def _note_read_values(self, requested_values: int) -> None:
+        try:
+            self._read_values_total += int(requested_values)
+        except Exception:
+            self._read_values_total += 0
+        self._append_read_sample()
+
+    @property
+    def read_requests_total(self) -> int:
+        return int(self._read_http_requests_total)
+
+    @property
+    def read_values_total(self) -> int:
+        return int(self._read_values_total)
+
+    def _rate_per_min_over_last(self, seconds: float) -> tuple[float, float]:
+        """Return (http_requests_per_min, values_per_min) over the last `seconds` window."""
+
+        if not self._read_samples:
+            return (0.0, 0.0)
+
+        now = time.monotonic()
+        window_start = now - float(seconds)
+
+        # Find oldest sample within window.
+        oldest = None
+        for s in self._read_samples:
+            if s[0] >= window_start:
+                oldest = s
+                break
+
+        latest = self._read_samples[-1]
+        if oldest is None:
+            oldest = self._read_samples[0]
+
+        dt = float(latest[0] - oldest[0])
+        if dt <= 1e-6:
+            return (0.0, 0.0)
+
+        req_delta = float(latest[1] - oldest[1])
+        val_delta = float(latest[2] - oldest[2])
+        minutes = dt / 60.0
+        return (req_delta / minutes, val_delta / minutes)
+
+    @property
+    def read_requests_per_min_5m(self) -> float:
+        return float(self._rate_per_min_over_last(300.0)[0])
+
+    @property
+    def read_values_per_min_5m(self) -> float:
+        return float(self._rate_per_min_over_last(300.0)[1])
+
     def _get_mode(self, oid: str) -> str:
-        mode = str(self._id_modes.get(str(oid), POLLING_MODE_AUTOMATIC) or POLLING_MODE_AUTOMATIC)
+        mode = str(
+            self._id_modes.get(str(oid), POLLING_MODE_AUTOMATIC)
+            or POLLING_MODE_AUTOMATIC
+        )
         if mode not in {POLLING_MODE_AUTOMATIC, POLLING_MODE_FAST, POLLING_MODE_SLOW}:
             return POLLING_MODE_AUTOMATIC
         return mode
@@ -98,7 +177,11 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         try:
             # First refresh: poll everything to seed values.
             if not isinstance(self.data, dict) or "values" not in self.data:
-                payload = await self.api.read(self.ids)
+                if self.ids:
+                    self._note_read_values(len(self.ids))
+                payload = await self.api.read(
+                    self.ids, on_http_request=self._note_http_request
+                )
                 for oid in self.ids:
                     self._poll_state.setdefault(str(oid), _PollState(counter=0))
                 return payload
@@ -124,7 +207,10 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     state.counter = int(state.counter) + 1
                 return current
 
-            payload = await self.api.read(ids_to_poll)
+            self._note_read_values(len(ids_to_poll))
+            payload = await self.api.read(
+                ids_to_poll, on_http_request=self._note_http_request
+            )
             new_values = payload.get("values") if isinstance(payload, dict) else None
             if not isinstance(new_values, dict):
                 new_values = {}
@@ -160,7 +246,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 new_raw = extract_first_value({"values": merged_values}, oid_s)
 
                 if mode == POLLING_MODE_AUTOMATIC and int(state.counter) >= self._poll_threshold:
-                    # Automatic: poll again at 20.
+                    # Automatic: poll again at threshold.
                     # If still unchanged, spread the next polls (7..9). If it changed, reset to 0.
                     if _values_equal(old_raw, new_raw):
                         state.counter = random.randint(7, 9)
@@ -189,14 +275,17 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         if not ids:
             return
 
-        payload = await self.api.read(ids)
+        self._note_read_values(len(ids))
+        payload = await self.api.read(ids, on_http_request=self._note_http_request)
         values = payload.get("values") if isinstance(payload, dict) else None
         if not isinstance(values, dict):
             return
 
         current = self.data if isinstance(self.data, dict) else {}
         current_values = current.get("values") if isinstance(current, dict) else None
-        merged_values: Dict[str, Any] = dict(current_values) if isinstance(current_values, dict) else {}
+        merged_values: Dict[str, Any] = (
+            dict(current_values) if isinstance(current_values, dict) else {}
+        )
         for k, v in values.items():
             merged_values[str(k)] = v
 

@@ -7,13 +7,9 @@ from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Tup
 
 from aiohttp import ClientSession, BasicAuth
 
+from .const import DEFAULT_MAX_IDS_PER_READ_REQUEST
 
 _LOGGER = logging.getLogger(__name__)
-
-
-# Conservative cap to keep URLs well below typical proxy/server limits.
-# Each OA param is base64-ish and adds significant length.
-DEFAULT_MAX_IDS_PER_READ_REQUEST = 40
 
 
 @dataclass(frozen=True)
@@ -37,11 +33,31 @@ class ClimatixGenericConnection:
 
 
 class ClimatixGenericApi:
-    def __init__(self, session: ClientSession, conn: ClimatixGenericConnection) -> None:
+    def __init__(
+        self,
+        session: ClientSession,
+        conn: ClimatixGenericConnection,
+        *,
+        max_ids_per_read_request: int = DEFAULT_MAX_IDS_PER_READ_REQUEST,
+    ) -> None:
         self._session = session
         self._conn = conn
+        try:
+            n = int(max_ids_per_read_request)
+        except Exception:
+            n = DEFAULT_MAX_IDS_PER_READ_REQUEST
+        if n < 1:
+            n = 1
+        if n > 200:
+            n = 200
+        self._max_ids_per_read_request = n
 
-    async def _get_json(self, params: List[Tuple[str, str]]) -> Dict[str, Any]:
+    async def _get_json(
+        self,
+        params: List[Tuple[str, str]],
+        *,
+        on_http_request: Callable[[], None] | None = None,
+    ) -> Dict[str, Any]:
         auth = BasicAuth(self._conn.username, self._conn.password)
         last_exc: Optional[BaseException] = None
         last_error_payload: Optional[Dict[str, Any]] = None
@@ -49,6 +65,8 @@ class ClimatixGenericApi:
         for path in self._conn.candidate_paths:
             url = f"{self._conn.base_url}{path}"
             try:
+                if on_http_request is not None:
+                    on_http_request()
                 async with self._session.get(
                     url,
                     params=params,
@@ -93,15 +111,20 @@ class ClimatixGenericApi:
             raise last_exc
         return {}
 
-    async def read(self, ids: Iterable[str]) -> Dict[str, Any]:
+    async def read(
+        self,
+        ids: Iterable[str],
+        *,
+        on_http_request: Callable[[], None] | None = None,
+    ) -> Dict[str, Any]:
         oa_list = [x for x in ids if x]
         if not oa_list:
             return {"values": {}}
 
         merged_values: Dict[str, Any] = {}
         # Chunk requests to avoid too-long URLs (which can lead to auth/PIN being dropped).
-        for i in range(0, len(oa_list), DEFAULT_MAX_IDS_PER_READ_REQUEST):
-            chunk = oa_list[i : i + DEFAULT_MAX_IDS_PER_READ_REQUEST]
+        for i in range(0, len(oa_list), self._max_ids_per_read_request):
+            chunk = oa_list[i : i + self._max_ids_per_read_request]
             params: List[Tuple[str, str]] = [("FN", "Read")]
             for one in chunk:
                 params.append(("OA", one))
@@ -110,7 +133,7 @@ class ClimatixGenericApi:
             params.append(("LNG", "-1"))
             params.append(("US", "1"))
 
-            payload = await self._get_json(params)
+            payload = await self._get_json(params, on_http_request=on_http_request)
 
             values = payload.get("values") if isinstance(payload, dict) else None
             if isinstance(values, dict):
@@ -157,8 +180,13 @@ class ClimatixGenericApiWriteHook:
         self._inner = inner
         self._on_write = on_write
 
-    async def read(self, ids: Iterable[str]) -> Dict[str, Any]:
-        return await self._inner.read(ids)
+    async def read(
+        self,
+        ids: Iterable[str],
+        *,
+        on_http_request: Callable[[], None] | None = None,
+    ) -> Dict[str, Any]:
+        return await self._inner.read(ids, on_http_request=on_http_request)
 
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
         resp = await self._inner.write(generic_id, value)
