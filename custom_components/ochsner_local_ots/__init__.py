@@ -29,6 +29,7 @@ from .const import (
     CONF_PIN,
     CONF_SCAN_INTERVAL,
     CONF_POLLING_THRESHOLD,
+    CONF_MAX_IDS_PER_READ_REQUEST,
     CONF_SENSORS,
     CONF_UNIT,
     CONF_MIN,
@@ -54,6 +55,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
     DEFAULT_POLLING_THRESHOLD,
+    DEFAULT_MAX_IDS_PER_READ_REQUEST,
     DEFAULT_USERNAME,
     DELAY_RELOAD_SEC,
     DOMAIN,
@@ -547,6 +549,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if poll_threshold > 120:
             poll_threshold = 120
 
+        max_ids_opt = entry.options.get(CONF_MAX_IDS_PER_READ_REQUEST)
+        try:
+            max_ids_per_read = int(max_ids_opt) if max_ids_opt is not None else int(DEFAULT_MAX_IDS_PER_READ_REQUEST)
+        except Exception:
+            max_ids_per_read = int(DEFAULT_MAX_IDS_PER_READ_REQUEST)
+        if max_ids_per_read < 1:
+            max_ids_per_read = 1
+        if max_ids_per_read > 200:
+            max_ids_per_read = 200
+
         ents = _normalize_entities(ctrl)
         sensors = ents["sensors"]
         binary_sensors = ents["binary_sensors"]
@@ -648,6 +660,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     password=password,
                     pin=pin,
                 ),
+                max_ids_per_read_request=max_ids_per_read,
             )
         except Exception:
             await ctrl_session.close()

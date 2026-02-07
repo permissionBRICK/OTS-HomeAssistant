@@ -35,6 +35,7 @@ from .const import (
     CONF_SITE_ID,
     CONF_SCAN_INTERVAL,
     CONF_POLLING_THRESHOLD,
+    CONF_MAX_IDS_PER_READ_REQUEST,
     CONF_SELECTS,
     CONF_SENSORS,
     CONF_STEP,
@@ -55,6 +56,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL_SEC,
     DEFAULT_POLLING_THRESHOLD,
+    DEFAULT_MAX_IDS_PER_READ_REQUEST,
     DEFAULT_USERNAME,
     DELAY_RELOAD_SEC,
     DOMAIN,
@@ -461,6 +463,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         existing_options = dict(self.config_entry.options or {})
         current = int(existing_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
         poll_threshold_cur = int(existing_options.get(CONF_POLLING_THRESHOLD, DEFAULT_POLLING_THRESHOLD))
+        max_ids_cur = int(existing_options.get(CONF_MAX_IDS_PER_READ_REQUEST, DEFAULT_MAX_IDS_PER_READ_REQUEST))
         rescan_on_start = bool(existing_options.get(CONF_RESCAN_ON_START, False))
         rescan_now_default = False
         redownload_default = False
@@ -488,28 +491,41 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                         # Fall through to re-render form.
                         pass
                     else:
-                        out = dict(existing_options)
-                        out[CONF_SCAN_INTERVAL] = interval
-                        out[CONF_POLLING_THRESHOLD] = poll_threshold
-                        out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
+                        try:
+                            max_ids = int(user_input.get(CONF_MAX_IDS_PER_READ_REQUEST, max_ids_cur))
+                        except Exception:  # noqa: BLE001
+                            errors["base"] = "invalid_max_ids"
+                            max_ids = max_ids_cur
 
-                        # Ensure entity overrides always survive option updates.
-                        if CONF_ENTITY_OVERRIDES not in out:
-                            out[CONF_ENTITY_OVERRIDES] = {}
+                        if not errors and (max_ids < 1 or max_ids > 200):
+                            errors["base"] = "invalid_max_ids"
 
-                        # One-shot flag: if enabled, setup will rescan then clear it.
-                        if bool(user_input.get(CONF_RESCAN_NOW, False)):
-                            out[CONF_RESCAN_NOW] = True
+                        if errors:
+                            pass
+                        else:
+                            out = dict(existing_options)
+                            out[CONF_SCAN_INTERVAL] = interval
+                            out[CONF_POLLING_THRESHOLD] = poll_threshold
+                            out[CONF_MAX_IDS_PER_READ_REQUEST] = max_ids
+                            out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
 
-                        if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
-                            self._pending_options = out
-                            return await self.async_step_redownload()
+                            # Ensure entity overrides always survive option updates.
+                            if CONF_ENTITY_OVERRIDES not in out:
+                                out[CONF_ENTITY_OVERRIDES] = {}
 
-                        if bool(user_input.get("configure_entities", False)):
-                            self._pending_options = out
-                            return await self.async_step_entity_override_select()
+                            # One-shot flag: if enabled, setup will rescan then clear it.
+                            if bool(user_input.get(CONF_RESCAN_NOW, False)):
+                                out[CONF_RESCAN_NOW] = True
 
-                        return self.async_create_entry(title="", data=out)
+                            if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
+                                self._pending_options = out
+                                return await self.async_step_redownload()
+
+                            if bool(user_input.get("configure_entities", False)):
+                                self._pending_options = out
+                                return await self.async_step_entity_override_select()
+
+                            return self.async_create_entry(title="", data=out)
 
         schema = vol.Schema(
             {
@@ -532,6 +548,17 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                     selector.NumberSelectorConfig(
                         min=10,
                         max=120,
+                        step=1,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Optional(
+                    CONF_MAX_IDS_PER_READ_REQUEST,
+                    default=max_ids_cur,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=200,
                         step=1,
                         mode=selector.NumberSelectorMode.BOX,
                     )

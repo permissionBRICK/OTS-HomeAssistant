@@ -354,6 +354,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
         # Always add a write-counter sensor per controller.
         entities.append(ClimatixGenericWriteCounterSensor(entry_id=entry.entry_id, host=host, base_url=base_url, device_name=device_name, device_model=device_model))
+
+        # Diagnostics: read counters/rates per controller.
+        entities.append(
+            ClimatixGenericReadRequestsSensor(
+                coordinator,
+                host=host,
+                base_url=base_url,
+                device_name=device_name,
+                device_model=device_model,
+            )
+        )
+        entities.append(
+            ClimatixGenericReadRateSensor(
+                coordinator,
+                host=host,
+                base_url=base_url,
+                device_name=device_name,
+                device_model=device_model,
+            )
+        )
     async_add_entities(entities)
 
 
@@ -447,3 +467,102 @@ class ClimatixGenericWriteCounterSensor(SensorEntity, RestoreEntity):
         if isinstance(ents, dict) and ents.get(self._host) is self:
             ents.pop(self._host, None)
         await super().async_will_remove_from_hass()
+
+
+class ClimatixGenericReadRequestsSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity):
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: ClimatixCoordinator,
+        *,
+        host: str,
+        base_url: str,
+        device_name: str,
+        device_model: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._host = host
+        self._base_url = base_url
+        self._device_name = device_name
+        self._device_model = device_model
+        self._attr_name = "Read requests"
+        self._attr_unique_id = f"{host}:read_requests".replace("=", "")
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._host)},
+            name=self._device_name,
+            manufacturer="Ochsner",
+            model=self._device_model,
+            configuration_url=self._base_url,
+        )
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        return "requests"
+
+    @property
+    def native_value(self) -> int:
+        return int(getattr(self.coordinator, "read_requests_total", 0))
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        return {
+            "values_total": int(getattr(self.coordinator, "read_values_total", 0)),
+        }
+
+
+class ClimatixGenericReadRateSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity):
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: ClimatixCoordinator,
+        *,
+        host: str,
+        base_url: str,
+        device_name: str,
+        device_model: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._host = host
+        self._base_url = base_url
+        self._device_name = device_name
+        self._device_model = device_model
+        self._attr_name = "Read rate (5m)"
+        self._attr_unique_id = f"{host}:read_rate_5m".replace("=", "")
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._host)},
+            name=self._device_name,
+            manufacturer="Ochsner",
+            model=self._device_model,
+            configuration_url=self._base_url,
+        )
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        return "req/min"
+
+    @property
+    def native_value(self) -> float:
+        try:
+            return float(getattr(self.coordinator, "read_requests_per_min_5m", 0.0))
+        except Exception:
+            return 0.0
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        try:
+            values_per_min = float(getattr(self.coordinator, "read_values_per_min_5m", 0.0))
+        except Exception:
+            values_per_min = 0.0
+        return {
+            "values_per_min_5m": values_per_min,
+        }
