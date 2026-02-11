@@ -1,5 +1,11 @@
 # Ochsner local OTS - Climatix - (HACS)
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![GitHub Release](https://img.shields.io/github/release/permissionBRICK/OTS-HomeAssistant.svg)](https://github.com/permissionBRICK/OTS-HomeAssistant/releases)
+[![License](https://img.shields.io/github/license/permissionBRICK/OTS-HomeAssistant.svg)](LICENSE)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-donate-yellow.svg)](https://buymeacoffee.com/permissionbrick)
+![Usage counter](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=integration%20usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.ochsner_local_ots.total)
+
 **What is this repo?**
 
 It's a way to locally read and control Ochsner heat pump settings via Home Assistant, allowing you to access all the same settings and values as the OTS app, all without Modbus or Cloud services required.
