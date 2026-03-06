@@ -68,7 +68,7 @@ However, it is plausible that it could work with any Ochsner Heat Pump that uses
 
 ## Disclaimer & Warning
 
-This project is not affiliated with or endorsed by Ochsner.
+This project is not affiliated with or endorsed by Ochsner. It is simply a hobby project based entirely on reverse engineerecd information.
 
 Tread with caution when changing random values, make sure you know the exact value you are trying to change and have correctly identified it. For the most part, the integration mostly seems to correctly parse the minimum / maximum for every value and map that to the UI so you can't set any temperature ranges that the heatpump wouldn't allow, but there are also some settings here which appear to be hidden in the app, and I have no idea what their effects might be if you try to use them.
 
