@@ -41,6 +41,7 @@ CONF_BINARY_SENSORS = "binary_sensors"
 CONF_NUMBERS = "numbers"
 CONF_SELECTS = "selects"
 CONF_TEXTS = "texts"
+CONF_SWITCHES = "switches"
 
 # Multi-controller support (UI flow can add multiple plants/heatpumps under one config entry)
 CONF_CONTROLLERS = "controllers"
@@ -68,6 +69,25 @@ CONF_READ_ID = "read_id"
 CONF_WRITE_ID = "write_id"
 CONF_OPTIONS = "options"
 CONF_UNIT = "unit"
+
+# Switch (writable on/off datapoint) configuration keys.
+CONF_ON_VALUE = "on_value"
+CONF_OFF_VALUE = "off_value"
+CONF_ENABLED_DEFAULT = "enabled_default"
+
+# Writable on/off datapoints whose name or state labels contain any of these
+# keywords are treated as destructive/one-shot actions (e.g. controller reset)
+# and are created disabled by default in the entity registry. Case-insensitive
+# substring match; user can enable them manually.
+DISABLE_BY_DEFAULT_SWITCH_KEYWORDS = [
+	"reset",
+	"neustart",
+	"restart",
+	"reboot",
+	"werkseinstellung",
+	"factory",
+	"format",
+]
 
 CONF_VALUE_MAP = "value_map"
 

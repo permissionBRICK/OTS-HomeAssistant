@@ -6,6 +6,7 @@ import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .api import ClimatixGenericApi
+from .const import DISABLE_BY_DEFAULT_SWITCH_KEYWORDS
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -892,6 +893,105 @@ def _looks_like_boolean_enum(options: Dict[str, Any]) -> bool:
     return False
 
 
+# Tokens (lower-case) that identify the "on"/active state of a 2-state datapoint.
+_SWITCH_ON_TOKENS = {
+    "on",
+    "ein",
+    "an",
+    "true",
+    "1",
+    "aktiv",
+    "active",
+    "yes",
+    "ja",
+    "enabled",
+    "high",
+}
+
+
+def _switch_on_off_values(states: Any, options: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
+    """For a writable 2-state datapoint, return ``(off_value, on_value)``.
+
+    ``options`` is the already-built ``label -> write_value`` map (values are
+    either the enum index or the state ``readId``, chosen the same way the
+    working select entities pick them), so the returned on/off values are
+    wire-compatible with how the controller is written elsewhere. Insertion
+    order of ``options`` follows the bundle state order (index 0 first).
+
+    Returns ``None`` when the datapoint is not a usable 2-state control.
+    """
+
+    if not isinstance(states, list) or len(states) != 2:
+        return None
+    if not isinstance(options, dict) or len(options) != 2:
+        return None
+
+    items = list(options.items())  # [(label, value), ...] in bundle state order
+    on_val: Any = None
+    off_val: Any = None
+    for label, value in items:
+        toks = {str(label).strip().lower(), str(value).strip().lower()}
+        if toks & _SWITCH_ON_TOKENS:
+            on_val = value
+        else:
+            off_val = value
+
+    if on_val is None or off_val is None:
+        # No clear "on" token (e.g. "Inaktiv"/"Geräte-Reset"): fall back to the
+        # Climatix convention that the first state is off and the second is on.
+        off_val, on_val = items[0][1], items[1][1]
+
+    if str(on_val) == str(off_val):
+        return None
+    return off_val, on_val
+
+
+def _switch_enabled_default(name: str, states: Any) -> bool:
+    """Return False for destructive/one-shot on/off points (reset/reboot/...)."""
+
+    hay = str(name or "").lower()
+    if isinstance(states, list):
+        for st in states:
+            if isinstance(st, dict):
+                for key in ("label", "writeId", "readId"):
+                    v = st.get(key)
+                    if isinstance(v, str):
+                        hay += " " + v.lower()
+    return not any(kw in hay for kw in DISABLE_BY_DEFAULT_SWITCH_KEYWORDS)
+
+
+def _build_switch_cfg(
+    *,
+    display_name: str,
+    uuid_val: str,
+    read_id: str,
+    write_id: str,
+    states: Any,
+    options: Dict[str, Any],
+    hc_uid: str,
+    hc_name: str,
+) -> Optional[Dict[str, Any]]:
+    """Build a switch entity config for a writable 2-state datapoint, or None."""
+
+    onoff = _switch_on_off_values(states, options)
+    if onoff is None:
+        return None
+    off_value, on_value = onoff
+    cfg: Dict[str, Any] = {
+        "name": display_name,
+        "uuid": uuid_val,
+        "read_id": read_id,
+        "write_id": write_id,
+        "on_value": on_value,
+        "off_value": off_value,
+        "enabled_default": _switch_enabled_default(display_name, states),
+    }
+    if hc_uid:
+        cfg["heating_circuit_uid"] = hc_uid
+        cfg["heating_circuit_name"] = hc_name
+    return cfg
+
+
 def _enum_state_label_quality(states: Any) -> int:
     if not isinstance(states, list) or not states:
         return 0
@@ -1122,6 +1222,7 @@ async def generate_entities_from_bundle(
     numbers: List[Dict[str, Any]] = []
     selects: List[Dict[str, Any]] = []
     texts: List[Dict[str, Any]] = []
+    switches: List[Dict[str, Any]] = []
 
     for e in entities:
         read_id = e.get("readId")
@@ -1211,6 +1312,18 @@ async def generate_entities_from_bundle(
             continue
 
         if cls.endswith("BinaryDeviceInfo"):
+            # A writable binary point is a controllable on/off datapoint (e.g.
+            # a controller reset / command), so expose it as a switch instead of
+            # a read-only binary_sensor. Read-only ones stay binary sensors.
+            if isinstance(write_id, str) and write_id and not is_write_readonly:
+                scfg = _build_switch_cfg(
+                    display_name=display_name, uuid_val=uuid_val,
+                    read_id=read_id, write_id=write_id, states=states,
+                    options=options, hc_uid=hc_uid, hc_name=hc_name,
+                )
+                if scfg is not None:
+                    switches.append(scfg)
+                    continue
             cfg: Dict[str, Any] = {"name": display_name, "uuid": uuid_val, "id": read_id}
             if hc_uid:
                 cfg["heating_circuit_uid"] = hc_uid
@@ -1219,6 +1332,18 @@ async def generate_entities_from_bundle(
             continue
 
         if is_enum and options and _looks_like_boolean_enum(options):
+            # A writable boolean enum (Off/On, Aus/Ein, ...) is a controllable
+            # on/off datapoint (e.g. the DHW boost button): expose it as a switch.
+            # Read-only boolean enums remain binary sensors.
+            if isinstance(write_id, str) and write_id and not is_write_readonly:
+                scfg = _build_switch_cfg(
+                    display_name=display_name, uuid_val=uuid_val,
+                    read_id=read_id, write_id=write_id, states=states,
+                    options=options, hc_uid=hc_uid, hc_name=hc_name,
+                )
+                if scfg is not None:
+                    switches.append(scfg)
+                    continue
             cfg = {"name": display_name, "uuid": uuid_val, "id": read_id}
             if hc_uid:
                 cfg["heating_circuit_uid"] = hc_uid
@@ -1332,18 +1457,20 @@ async def generate_entities_from_bundle(
         sensors.append(s_cfg)
 
     out: Dict[str, Any] = {
-        # Avoid duplicates: if a value is controllable (number/select), don't also add it as a sensor.
+        # Avoid duplicates: if a value is controllable (number/select/switch), don't also add it as a sensor.
         "sensors": [
             s
             for s in sensors
             if str(s.get("id")) not in {str(n.get("read_id")) for n in numbers}
             and str(s.get("id")) not in {str(sel.get("read_id")) for sel in selects}
             and str(s.get("id")) not in {str(t.get("read_id")) for t in texts}
+            and str(s.get("id")) not in {str(sw.get("read_id")) for sw in switches}
         ],
         "binary_sensors": binary_sensors,
         "numbers": numbers,
         "selects": selects,
         "texts": texts,
+        "switches": switches,
     }
 
     return out

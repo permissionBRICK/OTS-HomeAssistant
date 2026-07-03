@@ -26,6 +26,7 @@ from .const import (
     CONF_SENSORS,
     CONF_SITE_ID,
     CONF_TEXTS,
+    CONF_SWITCHES,
     CONF_USERNAME,
     DEFAULT_PASSWORD,
     DEFAULT_PIN,
@@ -91,7 +92,7 @@ async def async_rescan_from_bundle(
 
     session = async_get_clientsession(hass)
 
-    added_by_platform: Dict[str, int] = {"sensors": 0, "binary_sensors": 0, "numbers": 0, "selects": 0, "texts": 0}
+    added_by_platform: Dict[str, int] = {"sensors": 0, "binary_sensors": 0, "numbers": 0, "selects": 0, "texts": 0, "switches": 0}
     updated_controllers: List[Dict[str, Any]] = []
 
     for ctrl in controllers:
@@ -137,6 +138,7 @@ async def async_rescan_from_bundle(
             (CONF_NUMBERS, "number"),
             (CONF_SELECTS, "select"),
             (CONF_TEXTS, "text"),
+            (CONF_SWITCHES, "switch"),
         ):
             existing_list = list(ctrl_d.get(key, []) or [])
             new_list = list(discovered.get(key, []) or [])
@@ -153,6 +155,8 @@ async def async_rescan_from_bundle(
                 added_by_platform["selects"] += added
             elif key == CONF_TEXTS:
                 added_by_platform["texts"] += added
+            elif key == CONF_SWITCHES:
+                added_by_platform["switches"] += added
 
         updated_controllers.append(ctrl_d)
 
@@ -261,7 +265,7 @@ async def async_redownload_bundles_and_merge(
                 ),
             )
             discovered = await generate_entities_from_bundle(bundle=bundle, api=api, language=language, probe=True)
-            for k in ("sensors", "binary_sensors", "numbers", "selects", "texts"):
+            for k in ("sensors", "binary_sensors", "numbers", "selects", "texts", "switches"):
                 total_generated += len(list(discovered.get(k, []) or []))
         if total_generated == 0:
             return False, "no_entities", {}
