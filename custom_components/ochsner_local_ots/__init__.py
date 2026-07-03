@@ -856,7 +856,22 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "number", "select", "text", "switch"])
+    # Unload each platform independently and tolerate ones that were never set
+    # up for this entry (e.g. no switches/selects/... existed at load time).
+    # async_unload_platforms() aborts on the first "Config entry was never
+    # loaded!" ValueError, which breaks reloads (e.g. a bundle rescan that only
+    # now adds the first switch), so unload per-platform instead.
+    unload_ok = True
+    for platform in ("sensor", "binary_sensor", "number", "select", "text", "switch"):
+        try:
+            ok = await hass.config_entries.async_forward_entry_unload(entry, platform)
+        except ValueError as err:
+            # Only tolerate the "Config entry was never loaded!" case (platform
+            # was never forwarded for this entry). Re-raise any other ValueError.
+            if "never loaded" not in str(err).lower():
+                raise
+            ok = True
+        unload_ok = unload_ok and ok
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         # Close per-controller sessions so we don't hold any connections.
