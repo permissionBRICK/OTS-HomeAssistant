@@ -21,6 +21,10 @@ from .const import (
     CONF_READ_ID,
     CONF_SELECTS,
     CONF_TEXTS,
+    CONF_SWITCHES,
+    CONF_ON_VALUE,
+    CONF_OFF_VALUE,
+    CONF_ENABLED_DEFAULT,
     CONF_UUID,
     CONF_WRITE_ID,
     CONF_NAME,
@@ -152,7 +156,7 @@ async def _async_rescan_from_stored_bundles(
     if not isinstance(stored, dict):
         stored = {}
 
-    added_by_platform: Dict[str, int] = {"sensors": 0, "binary_sensors": 0, "numbers": 0, "selects": 0, "texts": 0}
+    added_by_platform: Dict[str, int] = {"sensors": 0, "binary_sensors": 0, "numbers": 0, "selects": 0, "texts": 0, "switches": 0}
     updated_controllers: List[Dict[str, Any]] = []
 
     for ctrl in controllers:
@@ -200,6 +204,7 @@ async def _async_rescan_from_stored_bundles(
             (CONF_NUMBERS, "number"),
             (CONF_SELECTS, "select"),
             (CONF_TEXTS, "text"),
+            (CONF_SWITCHES, "switch"),
         ):
             existing_list = list(ctrl_d.get(key, []) or [])
             new_list = list(discovered.get(key, []) or [])
@@ -216,6 +221,8 @@ async def _async_rescan_from_stored_bundles(
                 added_by_platform["selects"] += added
             elif key == CONF_TEXTS:
                 added_by_platform["texts"] += added
+            elif key == CONF_SWITCHES:
+                added_by_platform["switches"] += added
 
         updated_controllers.append(ctrl_d)
 
@@ -283,6 +290,19 @@ _TEXT_SCHEMA = vol.Schema(
     }
 )
 
+_SWITCH_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): str,
+        vol.Optional(CONF_UUID): str,
+        vol.Optional(CONF_ID): str,
+        vol.Optional(CONF_READ_ID): str,
+        vol.Optional(CONF_WRITE_ID): str,
+        vol.Required(CONF_ON_VALUE): vol.Any(str, int, float),
+        vol.Required(CONF_OFF_VALUE): vol.Any(str, int, float),
+        vol.Optional(CONF_ENABLED_DEFAULT): bool,
+    }
+)
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -298,6 +318,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_NUMBERS, default=[]): [_NUMBER_SCHEMA],
                 vol.Optional(CONF_SELECTS, default=[]): [_SELECT_SCHEMA],
                 vol.Optional(CONF_TEXTS, default=[]): [_TEXT_SCHEMA],
+                vol.Optional(CONF_SWITCHES, default=[]): [_SWITCH_SCHEMA],
             }
         )
     },
@@ -333,6 +354,7 @@ def _normalize_entities(data: Dict[str, Any]) -> Dict[str, Any]:
     numbers: List[Dict[str, Any]] = list(data.get(CONF_NUMBERS, []) or [])
     selects: List[Dict[str, Any]] = list(data.get(CONF_SELECTS, []) or [])
     texts: List[Dict[str, Any]] = list(data.get(CONF_TEXTS, []) or [])
+    switches: List[Dict[str, Any]] = list(data.get(CONF_SWITCHES, []) or [])
 
     # Normalize numbers to have explicit read_id/write_id.
     normalized_numbers: List[Dict[str, Any]] = []
@@ -387,12 +409,30 @@ def _normalize_entities(data: Dict[str, Any]) -> Dict[str, Any]:
         tt[CONF_WRITE_ID] = str(write_id)
         normalized_texts.append(tt)
 
+    # Normalize switches to have explicit read_id/write_id.
+    normalized_switches: List[Dict[str, Any]] = []
+    for sw in switches:
+        base_id = sw.get(CONF_ID)
+        read_id = sw.get(CONF_READ_ID) or base_id
+        write_id = sw.get(CONF_WRITE_ID) or base_id or read_id
+        if not read_id:
+            raise vol.Invalid("Each switch must define 'id' or 'read_id'")
+        if not write_id:
+            raise vol.Invalid("Each switch must define 'id' or 'write_id'")
+        if CONF_ON_VALUE not in sw or CONF_OFF_VALUE not in sw:
+            raise vol.Invalid("Each switch must define 'on_value' and 'off_value'")
+        sws = dict(sw)
+        sws[CONF_READ_ID] = str(read_id)
+        sws[CONF_WRITE_ID] = str(write_id)
+        normalized_switches.append(sws)
+
     return {
         "sensors": sensors,
         "binary_sensors": binary_sensors,
         "numbers": normalized_numbers,
         "selects": normalized_selects,
         "texts": normalized_texts,
+        "switches": normalized_switches,
     }
 
 
@@ -451,6 +491,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 CONF_NUMBERS: list(data.get(CONF_NUMBERS, []) or []),
                 CONF_SELECTS: list(data.get(CONF_SELECTS, []) or []),
                 CONF_TEXTS: list(data.get(CONF_TEXTS, []) or []),
+                CONF_SWITCHES: list(data.get(CONF_SWITCHES, []) or []),
             }
         ]
 
@@ -512,18 +553,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if any(added_by_platform.values()):
             _LOGGER.info(
-                "Rescan added entities: sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d",
+                "Rescan added entities: sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d switches=%d",
                 added_by_platform["sensors"],
                 added_by_platform["binary_sensors"],
                 added_by_platform["numbers"],
                 added_by_platform["selects"],
                 added_by_platform["texts"],
+                added_by_platform["switches"],
             )
 
     runtime_controllers: List[Dict[str, Any]] = []
     write_counts: Dict[str, int] = {}
     write_count_entities: Dict[str, Any] = {}
-    any_sensors = any_binary_sensors = any_numbers = any_selects = any_texts = False
+    any_sensors = any_binary_sensors = any_numbers = any_selects = any_texts = any_switches = False
 
     for ctrl in controllers:
         host: str = str(ctrl.get(CONF_HOST) or "")
@@ -565,6 +607,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         numbers = ents["numbers"]
         selects = ents["selects"]
         texts = ents.get("texts", [])
+        switches = ents.get("switches", [])
 
         # Per-entity overrides (options flow), keyed by stable override key.
         entity_overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
@@ -638,6 +681,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ent_id = t.get(CONF_READ_ID)
             if ent_id and str(ent_id) not in ids:
                 ids.append(str(ent_id))
+        for sw in switches:
+            ent_id = sw.get(CONF_READ_ID)
+            if ent_id and str(ent_id) not in ids:
+                oa = str(ent_id)
+                ids.append(oa)
+            try:
+                oa = str(ent_id or "").strip()
+                if oa:
+                    key = f"{host}:switch:{oa}".replace("=", "")
+                    id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
+            except Exception:
+                pass
 
         # Dedicated session for controller polling: do not keep connections open.
         # We cannot use HA's async_create_clientsession here because it always injects
@@ -715,6 +770,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "numbers": numbers,
                 "selects": selects,
                 "texts": texts,
+                "switches": switches,
             }
         )
 
@@ -723,6 +779,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         any_numbers = any_numbers or bool(numbers)
         any_selects = any_selects or bool(selects)
         any_texts = any_texts or bool(texts)
+        any_switches = any_switches or bool(switches)
 
     hass.data[DOMAIN][entry.entry_id] = {
         "controllers": runtime_controllers,
@@ -742,6 +799,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         setups.append("select")
     if any_texts:
         setups.append("text")
+    if any_switches:
+        setups.append("switch")
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
     return True
@@ -797,7 +856,22 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "number", "select", "text"])
+    # Unload each platform independently and tolerate ones that were never set
+    # up for this entry (e.g. no switches/selects/... existed at load time).
+    # async_unload_platforms() aborts on the first "Config entry was never
+    # loaded!" ValueError, which breaks reloads (e.g. a bundle rescan that only
+    # now adds the first switch), so unload per-platform instead.
+    unload_ok = True
+    for platform in ("sensor", "binary_sensor", "number", "select", "text", "switch"):
+        try:
+            ok = await hass.config_entries.async_forward_entry_unload(entry, platform)
+        except ValueError as err:
+            # Only tolerate the "Config entry was never loaded!" case (platform
+            # was never forwarded for this entry). Re-raise any other ValueError.
+            if "never loaded" not in str(err).lower():
+                raise
+            ok = True
+        unload_ok = unload_ok and ok
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         # Close per-controller sessions so we don't hold any connections.
