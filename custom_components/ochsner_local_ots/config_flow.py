@@ -37,6 +37,7 @@ from .const import (
     CONF_POLLING_THRESHOLD,
     CONF_MAX_IDS_PER_READ_REQUEST,
     CONF_SELECTS,
+    CONF_SWITCHES,
     CONF_SENSORS,
     CONF_STEP,
     CONF_STATE_CLASS,
@@ -332,7 +333,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if " - " in device_model:
                 device_model = device_model.split(" - ", 1)[0].strip() or ots_plant_name
             _LOGGER.debug(
-                "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d",
+                "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d switches=%d",
                 plant_name,
                 host,
                 len(ents.get("sensors", [])),
@@ -340,9 +341,10 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 len(ents.get("numbers", [])),
                 len(ents.get("selects", [])),
                 len(ents.get("texts", [])),
+                len(ents.get("switches", [])),
             )
 
-            if not any(len(ents.get(k, [])) for k in ("sensors", "binary_sensors", "numbers", "selects", "texts")):
+            if not any(len(ents.get(k, [])) for k in ("sensors", "binary_sensors", "numbers", "selects", "texts", "switches")):
                 raise RuntimeError(
                     f"Probing succeeded but discovered 0 usable values for {plant_name} ({host}). "
                     "This usually means the controller rejected reads (auth/PIN/endpoint) or none of the bundle IDs exist on the device."
@@ -367,6 +369,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_NUMBERS: ents.get("numbers", []),
                     CONF_SELECTS: ents.get("selects", []),
                     CONF_TEXTS: ents.get("texts", []),
+                    CONF_SWITCHES: ents.get("switches", []),
                     CONF_BUNDLE_STORAGE_KEY: bundle_storage_key,
                 }
             )
@@ -408,6 +411,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_NUMBERS: list(user_input.get(CONF_NUMBERS, []) or []),
             CONF_SELECTS: list(user_input.get(CONF_SELECTS, []) or []),
             CONF_TEXTS: list(user_input.get(CONF_TEXTS, []) or []),
+            CONF_SWITCHES: list(user_input.get(CONF_SWITCHES, []) or []),
         }
 
         # If an entry already exists for this host, keep YAML as source-of-truth:
