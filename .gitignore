@@ -1,4 +1,5 @@
 apk_analysis/
+apk_files/
 __pycache__/
 *.py[cod]
 *$py.class
