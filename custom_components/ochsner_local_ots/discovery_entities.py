@@ -26,6 +26,7 @@ No Home Assistant imports here so tools/ can reuse this module directly.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional
 
 from .catalog import (
@@ -33,6 +34,10 @@ from .catalog import (
     apply_v4_point_flags,
     canonical_oa,
     is_excluded_point,
+    normalize_language,
+    resolve_enum_label,
+    resolve_option_labels,
+    resolve_point_name,
     try_decode_oa,
 )
 from .discovery import DiscoveryScanResult
@@ -63,14 +68,23 @@ def build_entities(
     scan: DiscoveryScanResult,
     hc_uid_by_tag: Optional[Dict[int, str]] = None,
     hc_fallback_template: str = "Heizkreis {n}",
+    language: str = "en",
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Convert readable scan results into per-platform entity config lists.
 
     ``hc_fallback_template`` names a circuit whose owner-configured name
     could not be read from the controller; the HA caller passes a
     language-appropriate template ("Heizkreis {n}" / "Heating circuit {n}").
+
+    ``language`` (de/en) picks the display name per point (identity read
+    from the pump still wins: circuit names, plant model) and the display
+    label per pump enum token; tokens without a label in that language stay
+    raw tokens. The resolved language+source is recorded per entity in
+    ``name_source`` and the raw descriptor token list in ``enum_tokens`` so
+    a later language change can re-resolve offline without a rescan.
     """
 
+    language = normalize_language(language)
     hc_uid_by_tag = dict(hc_uid_by_tag or {})
     hc_ordinal = {tag: i + 1 for i, tag in enumerate(catalog.hc_tags)}
 
@@ -89,24 +103,31 @@ def build_entities(
         value_map = rec.get("value_map") if isinstance(rec.get("value_map"), dict) else None
 
         # Pump-first enums (spec v4 C): the state list read from the
-        # controller's own descriptor (member 4353) overrides packaged
-        # metadata. The index in the list is the numeric value; duplicate
-        # labels keep their first (lowest) value in the label->value map.
-        labels = scan.enum_labels.get(oid)
-        if labels:
-            pump_options: Dict[str, int] = {}
-            for idx, label in enumerate(labels):
-                label = label.strip()
-                if label and label not in pump_options:
-                    pump_options[label] = idx
-            if pump_options and (platform == "select" or options is not None):
-                options = pump_options
-            if value_map is not None:
-                pump_value_map = {
-                    str(idx): label.strip() for idx, label in enumerate(labels) if label.strip()
+        # controller's own descriptor (member 4353) is the authoritative
+        # source of WHICH options exist and their numeric values (index =
+        # value) and overrides packaged metadata. The tokens are symbolic
+        # keys (the controller cannot localize); the DISPLAYED label per
+        # token comes from the shipped label map, falling back to the raw
+        # token, made unique per value (resolve_option_labels) so no
+        # pump-advertised value is ever dropped or shifted.
+        tokens = scan.enum_labels.get(oid)
+        if tokens:
+            tokens_by_value = {idx: t.strip() for idx, t in enumerate(tokens) if t.strip()}
+            if tokens_by_value and (platform == "select" or options is not None):
+                # options invert label->value: labels made unique per value.
+                labels_by_value = resolve_option_labels(
+                    rec, tokens_by_value, language, catalog.enum_token_labels
+                )
+                options = {labels_by_value[v]: v for v in sorted(labels_by_value)}
+            if value_map is not None and tokens_by_value:
+                # value->label is display-only: duplicate labels are fine
+                # (the reference itself shows e.g. "Standby" for 0 AND 2).
+                value_map = {
+                    str(v): resolve_enum_label(
+                        rec, tokens_by_value[v], language, catalog.enum_token_labels
+                    )
+                    for v in sorted(tokens_by_value)
                 }
-                if pump_value_map:
-                    value_map = pump_value_map
 
         # NO read-only downgrade (spec v4 G): a readable point of a known
         # writable type keeps its writable platform. Only a structurally
@@ -119,7 +140,12 @@ def build_entities(
         if platform == "switch" and ("on_value" not in rec or "off_value" not in rec):
             platform = "binary_sensor"
 
-        cfg: Dict[str, Any] = {"name": str(rec.get("name") or oid)}
+        name, name_source = resolve_point_name(rec, language)
+        cfg: Dict[str, Any] = {"name": name or oid, "name_source": name_source}
+        if tokens and (options is not None or value_map is not None):
+            # The raw descriptor tokens (index = numeric value): a language
+            # change re-resolves labels offline from these, without a rescan.
+            cfg["enum_tokens"] = [t.strip() for t in tokens]
 
         # Circuit membership comes from the catalog's explicit hc_tag (the OA
         # tag alone cannot reveal it: pump/mixer/flow-temp points live on the
@@ -178,6 +204,120 @@ def build_entities(
     out["sensors"] = [s for s in out["sensors"] if str(s.get("id")) not in writable_read_ids]
 
     return out
+
+
+_HC_FALLBACK_RE = re.compile(r"^(?:Heizkreis|Heating circuit) (\d+)$")
+
+
+def _localized_hc_fallback(current: str, language: str) -> Optional[str]:
+    """Translate an integration-provided circuit fallback name.
+
+    Only the two known fallback spellings ("Heizkreis <n>" / "Heating
+    circuit <n>") are rewritten; an owner-authored circuit name read from
+    the controller never matches and is never touched."""
+    m = _HC_FALLBACK_RE.match(current or "")
+    if not m:
+        return None
+    template = "Heizkreis {n}" if language == "de" else "Heating circuit {n}"
+    return template.format(n=m.group(1))
+
+
+def relocalize_entities(
+    entities_by_platform: Dict[str, List[Dict[str, Any]]],
+    catalog: DiscoveryCatalog,
+    language: str,
+) -> tuple[Dict[str, List[Dict[str, Any]]], bool]:
+    """Re-resolve display names and enum labels for a language, offline.
+
+    Applied at setup so an options-flow language change takes effect on
+    reload without a rescan. Scoped by CATALOG PROVENANCE, not identity
+    kind: every entity whose read id is a catalog point gets its display
+    name re-resolved — bundle-uuid entities included (a friendly rename is
+    allowed; the uuid, read/write ids, platform and device grouping stay
+    byte-identical, so unique_ids and entity_ids cannot change and no
+    duplicate can appear). An entity whose read id is not a catalog point
+    is left alone entirely.
+
+    Enum labels are only re-resolved where the raw pump tokens are
+    PROVABLE: from ``enum_tokens`` (stored at scan time), or — for
+    uuid-less discovery entities only — from the stored labels themselves
+    (pre-language discovery shipped the raw tokens as labels). A bundle
+    enum without stored tokens keeps its labels: bundle labels are not
+    tokens, and guessing is worse than a stale language. Values never
+    change; labels stay unique per value (resolve_option_labels).
+    Idempotent.
+    """
+
+    language = normalize_language(language)
+    changed = False
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for key, ents in entities_by_platform.items():
+        new_list: List[Dict[str, Any]] = []
+        for ent in ents or []:
+            if not isinstance(ent, dict):
+                new_list.append(ent)
+                continue
+            rid = str(ent.get("id") or ent.get("read_id") or "").strip()
+            oa = try_decode_oa(rid)
+            rec = catalog.points_by_id.get(canonical_oa(rid)) if oa is not None else None
+            if rec is None:
+                new_list.append(ent)
+                continue
+
+            new_ent = dict(ent)
+            name, name_source = resolve_point_name(rec, language)
+            if name:
+                new_ent["name"] = name
+                new_ent["name_source"] = name_source
+
+            # Recover the numeric-value -> raw-token table where provable.
+            token_by_value: Dict[int, str] = {}
+            stored_tokens = new_ent.get("enum_tokens")
+            if isinstance(stored_tokens, list):
+                token_by_value = {
+                    i: str(t).strip() for i, t in enumerate(stored_tokens) if str(t).strip()
+                }
+            elif not ent.get("uuid"):
+                # Discovery provenance: pre-language entries shipped the
+                # pump's raw tokens as labels, so the labels ARE the tokens.
+                if isinstance(ent.get("value_map"), dict):
+                    for v, lab in ent["value_map"].items():
+                        try:
+                            token_by_value[int(float(v))] = str(lab)
+                        except (TypeError, ValueError):
+                            pass
+                elif isinstance(ent.get("options"), dict):
+                    for lab, v in ent["options"].items():
+                        try:
+                            token_by_value.setdefault(int(v), str(lab))
+                        except (TypeError, ValueError):
+                            pass
+            if token_by_value:
+                if isinstance(ent.get("options"), dict):
+                    labels_by_value = resolve_option_labels(
+                        rec, token_by_value, language, catalog.enum_token_labels
+                    )
+                    if labels_by_value:
+                        new_ent["options"] = {
+                            labels_by_value[v]: v for v in sorted(labels_by_value)
+                        }
+                if isinstance(ent.get("value_map"), dict):
+                    new_ent["value_map"] = {
+                        str(v): resolve_enum_label(
+                            rec, token_by_value[v], language, catalog.enum_token_labels
+                        )
+                        for v in sorted(token_by_value)
+                    }
+
+            hc_name = _localized_hc_fallback(str(ent.get("heating_circuit_name") or ""), language)
+            if hc_name:
+                new_ent["heating_circuit_name"] = hc_name
+
+            if new_ent != ent:
+                changed = True
+            new_list.append(new_ent)
+        out[key] = new_list
+    return out, changed
 
 
 def merge_discovered_entities(

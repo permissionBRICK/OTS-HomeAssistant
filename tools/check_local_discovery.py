@@ -20,15 +20,19 @@ switch) are reported separately as "covered_by_other_platform" and do not
 fail the gate. Write-only ids are reported separately and are never counted
 as discovered.
 
-Spec v4 expectations: entity NAMES are checked against the packaged
-catalog's pump-first choice (APK label > bundle name > APK symbol) and enum
-OPTIONS against the state list read live from the controller's member-4353
-descriptor; heating-circuit names against the controller's own circuit
-names. Where those deliberately differ from the old reference-bundle
-labels, the differences are reported informationally
+The diff runs PER LANGUAGE (--language de|en|both, default both) against one
+shared read-only scan: entity NAMES are checked against the catalog's
+language-aware choice (German prefers the reference-bundle name, English
+the APK label) and enum OPTIONS against the state list read live from the
+controller's member-4353 descriptor with each token's label resolved from
+the shipped map for that language; heating-circuit names against the
+controller's own circuit names. Where those deliberately differ from the
+old reference-bundle labels, the differences are reported informationally
 ("renamed_from_reference", "enum_relabelled_from_reference",
 "circuit_renamed_from_reference") and do not fail the gate — a discovered
-value that matches neither is still a hard failure.
+value that matches neither is still a hard failure. The language-aware
+target: with de those informational counts drop to near zero (German users
+keep their labels); with en they stay high, which is correct.
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ import json
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PKG_DIR = REPO_ROOT / "custom_components" / "ochsner_local_ots"
@@ -118,34 +122,49 @@ def scan_counts(catalog: Any, scan: Any) -> Dict[str, int]:
     }
 
 
-def build_expectations(catalog: Any, scan: Any) -> Dict[str, Any]:
-    """Spec-v4 per-id expectations derived from the catalog + live scan.
+def build_expectations(catalog: Any, scan: Any, *, language: str = "en") -> Dict[str, Any]:
+    """Per-id expectations derived from the catalog + live scan, per language.
 
-    - names: the catalog's pump-first choice (APK label > bundle > symbol)
+    - names: the catalog's language-aware choice (catalog.resolve_point_name:
+      German prefers the bundle name, English the APK label; identity read
+      from the pump wins where applicable)
     - select options / value maps: the controller's member-4353 state list
-      (index = value; duplicate labels keep their first value in the
-      label->value orientation), falling back to catalog metadata
-    - circuit names: the controller's own circuit names, falling back to
-      "Heizkreis <ordinal>" — exactly what build_entities() produces.
+      (index = value) with each token's label resolved from the shipped map
+      for the language, falling back to the raw token; duplicate labels keep
+      their first value in the label->value orientation. Without a live
+      descriptor, catalog metadata.
+    - circuit names: the controller's own circuit names, falling back to the
+      language's "Heizkreis <n>"/"Heating circuit <n>" — exactly what
+      build_entities() produces.
     """
 
+    cat_mod = sys.modules["ots_local_lib.catalog"]
+    language = cat_mod.normalize_language(language)
+    hc_fallback = "Heizkreis {n}" if language == "de" else "Heating circuit {n}"
     hc_ordinal = {tag: i + 1 for i, tag in enumerate(catalog.hc_tags)}
     exp: Dict[str, Any] = {"name": {}, "select_options": {}, "value_map": {}, "circuit": {}}
     for rec in catalog.points:
         rid = str(rec["id"])
-        exp["name"][rid] = str(rec.get("name") or rid)
-        labels = scan.enum_labels.get(rid) if scan is not None else None
-        if labels:
-            options: Dict[str, int] = {}
-            for idx, label in enumerate(labels):
-                label = label.strip()
-                if label and label not in options:
-                    options[label] = idx
-            if options:
-                exp["select_options"][rid] = options
-            vm = {str(idx): lab.strip() for idx, lab in enumerate(labels) if lab.strip()}
-            if vm:
-                exp["value_map"][rid] = vm
+        name, _source = cat_mod.resolve_point_name(rec, language)
+        exp["name"][rid] = str(name or rid)
+        tokens = scan.enum_labels.get(rid) if scan is not None else None
+        if tokens:
+            tokens_by_value = {idx: t.strip() for idx, t in enumerate(tokens) if t.strip()}
+            if tokens_by_value:
+                # select options invert label->value: unique labels; the
+                # value_map is display-only: duplicate labels allowed.
+                labels_by_value = cat_mod.resolve_option_labels(
+                    rec, tokens_by_value, language, catalog.enum_token_labels
+                )
+                exp["select_options"][rid] = {
+                    labels_by_value[v]: v for v in sorted(labels_by_value)
+                }
+                exp["value_map"][rid] = {
+                    str(v): cat_mod.resolve_enum_label(
+                        rec, tokens_by_value[v], language, catalog.enum_token_labels
+                    )
+                    for v in sorted(tokens_by_value)
+                }
         else:
             if isinstance(rec.get("options"), dict):
                 exp["select_options"][rid] = rec["options"]
@@ -157,7 +176,7 @@ def build_expectations(catalog: Any, scan: Any) -> Dict[str, Any]:
             circuit_name = None
             if scan is not None:
                 circuit_name = scan.circuit_names.get(hc_tag)
-            exp["circuit"][rid] = circuit_name or f"Heizkreis {hc_ordinal[hc_tag]}"
+            exp["circuit"][rid] = circuit_name or hc_fallback.format(n=hc_ordinal[hc_tag])
     return exp
 
 
@@ -406,7 +425,9 @@ def diff_report(
     }
 
 
-async def run(host: str, port: int, username: str, password: str, pin: str) -> Dict[str, Any]:
+async def run(
+    host: str, port: int, username: str, password: str, pin: str, languages: List[str]
+) -> Dict[str, Any]:
     load_integration_modules()
     import aiohttp
 
@@ -418,6 +439,7 @@ async def run(host: str, port: int, username: str, password: str, pin: str) -> D
     catalog = cat_mod.load_catalog()
     ref = reference_controller()
 
+    # ONE read-only scan; the language pass is offline label resolution.
     async with aiohttp.ClientSession() as session:
         api = api_mod.ClimatixGenericApi(
             session,
@@ -427,28 +449,60 @@ async def run(host: str, port: int, username: str, password: str, pin: str) -> D
         )
         scan = await disc_mod.async_scan(api, catalog)
 
-    entities = de_mod.build_entities(catalog=catalog, scan=scan)
-    expectations = build_expectations(catalog, scan)
-    report = diff_report(ref, entities, scan.values, host=host, expectations=expectations)
+    report: Dict[str, Any] = {
+        "host": f"{host}:{port}",
+        "catalog_version": catalog.catalog_version,
+        "present_tags": scan.present_tags,
+        "circuit_names": {str(k): v for k, v in scan.circuit_names.items()},
+        "plant": {
+            "model": scan.plant_model,
+            "serial": scan.plant_serial,
+            "sw_version": scan.plant_sw_version,
+        },
+        "catalog": {
+            "points_total": len(catalog.points),
+            "enabled": sum(1 for p in catalog.points if p.get("enabled_default") is not False),
+            "disabled": sum(1 for p in catalog.points if p.get("enabled_default") is False),
+            "disabled_technical": sum(1 for p in catalog.points if p.get("technical")),
+            "writable": sum(1 for p in catalog.points if p.get("write_id")),
+        },
+        "scan": scan_counts(catalog, scan),
+        "languages": {},
+    }
 
-    report["host"] = f"{host}:{port}"
-    report["catalog_version"] = catalog.catalog_version
-    report["present_tags"] = scan.present_tags
-    report["circuit_names"] = {str(k): v for k, v in scan.circuit_names.items()}
-    report["plant"] = {
-        "model": scan.plant_model,
-        "serial": scan.plant_serial,
-        "sw_version": scan.plant_sw_version,
-    }
-    report["catalog"] = {
-        "points_total": len(catalog.points),
-        "enabled": sum(1 for p in catalog.points if p.get("enabled_default") is not False),
-        "disabled": sum(1 for p in catalog.points if p.get("enabled_default") is False),
-        "disabled_technical": sum(1 for p in catalog.points if p.get("technical")),
-        "writable": sum(1 for p in catalog.points if p.get("write_id")),
-    }
-    report["scan"] = scan_counts(catalog, scan)
-    report["entities"] = {key: len(entities.get(key, [])) for key in de_mod.PLATFORMS}
+    for language in languages:
+        hc_fallback = "Heizkreis {n}" if language == "de" else "Heating circuit {n}"
+        entities = de_mod.build_entities(
+            catalog=catalog, scan=scan, language=language, hc_fallback_template=hc_fallback
+        )
+        expectations = build_expectations(catalog, scan, language=language)
+        lang_report = diff_report(ref, entities, scan.values, host=host, expectations=expectations)
+        lang_report["entities"] = {key: len(entities.get(key, [])) for key in de_mod.PLATFORMS}
+
+        # Independent gate: localization must never drop or shift a
+        # pump-advertised option. For every discovered select with a live
+        # descriptor, the option VALUES must equal exactly the nonempty
+        # descriptor indices (labels are display-only and may collide into
+        # deterministic disambiguations; values may not).
+        incomplete: List[Dict[str, Any]] = []
+        for ent in entities.get("selects", []) or []:
+            rid = str(ent.get("read_id") or ent.get("id") or "")
+            tokens = scan.enum_labels.get(rid)
+            if not tokens:
+                continue
+            expected_values = {idx for idx, t in enumerate(tokens) if t.strip()}
+            got_values = {int(v) for v in (ent.get("options") or {}).values()}
+            if got_values != expected_values:
+                incomplete.append(
+                    {"id": rid, "expected_values": sorted(expected_values), "got_values": sorted(got_values)}
+                )
+        lang_report["gate_failures"]["select_options_incomplete"] = len(incomplete)
+        lang_report["diff"]["select_options_incomplete"] = incomplete
+        lang_report["gate_passed"] = not any(lang_report["gate_failures"].values())
+
+        report["languages"][language] = lang_report
+
+    report["gate_passed"] = all(r["gate_passed"] for r in report["languages"].values())
     return report
 
 
@@ -459,39 +513,42 @@ def main() -> int:
     ap.add_argument("--username", default="JSON")
     ap.add_argument("--password", default="SBTAdmin!")
     ap.add_argument("--pin", default="7659")
+    ap.add_argument(
+        "--language",
+        choices=("de", "en", "both"),
+        default="both",
+        help="run the diff in one language or (default) both",
+    )
     ap.add_argument("--report", type=Path, default=None, help="write full JSON report here")
     args = ap.parse_args()
 
-    report = asyncio.run(run(args.host, args.port, args.username, args.password, args.pin))
+    languages = ["de", "en"] if args.language == "both" else [args.language]
+    report = asyncio.run(run(args.host, args.port, args.username, args.password, args.pin, languages))
 
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         print(f"Full report written to {args.report}")
 
-    summary_keys = (
-        "host",
-        "catalog_version",
-        "present_tags",
-        "circuit_names",
-        "plant",
-        "catalog",
-        "scan",
-        "reference",
-        "coverage",
-        "entities",
-        "gate_failures",
-        "gate_passed",
-    )
+    summary_keys = ("host", "catalog_version", "present_tags", "circuit_names", "plant", "catalog", "scan")
     print(json.dumps({k: report[k] for k in summary_keys}, ensure_ascii=False, indent=1))
-    d = report["diff"]
-    print(
-        "diff: "
-        + " ".join(
-            f"{k}={len(v['ids']) if isinstance(v, dict) and 'ids' in v else len(v)}"
-            for k, v in d.items()
+    for language, lr in report["languages"].items():
+        print(f"--- language={language}")
+        print(
+            json.dumps(
+                {k: lr[k] for k in ("reference", "coverage", "entities", "gate_failures", "gate_passed")},
+                ensure_ascii=False,
+                indent=1,
+            )
         )
-    )
+        d = lr["diff"]
+        print(
+            f"diff[{language}]: "
+            + " ".join(
+                f"{k}={len(v['ids']) if isinstance(v, dict) and 'ids' in v else len(v)}"
+                for k, v in d.items()
+            )
+        )
     return 0 if report["gate_passed"] else 2
 
 

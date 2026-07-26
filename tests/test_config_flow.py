@@ -99,3 +99,31 @@ def test_no_cloud_or_bundle_steps_in_onboarding():
     flow = cf.ClimatixGenericConfigFlow
     for legacy_step in ("async_step_select_plants", "async_step_hosts", "async_step_finish"):
         assert not hasattr(flow, legacy_step)
+
+
+def test_resolve_language_order_and_explicit_auto():
+    """Documented order: explicit option > per-controller CONF_LANGUAGE >
+    HA language > en. Regression (review round 3): an explicit "auto"
+    (follow Home Assistant) skips the controller's stored language — a
+    legacy bundle controller keeps e.g. "DE" there."""
+
+    from types import SimpleNamespace
+
+    from custom_components.ochsner_local_ots.const import CONF_LANGUAGE
+    from custom_components.ochsner_local_ots.local_scan import resolve_language
+
+    hass_en = SimpleNamespace(config=SimpleNamespace(language="en"))
+    hass_de = SimpleNamespace(config=SimpleNamespace(language="de-AT"))
+    legacy_ctrl = {CONF_LANGUAGE: "DE"}
+
+    # Explicit option always wins.
+    assert resolve_language(hass_en, option_value="de", controller=legacy_ctrl) == "de"
+    assert resolve_language(hass_de, option_value="en", controller=legacy_ctrl) == "en"
+    # Absent option: the controller's stored language applies.
+    assert resolve_language(hass_en, option_value=None, controller=legacy_ctrl) == "de"
+    # Explicit "auto": follow HA, NOT the controller's stored language.
+    assert resolve_language(hass_en, option_value="auto", controller=legacy_ctrl) == "en"
+    assert resolve_language(hass_de, option_value="auto", controller=legacy_ctrl) == "de"
+    # Nothing anywhere: HA language, default en.
+    assert resolve_language(hass_de) == "de"
+    assert resolve_language(SimpleNamespace(config=SimpleNamespace(language=None))) == "en"
