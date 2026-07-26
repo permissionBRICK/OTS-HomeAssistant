@@ -61,6 +61,8 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
         self._base_url = base_url
         self._parent_device_name = str(cfg.get("device_name") or f"Climatix ({host})")
         self._device_model = str(cfg.get("device_model") or "Climatix")
+        self._device_serial = cfg.get("device_serial") or None
+        self._device_sw_version = cfg.get("device_sw_version") or None
         self._hc_uid = str(cfg.get(CONF_HEATING_CIRCUIT_UID) or "").strip()
         self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
 
@@ -111,6 +113,8 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
             name=self._parent_device_name,
             manufacturer="Ochsner",
             model=self._device_model,
+            serial_number=self._device_serial,
+            sw_version=self._device_sw_version,
             configuration_url=self._base_url,
         )
 
@@ -182,7 +186,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         base_url: str = ctrl.get("base_url", f"http://{host}")
         device_name: str = ctrl.get("device_name", f"Climatix ({host})")
         device_model: str = ctrl.get("device_model", "Climatix")
+        device_serial = ctrl.get("device_serial")
+        device_sw_version = ctrl.get("device_sw_version")
         selects = ctrl.get("selects", [])
         for s in selects:
-            entities.append(ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=dict(s, device_name=device_name, device_model=device_model)))
+            entities.append(ClimatixGenericSelect(coordinator, api=api, host=host, base_url=base_url, cfg=dict(s, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version)))
     async_add_entities(entities)

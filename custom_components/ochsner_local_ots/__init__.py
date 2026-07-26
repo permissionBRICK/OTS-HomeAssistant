@@ -45,6 +45,8 @@ from .const import (
     CONF_CONTROLLERS,
     CONF_DEVICE_MODEL,
     CONF_PLANT_NAME,
+    CONF_SERIAL_NUMBER,
+    CONF_SW_VERSION,
     CONF_BUNDLE_STORAGE_KEY,
     CONF_LANGUAGE,
     CONF_RESCAN_NOW,
@@ -586,8 +588,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # Type only: aiohttp errors can embed the PIN-bearing request URL.
             _LOGGER.warning("Local catalog scan failed: %s", type(err).__name__)
         else:
+            metadata_changed = updated_controllers != controllers
             controllers = updated_controllers
-            if any(local_added.values()):
+            if any(local_added.values()) or metadata_changed:
                 try:
                     hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: controllers})
                 except Exception as err:  # noqa: BLE001
@@ -806,6 +809,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "base_url": base_url,
                 "device_name": str(ctrl.get(CONF_PLANT_NAME) or f"Climatix ({host})"),
                 "device_model": str(ctrl.get(CONF_DEVICE_MODEL) or "Climatix"),
+                "device_serial": str(ctrl.get(CONF_SERIAL_NUMBER) or "") or None,
+                "device_sw_version": str(ctrl.get(CONF_SW_VERSION) or "") or None,
                 "sensors": sensors,
                 "binary_sensors": binary_sensors,
                 "numbers": numbers,

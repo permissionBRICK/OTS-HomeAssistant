@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import struct
 from functools import lru_cache
 from pathlib import Path
@@ -32,8 +33,22 @@ HC_NAME_OBJECT_TYPE = 8964
 HC_NAME_POINT_INDEX = 61003
 HC_NAME_MEMBER_ID = 256
 
-# Schedule slot members (514..525) are excluded from the default scan.
+# Schedules/time programs are excluded from the integration entirely
+# (spec v4 A3): the schedule object type and the schedule slot members.
+SCHEDULE_OBJECT_TYPE = 8717
 SCHEDULE_MEMBER_IDS = frozenset(range(514, 526))
+
+# Enum state descriptor: member 4353 on an enum point's own object address
+# answers with the star-separated state list (e.g. "Comfort*Off*Red*Norm*...");
+# the index in that list IS the numeric value. Read live at scan time.
+DESCRIPTOR_MEMBER_ID = 4353
+
+# Plant identity, read live from the controller at scan time (spec v4 B1):
+# the plant/model type names the HA device, the serial number identifies it
+# (never a visible entity), the software version becomes sw_version.
+PLANT_MODEL_OA = "BCP0c9VVAAE="  # "Anlagentyp" -> e.g. "AIRHAWK518C11A"
+PLANT_SERIAL_OA = "BCOOVNVVAAE="  # "Seriennummer"
+PLANT_SW_VERSION_OA = "IAABAAAAAAA="  # "Software Version" -> e.g. "v3.3.20"
 
 CATALOG_FILENAME = "discovery_catalog.json"
 
@@ -118,8 +133,95 @@ def hc_name_oa(instance_tag: int) -> str:
     return encode_oa(HC_NAME_OBJECT_TYPE, instance_tag, HC_NAME_POINT_INDEX, HC_NAME_MEMBER_ID)
 
 
+def descriptor_oa(encoded: str) -> str:
+    """OA of the enum state descriptor for a point's object address."""
+    return derive_member(encoded, DESCRIPTOR_MEMBER_ID)
+
+
 def is_schedule_member(member_id: int) -> bool:
     return int(member_id) in SCHEDULE_MEMBER_IDS
+
+
+def is_excluded_point(oa: OA) -> bool:
+    """Schedule/time-program and enum-descriptor addresses never become
+    catalog points (spec v4 A3) — neither in the packaged asset nor via the
+    runtime bundle-overlay path. Descriptors are read live at scan time."""
+    return (
+        oa.object_type == SCHEDULE_OBJECT_TYPE
+        or is_schedule_member(oa.member_id)
+        or oa.member_id == DESCRIPTOR_MEMBER_ID
+    )
+
+
+# --- v4 point classification -------------------------------------------------
+# Single source of truth, shared by the catalog builder
+# (tools/build_discovery_catalog.py) and the runtime bundle-overlay path, so
+# a stored cloud bundle can never undo the packaged rules.
+
+# Entities whose value is the owner's personal data, plant identity or the
+# network config (spec v4 E: Kunde, Firma, Telefonnummer, E-Mailadresse,
+# IP-Adresse, Subnetzmaske, Gateway, DNS, MAC, Signature part 1-3; plus the
+# serial number, which identifies the device but must not be a visible
+# entity). They are still created, but only as disabled diagnostic entities.
+PRIVACY_NAME_PATTERNS = re.compile(
+    r"(?i)\b(kunde|kundenname|customer|owner|betreiber|besitzer|telefon\w*|(?:tele)?phone|"
+    r"e-?mail|mac|ip-?adresse|ip address|subnetz\w*|subnet\w*|gateway|dns|"
+    r"firma|company|signature?\w*|signatur\w*|seriennummer|serial number)\b"
+)
+
+# Destructive / one-shot / service-and-commissioning style writable points:
+# resets and relay tests, screed-drying program controls, manual defrost,
+# error acknowledge / system unlock, and communication-parameter settings
+# (baud rate, parity, stop bit, bus address, cloud connection). Per the
+# project owner's decision these are STILL CREATED as writable entities, but
+# entity_registry_enabled_default=False so nothing fires by accident.
+SERVICE_NAME_PATTERNS = re.compile(
+    r"(?i)(reset|neustart|restart|reboot|werkseinstellung|factory|format|"
+    r"relais[ -]?test|relay[ -]?test|inbetriebnahme|commissioning|"
+    r"program\s*start|programm\s*start|screed|estrich|austrocknung|"
+    r"abtauung|defrost|acknowledge|quittier|unlock|entriegel|"
+    r"stop\s*bit|baud|parit(?:y|ät)|cloud|\baddress\b|\badresse\b)"
+)
+
+# Technical-name test (owner-approved, spec v4 A4): a name with no
+# whitespace that has a lowercase->uppercase transition or a run of 2+
+# consecutive capitals (e.g. "CprOprHrs1", "HPMEmgyModConf", "Th-EngySumAct",
+# "DHCP") is a machine symbol, not a user-facing label.
+_TECH_TRANSITION = re.compile(r"[a-z][A-Z]")
+_TECH_CAP_RUN = re.compile(r"[A-Z]{2}")
+
+
+def is_technical_name(name: str) -> bool:
+    """True when a name is a machine symbol rather than a user-facing label."""
+    if not name or any(ch.isspace() for ch in name):
+        return False
+    return bool(_TECH_TRANSITION.search(name) or _TECH_CAP_RUN.search(name))
+
+
+def apply_v4_point_flags(rec: Dict[str, Any], extra_names: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Apply the v4 disable/diagnostic rules to a catalog point record.
+
+    The privacy and service/one-shot rules are matched against ALL known
+    name evidence (``extra_names``: alternate labels, the bundle name, APK
+    symbols), not just the chosen display name — an APK-first display name
+    like "Program selection" must not mask the service evidence in its
+    bundle name "Modus Austrocknungsprogramm". The technical-name test only
+    looks at the chosen display name (almost every point has a technical
+    symbol as an alternate). Flags are only ever strengthened (a point can
+    be disabled, never re-enabled), so re-running this is safe.
+    """
+    name = str(rec.get("name") or "")
+    evidence = [name] + [str(n) for n in (extra_names or []) if n]
+    if is_technical_name(name):
+        rec["technical"] = True
+        rec["diagnostic"] = True
+        rec["enabled_default"] = False
+    if any(PRIVACY_NAME_PATTERNS.search(n) for n in evidence):
+        rec["diagnostic"] = True
+        rec["enabled_default"] = False
+    if rec.get("write_id") and any(SERVICE_NAME_PATTERNS.search(n) for n in evidence):
+        rec["enabled_default"] = False
+    return rec
 
 
 class DiscoveryCatalog:
@@ -170,30 +272,12 @@ class DiscoveryCatalog:
 
     # -- scan helpers -----------------------------------------------------
 
-    def probe_ids_by_tag(self, *, per_tag: int = 8) -> Dict[int, List[str]]:
-        """Representative points per instance tag for the phase-A module probe.
-
-        Prefer reference-plant points (proven to exist on real hardware at
-        least once); deterministic order so scans are reproducible.
-        """
-
-        by_tag: Dict[int, List[Dict[str, Any]]] = {}
-        for rec in self.points:
-            if rec.get("schedule"):
-                continue
-            by_tag.setdefault(int(rec["tag"]), []).append(rec)
-
-        out: Dict[int, List[str]] = {}
-        for tag, recs in by_tag.items():
-            recs_sorted = sorted(
-                recs,
-                key=lambda r: (0 if "reference" in (r.get("sources") or []) else 1, str(r["id"])),
-            )
-            out[tag] = [str(r["id"]) for r in recs_sorted[: max(1, int(per_tag))]]
-        return out
-
     def scan_ids_for_tags(self, tags: set[int]) -> List[str]:
-        """All non-schedule read ids belonging to the given (present) tags."""
+        """All non-schedule read ids belonging to the given tags.
+
+        The packaged catalog contains no schedule points (v4 membership); the
+        guard only matters for overlay points from stored bundles.
+        """
         out: List[str] = []
         seen: set[str] = set()
         for rec in self.points:

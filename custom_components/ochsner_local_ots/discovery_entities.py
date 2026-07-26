@@ -28,7 +28,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from .catalog import DiscoveryCatalog, canonical_oa, try_decode_oa
+from .catalog import (
+    DiscoveryCatalog,
+    apply_v4_point_flags,
+    canonical_oa,
+    is_excluded_point,
+    try_decode_oa,
+)
 from .discovery import DiscoveryScanResult
 
 PLATFORMS = ("sensors", "binary_sensors", "numbers", "selects", "texts", "switches")
@@ -41,14 +47,6 @@ _KIND_TO_KEY = {
     "text": "texts",
     "switch": "switches",
 }
-
-
-def _is_numeric(value: Any) -> bool:
-    try:
-        float(value)
-        return True
-    except (TypeError, ValueError):
-        return False
 
 
 def _apply_common(cfg: Dict[str, Any], rec: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,8 +62,14 @@ def build_entities(
     catalog: DiscoveryCatalog,
     scan: DiscoveryScanResult,
     hc_uid_by_tag: Optional[Dict[int, str]] = None,
+    hc_fallback_template: str = "Heizkreis {n}",
 ) -> Dict[str, List[Dict[str, Any]]]:
-    """Convert readable scan results into per-platform entity config lists."""
+    """Convert readable scan results into per-platform entity config lists.
+
+    ``hc_fallback_template`` names a circuit whose owner-configured name
+    could not be read from the controller; the HA caller passes a
+    language-appropriate template ("Heizkreis {n}" / "Heating circuit {n}").
+    """
 
     hc_uid_by_tag = dict(hc_uid_by_tag or {})
     hc_ordinal = {tag: i + 1 for i, tag in enumerate(catalog.hc_tags)}
@@ -79,20 +83,37 @@ def build_entities(
         if rec.get("schedule") or rec.get("descriptor"):
             continue
 
-        value = scan.values.get(oid)
         platform = str(rec.get("platform") or "sensor")
         write_id = rec.get("write_id")
         options = rec.get("options") if isinstance(rec.get("options"), dict) else None
         value_map = rec.get("value_map") if isinstance(rec.get("value_map"), dict) else None
 
-        # Same demotion guards the bundle generator applies after probing:
-        # a "writable" shape only stays writable when the live value fits it.
+        # Pump-first enums (spec v4 C): the state list read from the
+        # controller's own descriptor (member 4353) overrides packaged
+        # metadata. The index in the list is the numeric value; duplicate
+        # labels keep their first (lowest) value in the label->value map.
+        labels = scan.enum_labels.get(oid)
+        if labels:
+            pump_options: Dict[str, int] = {}
+            for idx, label in enumerate(labels):
+                label = label.strip()
+                if label and label not in pump_options:
+                    pump_options[label] = idx
+            if pump_options and (platform == "select" or options is not None):
+                options = pump_options
+            if value_map is not None:
+                pump_value_map = {
+                    str(idx): label.strip() for idx, label in enumerate(labels) if label.strip()
+                }
+                if pump_value_map:
+                    value_map = pump_value_map
+
+        # NO read-only downgrade (spec v4 G): a readable point of a known
+        # writable type keeps its writable platform. Only a structurally
+        # impossible entity falls back: no write binding at all, a select
+        # without any options, or a switch without on/off values.
         if platform in {"number", "select", "text", "switch"} and not (isinstance(write_id, str) and write_id):
             platform = "binary_sensor" if platform == "switch" else "sensor"
-        if platform == "number" and not _is_numeric(value):
-            platform = "sensor"
-        if platform == "text" and value is not None and not isinstance(value, str):
-            platform = "sensor"
         if platform == "select" and not options:
             platform = "sensor"
         if platform == "switch" and ("on_value" not in rec or "off_value" not in rec):
@@ -108,7 +129,7 @@ def build_entities(
             hc_tag = int(hc_tag)
             cfg["heating_circuit_uid"] = str(hc_uid_by_tag.get(hc_tag) or f"tag:{hc_tag}")
             cfg["heating_circuit_name"] = (
-                scan.circuit_names.get(hc_tag) or f"Heizkreis {hc_ordinal[hc_tag]}"
+                scan.circuit_names.get(hc_tag) or hc_fallback_template.format(n=hc_ordinal[hc_tag])
             )
 
         if platform == "sensor":
@@ -304,14 +325,18 @@ def overlay_points_from_bundle_entities(
             if not isinstance(ent, dict):
                 continue
             read_id = str(ent.get("id") or ent.get("read_id") or "").strip()
-            if not read_id or try_decode_oa(read_id) is None:
+            oa = try_decode_oa(read_id)
+            if oa is None or is_excluded_point(oa):
+                # Schedules/time programs and enum descriptors are excluded
+                # from the integration entirely (spec v4 A3) — a stored
+                # bundle cannot reintroduce them.
                 continue
             read_id = canonical_oa(read_id)
             rec: Dict[str, Any] = {
                 "id": read_id,
                 "platform": kind,
                 "name": str(ent.get("name") or read_id),
-                "name_confidence": "reference",
+                "name_source": "bundle",
                 "sources": ["bundle_import"],
             }
             write_id = ent.get("write_id")
@@ -329,12 +354,35 @@ def overlay_points_from_bundle_entities(
     return out
 
 
+# Metadata a stored bundle may contribute to a catalog point. Names and the
+# v4 safety flags are NOT in this list: the packaged pump-first naming and
+# the disable/diagnostic rules always win (spec v4 B/A4/E).
+_OVERLAY_METADATA_KEYS = (
+    "platform",
+    "write_id",
+    "unit",
+    "options",
+    "value_map",
+    "min",
+    "max",
+    "bundle_min",
+    "bundle_max",
+    "step",
+    "on_value",
+    "off_value",
+    "hc_tag",
+)
+
+
 def catalog_with_overlay(base_raw: Dict[str, Any], overlay: List[Dict[str, Any]]) -> DiscoveryCatalog:
     """Return a runtime catalog with bundle-derived overlay points merged in.
 
-    Overlay metadata wins over packaged metadata (a real bundle is the more
-    authoritative source for this plant); unknown addresses are added along
-    with their instance tags so the sweep covers them.
+    A bundle enriches METADATA (write bindings, options, units, bounds,
+    circuit membership — it is the more authoritative source for this
+    plant's shaping) and may add unknown addresses along with their instance
+    tags so the sweep covers them. It can never rename a packaged point,
+    weaken the v4 disable/diagnostic flags, or reintroduce excluded
+    schedule/descriptor addresses.
     """
 
     raw = dict(base_raw)
@@ -346,20 +394,27 @@ def catalog_with_overlay(base_raw: Dict[str, Any], overlay: List[Dict[str, Any]]
     for ov in overlay:
         oid = str(ov.get("id") or "")
         oa = try_decode_oa(oid)
-        if oa is None:
+        if oa is None or is_excluded_point(oa):
             continue
         oid = canonical_oa(oid)
         ov = dict(ov, id=oid)
         existing = points_by_id.get(oid)
         if existing is not None:
             merged = dict(existing)
-            merged.pop("diagnostic", None)
-            merged.pop("enabled_default", None)
-            merged.update(ov)
+            for k in _OVERLAY_METADATA_KEYS:
+                if ov.get(k) is not None:
+                    merged[k] = ov[k]
+            # An explicit bundle disable is respected; flags only strengthen.
+            if ov.get("enabled_default") is False:
+                merged["enabled_default"] = False
             merged["sources"] = sorted(set(existing.get("sources") or []) | set(ov.get("sources") or []))
-            points_by_id[oid] = merged
+            # Re-apply the v4 rules: a write binding contributed by the
+            # bundle can make the service/one-shot disable rule applicable,
+            # and the bundle's own name counts as classification evidence
+            # even though it never becomes the display name.
+            points_by_id[oid] = apply_v4_point_flags(merged, extra_names=[str(ov.get("name") or "")])
         else:
-            points_by_id[oid] = dict(ov)
+            points_by_id[oid] = apply_v4_point_flags(dict(ov))
 
     known_tags = {int(t.get("tag")) for t in raw.get("tags", []) or [] if isinstance(t, dict)}
     new_tags = list(raw.get("tags", []) or [])

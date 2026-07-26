@@ -33,6 +33,8 @@ from .const import (
     CONF_POLLING_THRESHOLD,
     CONF_MAX_IDS_PER_READ_REQUEST,
     CONF_SELECTS,
+    CONF_SERIAL_NUMBER,
+    CONF_SW_VERSION,
     CONF_SWITCHES,
     CONF_SENSORS,
     CONF_STEP,
@@ -86,6 +88,11 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._scan_summary: Dict[str, Any] = {}
         self._catalog_version: str = ""
         self._conn: Dict[str, Any] = {}
+        # Plant identity read from the controller during the scan (pump-first
+        # naming): model type names the device, serial identifies it.
+        self._plant_model: Optional[str] = None
+        self._plant_serial: Optional[str] = None
+        self._plant_sw_version: Optional[str] = None
 
     def _host_already_configured(self, host: str) -> bool:
         host = host.strip()
@@ -143,6 +150,9 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self._scanned_entities = entities
         self._catalog_version = catalog.catalog_version
+        self._plant_model = scan.plant_model
+        self._plant_serial = scan.plant_serial
+        self._plant_sw_version = scan.plant_sw_version
         self._conn = {
             CONF_HOST: host,
             CONF_PORT: port,
@@ -164,11 +174,15 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _create_local_entry(self):
         host = str(self._conn.get(CONF_HOST) or "")
-        title = f"Ochsner ({host})"
+        # Pump-first naming: the plant/model type read from the controller
+        # ("Anlagentyp", e.g. "AIRHAWK518C11A") names the HA device.
+        title = f"{self._plant_model} ({host})" if self._plant_model else f"Ochsner ({host})"
         entities = self._scanned_entities or {}
         controller: Dict[str, Any] = {
             CONF_PLANT_NAME: title,
-            CONF_DEVICE_MODEL: "Climatix",
+            CONF_DEVICE_MODEL: self._plant_model or "Climatix",
+            CONF_SERIAL_NUMBER: self._plant_serial,
+            CONF_SW_VERSION: self._plant_sw_version,
             CONF_DISCOVERY_SOURCE: DISCOVERY_SOURCE_LOCAL,
             CONF_CATALOG_VERSION: self._catalog_version,
             **self._conn,

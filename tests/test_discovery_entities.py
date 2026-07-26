@@ -60,28 +60,45 @@ def test_unique_id_compatibility_no_uuid(catalog_mod, discovery_mod, entities_mo
             assert "uuid" not in ent
 
 
-def test_demotion_guards(catalog_mod, discovery_mod, entities_mod):
+def test_no_read_only_downgrade(catalog_mod, discovery_mod, entities_mod):
+    """Spec v4 G: a readable point of a known writable type stays a writable
+    entity — the live value's momentary shape never demotes it."""
+
     enc = catalog_mod.encode_oa
     num_id = enc(8960, 100, 1, 256)
     txt_id = enc(8964, 100, 2, 256)
+    points = [
+        # Number whose live value happens to be a string: STAYS a number.
+        {"id": num_id, "platform": "number", "name": "N", "sources": ["reference"], "write_id": num_id},
+        # Text whose live value happens to be numeric: STAYS a text.
+        {"id": txt_id, "platform": "text", "name": "T", "sources": ["reference"], "write_id": txt_id},
+    ]
+    cat = make_catalog(catalog_mod, points, [100])
+    scan = make_scan(discovery_mod, {num_id: "text", txt_id: 3.5})
+    out = entities_mod.build_entities(catalog=cat, scan=scan)
+
+    assert [n["read_id"] for n in out["numbers"]] == [num_id]
+    assert [t["read_id"] for t in out["texts"]] == [txt_id]
+    assert out["sensors"] == []
+
+
+def test_structurally_impossible_entities_fall_back(catalog_mod, discovery_mod, entities_mod):
+    """Only a structurally impossible writable falls back to read-only: no
+    write binding at all, a select without options, a switch without on/off."""
+
+    enc = catalog_mod.encode_oa
     no_write = enc(8962, 100, 3, 256)
     sw_no_onoff = enc(8706, 100, 4, 256)
     points = [
-        # Number whose live value is a string -> plain sensor.
-        {"id": num_id, "platform": "number", "name": "N", "sources": ["reference"], "write_id": num_id},
-        # Text whose live value is numeric -> plain sensor.
-        {"id": txt_id, "platform": "text", "name": "T", "sources": ["reference"], "write_id": txt_id},
-        # Select without a write id -> sensor.
         {"id": no_write, "platform": "select", "name": "S", "sources": ["reference"], "options": {"A": 0}},
-        # Switch without on/off values -> binary sensor.
         {"id": sw_no_onoff, "platform": "switch", "name": "B", "sources": ["reference"], "write_id": sw_no_onoff},
     ]
     cat = make_catalog(catalog_mod, points, [100])
-    scan = make_scan(discovery_mod, {num_id: "text", txt_id: 3.5, no_write: 0.0, sw_no_onoff: 1.0})
+    scan = make_scan(discovery_mod, {no_write: 0.0, sw_no_onoff: 1.0})
     out = entities_mod.build_entities(catalog=cat, scan=scan)
 
-    assert out["numbers"] == [] and out["texts"] == [] and out["selects"] == [] and out["switches"] == []
-    assert {s["id"] for s in out["sensors"]} == {num_id, txt_id, no_write}
+    assert out["selects"] == [] and out["switches"] == []
+    assert [s["id"] for s in out["sensors"]] == [no_write]
     assert [b["id"] for b in out["binary_sensors"]] == [sw_no_onoff]
 
 
@@ -241,3 +258,173 @@ def test_schedule_and_descriptor_points_never_become_entities(catalog_mod, disco
     scan = make_scan(discovery_mod, {sched: 1.0, desc: 2.0})
     out = entities_mod.build_entities(catalog=cat, scan=scan)
     assert all(not lst for lst in out.values())
+
+
+def test_pump_enum_labels_override_catalog_options(catalog_mod, discovery_mod, entities_mod):
+    """Spec v4 C: the state list read from the controller's own descriptor
+    wins over packaged metadata; index in the list = numeric value."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 40, 290)
+    vm_id = enc(8971, 100, 41, 256)
+    points = [
+        {"id": sel_id, "platform": "select", "name": "Mode", "sources": ["reference"], "write_id": sel_id, "options": {"Komfort": 0, "Aus": 1}},
+        {"id": vm_id, "platform": "sensor", "name": "Status", "sources": ["reference"], "value_map": {"0": "Standby", "1": "Heizbetrieb"}},
+    ]
+    cat = make_catalog(catalog_mod, points, [100])
+    scan = make_scan(discovery_mod, {sel_id: 0, vm_id: 2})
+    scan.enum_labels[sel_id] = ["Comfort", "Off", "Red", "Norm"]
+    scan.enum_labels[vm_id] = ["Off", "Htg", "Stby", "Dhw"]
+
+    out = entities_mod.build_entities(catalog=cat, scan=scan)
+    assert out["selects"][0]["options"] == {"Comfort": 0, "Off": 1, "Red": 2, "Norm": 3}
+    assert out["sensors"][0]["value_map"] == {"0": "Off", "1": "Htg", "2": "Stby", "3": "Dhw"}
+
+
+def test_pump_enum_duplicate_labels_keep_first_value(catalog_mod, discovery_mod, entities_mod):
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 40, 290)
+    vm_id = enc(8971, 100, 41, 256)
+    points = [
+        {"id": sel_id, "platform": "select", "name": "Mode", "sources": ["reference"], "write_id": sel_id, "options": {"A": 0}},
+        {"id": vm_id, "platform": "sensor", "name": "Status", "sources": ["reference"], "value_map": {"0": "x"}},
+    ]
+    cat = make_catalog(catalog_mod, points, [100])
+    scan = make_scan(discovery_mod, {sel_id: 0, vm_id: 0})
+    scan.enum_labels[sel_id] = ["Standby", "Heat", "Standby"]
+    scan.enum_labels[vm_id] = ["Standby", "Heat", "Standby"]
+
+    out = entities_mod.build_entities(catalog=cat, scan=scan)
+    # label->value: the duplicate label keeps its first (lowest) value.
+    assert out["selects"][0]["options"] == {"Standby": 0, "Heat": 1}
+    # value->label: every value keeps its label, duplicates allowed.
+    assert out["sensors"][0]["value_map"] == {"0": "Standby", "1": "Heat", "2": "Standby"}
+
+
+def test_missing_pump_enum_falls_back_to_catalog(catalog_mod, discovery_mod, entities_mod):
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 40, 290)
+    points = [
+        {"id": sel_id, "platform": "select", "name": "Mode", "sources": ["reference"], "write_id": sel_id, "options": {"Komfort": 0, "Aus": 1}},
+    ]
+    cat = make_catalog(catalog_mod, points, [100])
+    out = entities_mod.build_entities(catalog=cat, scan=make_scan(discovery_mod, {sel_id: 0}))
+    assert out["selects"][0]["options"] == {"Komfort": 0, "Aus": 1}
+
+
+def _overlay_base(catalog_mod, points, tags):
+    return {
+        "schema_version": 1,
+        "catalog_version": "test",
+        "hc_tags": [31886, 19693, 23756, 11307],
+        "points": points,
+        "tags": [{"tag": t} for t in tags],
+    }
+
+
+def test_overlay_cannot_rename_or_reenable_packaged_points(catalog_mod, entities_mod):
+    """A stored bundle enriches metadata but can never undo v4 naming or the
+    disable/diagnostic flags of packaged points."""
+
+    enc = catalog_mod.encode_oa
+    tech_id = enc(8960, 100, 1, 256)
+    apk_id = enc(8960, 100, 2, 256)
+    base = _overlay_base(
+        catalog_mod,
+        [
+            {"id": tech_id, "platform": "sensor", "name": "CprOprHrs1", "name_source": "bundle", "sources": ["reference"], "technical": True, "diagnostic": True, "enabled_default": False},
+            {"id": apk_id, "platform": "sensor", "name": "Outdoor temperature", "name_source": "apk_label", "sources": ["apk"]},
+        ],
+        [100],
+    )
+    overlay = [
+        {"id": tech_id, "platform": "sensor", "name": "Betriebsstunden Verdichter", "name_source": "bundle", "sources": ["bundle_import"], "unit": "h"},
+        {"id": apk_id, "platform": "sensor", "name": "Außentemperatur", "name_source": "bundle", "sources": ["bundle_import"]},
+    ]
+    cat = entities_mod.catalog_with_overlay(base, overlay)
+
+    tech = cat.points_by_id[tech_id]
+    # Flags survive; the bundle's metadata (unit) still enriches.
+    assert tech["enabled_default"] is False and tech["diagnostic"] is True
+    assert tech["name"] == "CprOprHrs1" and tech["unit"] == "h"
+    # The packaged APK-first name survives the bundle name.
+    assert cat.points_by_id[apk_id]["name"] == "Outdoor temperature"
+    assert cat.points_by_id[apk_id]["name_source"] == "apk_label"
+
+
+def test_overlay_write_binding_triggers_service_rule(catalog_mod, entities_mod):
+    """A write binding contributed by a bundle makes the service/one-shot
+    disable rule applicable to the merged point."""
+
+    enc = catalog_mod.encode_oa
+    oid = enc(8706, 100, 3, 256)
+    base = _overlay_base(
+        catalog_mod,
+        [{"id": oid, "platform": "sensor", "name": "Handabtauung", "name_source": "apk_label", "sources": ["apk"]}],
+        [100],
+    )
+    overlay = [{"id": oid, "platform": "switch", "name": "Handabtauung", "name_source": "bundle", "sources": ["bundle_import"], "write_id": oid, "on_value": 1, "off_value": 0}]
+    cat = entities_mod.catalog_with_overlay(base, overlay)
+    rec = cat.points_by_id[oid]
+    assert rec["platform"] == "switch" and rec["write_id"] == oid
+    assert rec["enabled_default"] is False
+
+
+def test_overlay_new_points_get_v4_flags(catalog_mod, entities_mod):
+    enc = catalog_mod.encode_oa
+    known = enc(8960, 100, 1, 256)
+    tech_new = enc(8960, 200, 1, 256)
+    priv_new = enc(8964, 200, 2, 256)
+    base = _overlay_base(
+        catalog_mod,
+        [{"id": known, "platform": "sensor", "name": "Known", "name_source": "apk_label", "sources": ["apk"]}],
+        [100],
+    )
+    overlay = [
+        {"id": tech_new, "platform": "sensor", "name": "Th-EngySumAct", "name_source": "bundle", "sources": ["bundle_import"]},
+        {"id": priv_new, "platform": "text", "name": "Kunde", "name_source": "bundle", "sources": ["bundle_import"], "write_id": priv_new},
+    ]
+    cat = entities_mod.catalog_with_overlay(base, overlay)
+    tech = cat.points_by_id[tech_new]
+    assert tech["technical"] is True and tech["enabled_default"] is False and tech["diagnostic"] is True
+    priv = cat.points_by_id[priv_new]
+    assert priv["enabled_default"] is False and priv["diagnostic"] is True
+
+
+def test_overlay_cannot_reintroduce_schedules_or_descriptors(catalog_mod, entities_mod):
+    """Spec v4 A3 excludes schedules from the integration entirely: neither
+    the schedule object type nor schedule members nor enum descriptors can
+    re-enter through a stored bundle overlay."""
+
+    enc = catalog_mod.encode_oa
+    known = enc(8960, 100, 1, 256)
+    sched_ot = enc(8717, 100, 5, 256)
+    sched_mid = enc(8960, 100, 6, 514)
+    desc = enc(8960, 100, 7, 4353)
+    base = _overlay_base(
+        catalog_mod,
+        [{"id": known, "platform": "sensor", "name": "Known", "name_source": "apk_label", "sources": ["apk"]}],
+        [100],
+    )
+    overlay = [
+        {"id": sched_ot, "platform": "sensor", "name": "Zeitprogramm", "name_source": "bundle", "sources": ["bundle_import"]},
+        {"id": sched_mid, "platform": "sensor", "name": "Schaltzeit 1", "name_source": "bundle", "sources": ["bundle_import"]},
+        {"id": desc, "platform": "sensor", "name": "States", "name_source": "bundle", "sources": ["bundle_import"]},
+    ]
+    cat = entities_mod.catalog_with_overlay(base, overlay)
+    for oid in (sched_ot, sched_mid, desc):
+        assert oid not in cat.points_by_id
+    sweep = cat.scan_ids_for_tags({100})
+    assert sweep == [known]
+
+    # The bundle-entity extraction path filters them as well.
+    ents = {
+        "sensors": [
+            {"id": sched_ot, "name": "Zeitprogramm"},
+            {"id": sched_mid, "name": "Schaltzeit 1"},
+            {"id": desc, "name": "States"},
+            {"id": known, "name": "Known"},
+        ]
+    }
+    out = entities_mod.overlay_points_from_bundle_entities(ents)
+    assert [r["id"] for r in out] == [known]

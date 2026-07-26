@@ -18,14 +18,18 @@ from .bundle_generator import generate_entities_from_bundle
 from .catalog import DiscoveryCatalog, load_catalog, load_catalog_raw
 from .const import (
     CONF_BINARY_SENSORS,
+    CONF_DEVICE_MODEL,
     CONF_DISCOVERY_SOURCE,
     CONF_HOST,
     CONF_NUMBERS,
     CONF_PASSWORD,
     CONF_PIN,
+    CONF_PLANT_NAME,
     CONF_PORT,
     CONF_SELECTS,
     CONF_SENSORS,
+    CONF_SERIAL_NUMBER,
+    CONF_SW_VERSION,
     CONF_SWITCHES,
     CONF_TEXTS,
     CONF_USERNAME,
@@ -122,7 +126,16 @@ async def async_scan_controller(
         ),
     )
     scan = await async_scan(api, catalog)
-    entities = build_entities(catalog=catalog, scan=scan, hc_uid_by_tag=hc_uid_by_tag)
+    # Localized fallback name for a circuit whose owner-configured name could
+    # not be read (spec v4 F: DE + EN for integration-provided naming).
+    language = str(getattr(hass.config, "language", "") or "en").lower()
+    hc_fallback = "Heizkreis {n}" if language.startswith("de") else "Heating circuit {n}"
+    entities = build_entities(
+        catalog=catalog,
+        scan=scan,
+        hc_uid_by_tag=hc_uid_by_tag,
+        hc_fallback_template=hc_fallback,
+    )
     return entities, scan, catalog
 
 
@@ -160,7 +173,7 @@ async def async_local_scan_merge(
         )
 
         try:
-            discovered, _scan, _cat = await async_scan_controller(
+            discovered, scan, _cat = await async_scan_controller(
                 hass,
                 host=host,
                 port=int(ctrl_d.get(CONF_PORT, DEFAULT_PORT)),
@@ -183,6 +196,19 @@ async def async_local_scan_merge(
             continue
 
         merged, added = merge_discovered_entities(ctrl_d, discovered)
+        # Pump-first device naming: refresh the identity read from the
+        # controller (model type, serial number, software version). The plant
+        # name is only set while it still is a generic default — a
+        # user-chosen name is never overwritten.
+        if scan.plant_model:
+            merged[CONF_DEVICE_MODEL] = scan.plant_model
+            current_name = str(merged.get(CONF_PLANT_NAME) or "")
+            if current_name in ("", f"Ochsner ({host})", f"Climatix ({host})"):
+                merged[CONF_PLANT_NAME] = f"{scan.plant_model} ({host})"
+        if scan.plant_serial:
+            merged[CONF_SERIAL_NUMBER] = scan.plant_serial
+        if scan.plant_sw_version:
+            merged[CONF_SW_VERSION] = scan.plant_sw_version
         for k, v in added.items():
             added_total[k] += v
         updated.append(merged)
