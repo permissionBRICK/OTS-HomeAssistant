@@ -2,34 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ochsner login",
-        "description": "Enter your Ochsner (OTS) login credentials. They are used only during setup to fetch your plants and are not stored in Home Assistant.",
-        "data": {
-          "ots_user": "Ochsner username",
-          "ots_pass": "Ochsner password"
-        }
-      },
-      "select_plants": {
-        "title": "Select plants",
-        "description": "Select a plant to import.",
-        "data": {
-          "plants": "Plants"
-        }
-      },
-      "hosts": {
-        "title": "Local IP address",
-        "description": "Enter the local IP address for {plant}. Make sure this IP is static/reserved in your router.",
+        "title": "Ochsner heat pump (local)",
+        "description": "Enter the local IP address of your heat pump. No cloud account is needed: the integration scans the controller with its built-in datapoint catalog (best effort; coverage varies by model, firmware and fitted options). Ensure this IP is static/reserved in your router.",
         "data": {
           "local_ip": "Local IP address",
-          "name": "Name"
+          "advanced": "Show advanced connection settings"
+        }
+      },
+      "advanced": {
+        "title": "Advanced connection settings",
+        "description": "Only needed for plants that do not use the standard Climatix credentials/PIN. Leave the defaults unless your controller was reconfigured.",
+        "data": {
+          "local_ip": "Local IP address",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "pin": "PIN"
         }
       }
     },
     "error": {
-      "auth": "Login failed. Check your credentials.",
-      "no_selection": "Select which heat pump to import.",
       "invalid_host": "Please enter a valid IP/hostname.",
-      "not_supported": "Could not verify a supported Climatix controller at this IP (expected {\"Error\":7} from /jsongen.html)."
+      "cannot_connect": "Could not reach a Climatix controller at this IP (check the address and that the device is on your network).",
+      "auth_failed": "The controller rejected the standard credentials. Use the advanced settings to enter your controller's username/password.",
+      "probe_failed": "Connected, but no catalog datapoint was readable. This usually means a non-default PIN — use the advanced settings to enter it."
+    },
+    "abort": {
+      "already_configured": "This controller is already configured."
     }
   },
   "options": {
@@ -41,8 +40,9 @@
           "scan_interval": "Polling interval (seconds)",
           "polling_threshold": "Polling / auto delay multiplier",
           "max_ids_per_read_request": "Max values per read request",
-          "rescan_on_start": "Rescan bundle on startup",
+          "rescan_on_start": "Rescan on startup",
           "rescan_now": "Rescan now (add missing entities)",
+          "local_scan_now": "Local catalog scan now (accountless; add missing entities)",
           "redownload_bundle": "Re-download bundle from OTS (add missing entities)",
           "configure_entities": "Configure sensor/number device class and unit"
         }
@@ -67,20 +67,28 @@
           "step": "Step",
           "edit_another": "Edit another entity"
         }
+      },
+      "redownload": {
+        "title": "Re-download bundle",
+        "description": "Enter your Ochsner (OTS) credentials. {note}",
+        "data": {
+          "ots_user": "Ochsner username",
+          "ots_pass": "Ochsner password"
+        }
       }
     },
     "error": {
       "invalid_scan_interval": "Please enter a polling interval of at least 1 second.",
       "invalid_polling_threshold": "Please enter a gated polling threshold between 10 and 120.",
       "invalid_max_ids": "Please enter a max values-per-request between 1 and 200.",
-      "auth": "Login failed. Check your credentials.",
-      "download_failed": "Could not download a new bundle from OTS.",
-      "no_entities": "The new bundle produced 0 entities; keeping the existing bundle.",
-      "no_controllers": "This entry has no controllers to refresh.",
-      "no_bundle_key": "No stored bundle key found for this controller.",
-      "no_ots_ids": "Missing OTS config/site id for this controller.",
       "no_selection": "Select an entity.",
-      "invalid_range": "Maximum must be greater than minimum."
+      "invalid_range": "Maximum must be greater than minimum.",
+      "auth": "Login failed. Check your credentials.",
+      "download_failed": "Bundle download failed.",
+      "no_entities": "The downloaded bundle produced no entities; nothing was changed.",
+      "no_controllers": "This entry has no controllers to update.",
+      "no_bundle_key": "No stored bundle key found for this controller.",
+      "no_ots_ids": "The OTS config/site id is missing for this controller."
     }
   }
 }
