@@ -151,12 +151,14 @@ def test_packaged_catalog_covers_reference_plant(catalog_mod):
 
 def test_packaged_catalog_is_bilingual(catalog_mod):
     """The bilingual acceptance target on the shipped asset: every point
-    resolves natively in BOTH languages (no cross-language fallback; the
-    technical symbols satisfy this verbatim), and the only enum tokens
-    without a label on either side are undocumented numeric states."""
+    resolves natively in BOTH languages, no enum token is left to a raw
+    fallback (explicit reviewed pairs cover even the undocumented numeric
+    states), and the only verbatim-symbol exception is the apk_symbol scope
+    (29 points, 25 unique code identifiers)."""
 
     cat = catalog_mod.load_catalog()
     sources = {"apk_label", "bundle", "apk_symbol", "translated"}
+    symbol_points = []
     for rec in cat.points:
         for lang in ("de", "en"):
             name, source = catalog_mod.resolve_point_name(rec, lang)
@@ -164,13 +166,40 @@ def test_packaged_catalog_is_bilingual(catalog_mod):
             assert name.strip(), rec["id"]
             assert lang_tag == lang, (rec["id"], source)
             assert prov in sources, (rec["id"], source)
-        gaps = rec.get("enum_label_gaps") or {}
-        for lang, tokens in gaps.items():
-            for t in tokens:
-                assert t.lstrip("+-").isdigit(), (rec["id"], lang, t)
-    # The shared maps cover the same tokens in both languages.
+            if prov == "apk_symbol":
+                # The single permitted verbatim exception: points whose only
+                # name evidence is the APK code identifier.
+                assert rec["name_source"] == "apk_symbol", rec["id"]
+                symbol_points.append(rec["id"])
+        # Zero raw fallbacks: the builder records any unlabelled descriptor
+        # token as a gap, and the shipped asset must have none.
+        assert not rec.get("enum_label_gaps"), rec["id"]
+    assert len(set(symbol_points)) == 29
+    assert len({cat.points_by_id[i]["name"] for i in symbol_points}) == 25
+
+    # The shared maps cover the same tokens in both languages, and every
+    # token's provenance is recorded per side.
     shared = cat.enum_token_labels
     assert set(shared["de"]) == set(shared["en"])
+    prov_maps = catalog_mod.load_catalog_raw().get("enum_token_label_sources")
+    assert set(prov_maps["en"]) == set(shared["en"])
+    assert set(prov_maps["de"]) == set(shared["de"])
+
+    # Reviewed ground truths: the bundle's raw-symbol "German" slots are
+    # corrected per point, in both languages, and point evidence outranks
+    # the generic shared token meaning.
+    parity = cat.points_by_id["AiOFwiApAAE="]
+    assert catalog_mod.resolve_enum_label(parity, "odd", "de", shared) == "Ungerade"
+    assert catalog_mod.resolve_enum_label(parity, "none", "de", shared) == "Keine"
+    relay = cat.points_by_id["AiP8SiiJAAE="]
+    assert catalog_mod.resolve_enum_label(relay, "Auto", "en", shared) == "Inactive"
+    assert catalog_mod.resolve_enum_label(relay, "Auto", "de", shared) == "Inaktiv"
+    cloud = cat.points_by_id["MgABAAAAAQA="]
+    assert catalog_mod.resolve_enum_label(cloud, "Disabled", "de", shared) == "Deaktiviert"
+    assert catalog_mod.resolve_enum_label(cloud, "Disabled", "en", shared) == "Disabled"
+    status_hk = cat.points_by_id["CyMogo58AAE="]
+    assert catalog_mod.resolve_enum_label(status_hk, "21", "en", shared) == "Unknown state 21"
+    assert catalog_mod.resolve_enum_label(status_hk, "21", "de", shared) == "Unbekannter Zustand 21"
 
 
 def test_language_helpers(catalog_mod):

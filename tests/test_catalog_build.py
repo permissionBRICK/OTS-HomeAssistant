@@ -273,16 +273,31 @@ def test_language_aware_names_shipped(builder):
     assert p["name_en_source"] == "apk_label"
     assert p["name_de"] == "Betriebswahl Heizkreis"
     assert p["name_de_source"] == "bundle"
+    fn = builder.is_technical_name
     sources = {"apk_label", "bundle", "apk_symbol", "translated"}
     for q in cat["points"]:
         assert q.get("name_en") and q.get("name_de"), q["id"]
         assert q["name_en_source"] in sources and q["name_de_source"] in sources, q["id"]
-        # Native evidence is never overwritten by a translation.
-        if q["name_source"] == "apk_label":
+        # Native PROSE evidence is never overwritten by a translation; a
+        # technical machine name gets its reviewed pair on both sides.
+        if q["name_source"] == "apk_label" and not fn(q["name"]):
             assert q["name_en"] == q["name"], q["id"]
-        if q["name_source"] == "bundle":
+        if q["name_source"] == "bundle" and not fn(q["name"]):
             assert q["name_de"] == q["name"], q["id"]
     assert cat["stats"]["name_de_points"] == cat["stats"]["points_total"]
+    # The technical bundle symbols carry reviewed pairs now, e.g. the
+    # DHW emergency-mode select and the compressor-hours year buckets.
+    p = pts["AiN5rlsWAAE="]  # DHWEmgyMod
+    assert p["name_en"] == "Operating program, DHW emergency mode"
+    assert p["name_de"] == "Betriebswahl Notbetrieb Warmwasser"
+    assert p["name_en_source"] == p["name_de_source"] == "translated"
+    p = pts["AyOgSyiJAAE="]  # CprOprHrs1
+    assert p["name_en"] == "Compressor operating hours, previous year"
+    assert p["name_de"] == "Betriebsstunden Verdichter Vorjahr"
+    # Verbatim both sides is reserved for apk_symbol evidence.
+    for q in cat["points"]:
+        if q["name_en_source"] == "apk_symbol" or q["name_de_source"] == "apk_symbol":
+            assert q["name_source"] == "apk_symbol", q["id"]
 
 
 def test_enum_de_index_join_ground_truth(builder):
