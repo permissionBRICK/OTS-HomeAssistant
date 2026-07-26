@@ -281,7 +281,11 @@ def test_pump_enum_labels_override_catalog_options(catalog_mod, discovery_mod, e
     assert out["sensors"][0]["value_map"] == {"0": "Off", "1": "Htg", "2": "Stby", "3": "Dhw"}
 
 
-def test_pump_enum_duplicate_labels_keep_first_value(catalog_mod, discovery_mod, entities_mod):
+def test_pump_enum_duplicate_labels_keep_every_value(catalog_mod, discovery_mod, entities_mod):
+    """The descriptor is authoritative for WHICH options exist: a duplicate
+    label must never drop a value. Identical raw tokens get a deterministic
+    " (value)" disambiguation (review round 3)."""
+
     enc = catalog_mod.encode_oa
     sel_id = enc(8706, 100, 40, 290)
     vm_id = enc(8971, 100, 41, 256)
@@ -295,9 +299,8 @@ def test_pump_enum_duplicate_labels_keep_first_value(catalog_mod, discovery_mod,
     scan.enum_labels[vm_id] = ["Standby", "Heat", "Standby"]
 
     out = entities_mod.build_entities(catalog=cat, scan=scan)
-    # label->value: the duplicate label keeps its first (lowest) value.
-    assert out["selects"][0]["options"] == {"Standby": 0, "Heat": 1}
-    # value->label: every value keeps its label, duplicates allowed.
+    assert out["selects"][0]["options"] == {"Standby": 0, "Heat": 1, "Standby (2)": 2}
+    # value->label is display-only: duplicates allowed, no disambiguation.
     assert out["sensors"][0]["value_map"] == {"0": "Standby", "1": "Heat", "2": "Standby"}
 
 
@@ -428,3 +431,251 @@ def test_overlay_cannot_reintroduce_schedules_or_descriptors(catalog_mod, entiti
     }
     out = entities_mod.overlay_points_from_bundle_entities(ents)
     assert [r["id"] for r in out] == [known]
+
+
+# --- language-aware naming ---------------------------------------------------
+
+
+def make_lang_catalog(catalog_mod, points, tags, en_map=None):
+    return catalog_mod.DiscoveryCatalog(
+        {
+            "schema_version": 1,
+            "catalog_version": "test",
+            "hc_tags": [31886, 19693, 23756, 11307],
+            "enum_token_labels": {"en": en_map or {}},
+            "points": points,
+            "tags": [{"tag": t} for t in tags],
+        }
+    )
+
+
+def _mode_point(catalog_mod, sel_id):
+    return {
+        "id": sel_id,
+        "platform": "select",
+        "name": "Heating circuit operating program",
+        "name_source": "apk_label",
+        "name_de": "Betriebswahl Heizkreis",
+        "name_de_source": "bundle",
+        "sources": ["reference"],
+        "write_id": sel_id,
+        "options": {"Komfort": 0, "Aus": 1},
+        "enum_labels_de": {"comfort": "Komfort", "off": "Aus", "auto": "Automatik"},
+    }
+
+
+def test_language_aware_names_and_labels(catalog_mod, discovery_mod, entities_mod):
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    cat = make_lang_catalog(
+        catalog_mod, [_mode_point(catalog_mod, sel_id)], [100], en_map={"auto": "Automatic"}
+    )
+    scan = make_scan(discovery_mod, {sel_id: 0})
+    scan.enum_labels[sel_id] = ["Comfort", "Off", "Auto", "Party"]
+
+    out_de = entities_mod.build_entities(catalog=cat, scan=scan, language="de")
+    sel = out_de["selects"][0]
+    assert sel["name"] == "Betriebswahl Heizkreis"
+    assert sel["name_source"] == "bundle:de"
+    # German: the point's own index-joined map; unmapped tokens stay raw.
+    assert sel["options"] == {"Komfort": 0, "Aus": 1, "Automatik": 2, "Party": 3}
+    # Raw descriptor tokens ship with the entity for offline re-resolution.
+    assert sel["enum_tokens"] == ["Comfort", "Off", "Auto", "Party"]
+
+    out_en = entities_mod.build_entities(catalog=cat, scan=scan, language="en")
+    sel = out_en["selects"][0]
+    assert sel["name"] == "Heating circuit operating program"
+    assert sel["name_source"] == "apk_label:en"
+    # English: shared APK-resource map only; unmapped tokens stay raw.
+    assert sel["options"] == {"Comfort": 0, "Off": 1, "Automatic": 2, "Party": 3}
+
+
+def test_language_never_changes_identity(catalog_mod, discovery_mod, entities_mod):
+    """de/en output differs only in display strings: ids, write ids,
+    platforms and numeric option values are byte-identical."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    cat = make_lang_catalog(catalog_mod, [_mode_point(catalog_mod, sel_id)], [100])
+    scan = make_scan(discovery_mod, {sel_id: 0})
+    scan.enum_labels[sel_id] = ["Comfort", "Off"]
+
+    out_de = entities_mod.build_entities(catalog=cat, scan=scan, language="de")
+    out_en = entities_mod.build_entities(catalog=cat, scan=scan, language="en")
+    for key in out_de:
+        assert len(out_de[key]) == len(out_en[key])
+        for a, b in zip(out_de[key], out_en[key]):
+            assert a.get("id") == b.get("id")
+            assert a.get("read_id") == b.get("read_id")
+            assert a.get("write_id") == b.get("write_id")
+            if a.get("options"):
+                assert sorted(a["options"].values()) == sorted(b["options"].values())
+
+
+def test_relocalize_entities_offline(catalog_mod, entities_mod):
+    """A language change re-resolves stored discovery entities offline:
+    names and enum label spellings change, identity does not; bundle (uuid)
+    and non-catalog entities are untouched; idempotent."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    cat = make_lang_catalog(
+        catalog_mod, [_mode_point(catalog_mod, sel_id)], [100], en_map={"auto": "Automatic"}
+    )
+    stored = {
+        "selects": [
+            {
+                "name": "Heating circuit operating program",
+                "read_id": sel_id,
+                "write_id": sel_id,
+                "options": {"Comfort": 0, "Off": 1, "Automatic": 2},
+                "enum_tokens": ["Comfort", "Off", "Auto"],
+                "heating_circuit_uid": "tag:31886",
+                "heating_circuit_name": "Heating circuit 1",
+            },
+            {"name": "Bundle select", "uuid": "abc-123", "read_id": sel_id, "write_id": sel_id, "options": {"X": 0}},
+            {"name": "Foreign", "read_id": enc(8706, 999, 1, 256), "write_id": enc(8706, 999, 1, 256), "options": {"Y": 0}},
+        ],
+        "sensors": [],
+        "binary_sensors": [],
+        "numbers": [],
+        "texts": [],
+        "switches": [],
+    }
+    out, changed = entities_mod.relocalize_entities(stored, cat, "de")
+    assert changed
+    ent = out["selects"][0]
+    assert ent["name"] == "Betriebswahl Heizkreis"
+    assert ent["options"] == {"Komfort": 0, "Aus": 1, "Automatik": 2}
+    assert ent["read_id"] == sel_id and ent["write_id"] == sel_id
+    assert ent["enum_tokens"] == ["Comfort", "Off", "Auto"]
+    # The integration-provided circuit fallback follows the language; an
+    # owner-authored circuit name would not match and never changes.
+    assert ent["heating_circuit_name"] == "Heizkreis 1"
+    # A bundle-uuid entity on a catalog point is renamed (friendly renames
+    # are allowed) but keeps identity and its bundle enum labels untouched.
+    bundle_ent = out["selects"][1]
+    assert bundle_ent["name"] == "Betriebswahl Heizkreis"
+    assert bundle_ent["uuid"] == "abc-123"
+    assert bundle_ent["options"] == {"X": 0}
+    # A non-catalog entity is untouched entirely.
+    assert out["selects"][2] == stored["selects"][2]
+
+    # Idempotent; and switching back restores the English labels.
+    again, changed2 = entities_mod.relocalize_entities(out, cat, "de")
+    assert not changed2 and again == out
+    back, _ = entities_mod.relocalize_entities(out, cat, "en")
+    assert back["selects"][0]["options"] == {"Comfort": 0, "Off": 1, "Automatic": 2}
+    assert back["selects"][0]["name"] == "Heating circuit operating program"
+    assert back["selects"][0]["heating_circuit_name"] == "Heating circuit 1"
+
+
+def test_relocalize_without_stored_tokens(catalog_mod, entities_mod):
+    """Entities created before the language feature shipped raw pump tokens
+    as labels and carry no enum_tokens: the labels double as tokens, so a
+    German re-resolution still works; a metadata-fallback entity whose
+    options were never tokens resolves to no known token and stays put."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    cat = make_lang_catalog(catalog_mod, [_mode_point(catalog_mod, sel_id)], [100])
+    stored = {
+        "selects": [
+            {"name": "Old", "read_id": sel_id, "write_id": sel_id, "options": {"Comfort": 0, "Off": 1}},
+        ],
+        "sensors": [
+            {"name": "Old vm", "id": sel_id, "value_map": {"0": "Comfort", "1": "Off"}},
+        ],
+        "binary_sensors": [],
+        "numbers": [],
+        "texts": [],
+        "switches": [],
+    }
+    out, changed = entities_mod.relocalize_entities(stored, cat, "de")
+    assert changed
+    assert out["selects"][0]["options"] == {"Komfort": 0, "Aus": 1}
+    assert out["sensors"][0]["value_map"] == {"0": "Komfort", "1": "Aus"}
+
+    # German-metadata options (no descriptor at scan time): labels are not
+    # tokens, no known-token match, values and labels survive unchanged.
+    stored_meta = {
+        "selects": [
+            {"name": "Meta", "read_id": sel_id, "write_id": sel_id, "options": {"Komfort": 0, "Aus": 1}},
+        ],
+    }
+    out2, _ = entities_mod.relocalize_entities(stored_meta, cat, "en")
+    assert out2["selects"][0]["options"] == {"Komfort": 0, "Aus": 1}
+
+
+def test_localization_collision_falls_back_to_tokens(catalog_mod, discovery_mod, entities_mod):
+    """Two DISTINCT tokens whose localized labels collide fall back to their
+    raw tokens; every descriptor value stays selectable (review round 3)."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    point = {
+        "id": sel_id,
+        "platform": "select",
+        "name": "Mode",
+        "name_source": "bundle",
+        "sources": ["reference"],
+        "write_id": sel_id,
+        "options": {"A": 0},
+        # Both tokens map to the same German label: a real bundle can do
+        # this (two controller states shown as one label in the app).
+        "enum_labels_de": {"stby1": "Standby", "stby2": "Standby"},
+    }
+    cat = make_lang_catalog(catalog_mod, [point], [100])
+    scan = make_scan(discovery_mod, {sel_id: 0})
+    scan.enum_labels[sel_id] = ["Stby1", "Stby2", "Heat"]
+
+    out = entities_mod.build_entities(catalog=cat, scan=scan, language="de")
+    opts = out["selects"][0]["options"]
+    # No value dropped, colliding labels resolved to the distinct raw tokens.
+    assert opts == {"Stby1": 0, "Stby2": 1, "Heat": 2}
+
+    # Relocalization preserves the full value set too (round trip).
+    stored = {"selects": [dict(out["selects"][0], read_id=sel_id)]}
+    rel, _ = entities_mod.relocalize_entities(stored, cat, "de")
+    assert sorted(rel["selects"][0]["options"].values()) == [0, 1, 2]
+
+
+def test_relocalize_bundle_uuid_entities_rename_only(catalog_mod, entities_mod):
+    """Bundle (uuid) entities whose read id is a catalog point get their
+    NAME re-resolved per language (friendly renames are allowed); uuid,
+    ids, platform shaping and enum labels (no provable tokens) stay
+    byte-identical, and no duplicate entity appears (review round 3)."""
+
+    enc = catalog_mod.encode_oa
+    sel_id = enc(8706, 100, 3, 290)
+    cat = make_lang_catalog(catalog_mod, [_mode_point(catalog_mod, sel_id)], [100])
+    bundle_ent = {
+        "name": "Betriebswahl Heizkreis",
+        "uuid": "bundle-uuid-1",
+        "read_id": sel_id,
+        "write_id": sel_id,
+        # Bundle-authored German labels: NOT pump tokens, never re-derived.
+        "options": {"Komfort": 0, "Aus": 1},
+        "heating_circuit_uid": "hc-uuid",
+        "heating_circuit_name": "Fussboden",
+    }
+    stored = {"selects": [dict(bundle_ent)]}
+
+    out_en, changed = entities_mod.relocalize_entities(stored, cat, "en")
+    assert changed
+    ent = out_en["selects"][0]
+    assert ent["name"] == "Heating circuit operating program"
+    assert ent["uuid"] == "bundle-uuid-1"
+    assert ent["read_id"] == sel_id and ent["write_id"] == sel_id
+    # Conservative: bundle labels are not tokens — untouched in any language.
+    assert ent["options"] == {"Komfort": 0, "Aus": 1}
+    # Owner-authored circuit name never matches the fallback pattern.
+    assert ent["heating_circuit_name"] == "Fussboden"
+    assert len(out_en["selects"]) == 1
+
+    # DE -> EN -> DE round trip restores the German name exactly.
+    out_de, _ = entities_mod.relocalize_entities(out_en, cat, "de")
+    ent_de = out_de["selects"][0]
+    assert ent_de["name"] == "Betriebswahl Heizkreis"
+    for k in ("uuid", "read_id", "write_id", "options", "heating_circuit_uid", "heating_circuit_name"):
+        assert ent_de[k] == bundle_ent[k], k

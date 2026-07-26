@@ -147,3 +147,39 @@ def test_packaged_catalog_covers_reference_plant(catalog_mod):
     catalog_write_ids = {p.get("write_id") for p in cat.points if p.get("write_id")}
     missing = ref_ids - catalog_ids - catalog_write_ids
     assert not missing, f"reference ids missing from catalog: {sorted(missing)}"
+
+
+def test_language_helpers(catalog_mod):
+    n = catalog_mod.normalize_language
+    assert n("DE") == n("de-AT") == n("German") == "de"
+    assert n("en") == n("") == n(None) == n("fr") == "en"
+    e = catalog_mod.explicit_language
+    assert e("de") == "de" and e("EN") == "en"
+    assert e("") is None and e(None) is None and e("auto") is None
+
+    t = catalog_mod.normalize_enum_token
+    assert t("TiMinOff") == t("ti_min_off") == "timinoff"
+    assert t("-12") == "-12" and t("12") == "12" and t("-12") != t("12")
+    assert t("-") == "" and t(" ") == ""
+
+
+def test_resolve_point_name_and_enum_label(catalog_mod):
+    rec = {
+        "id": "x",
+        "name": "Program",
+        "name_source": "apk_label",
+        "name_de": "Programm",
+        "name_de_source": "bundle",
+        "enum_labels_de": {"off": "Aus"},
+    }
+    assert catalog_mod.resolve_point_name(rec, "de") == ("Programm", "bundle:de")
+    assert catalog_mod.resolve_point_name(rec, "en") == ("Program", "apk_label:en")
+    assert catalog_mod.resolve_point_name({"id": "y", "name": "N", "name_source": "bundle"}, "de") == ("N", "bundle:en")
+
+    shared = {"en": {"auto": "Automatic"}}
+    # German: point-specific map only, then the raw token — never the shared map.
+    assert catalog_mod.resolve_enum_label(rec, "Off", "de", shared) == "Aus"
+    assert catalog_mod.resolve_enum_label(rec, "Auto", "de", shared) == "Auto"
+    assert catalog_mod.resolve_enum_label(rec, "Auto", "en", shared) == "Automatic"
+    assert catalog_mod.resolve_enum_label(rec, "Off", "en", shared) == "Off"
+    assert catalog_mod.resolve_enum_label(rec, "-", "en", shared) == "-"

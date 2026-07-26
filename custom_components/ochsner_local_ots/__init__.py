@@ -73,7 +73,7 @@ from .coordinator import ClimatixCoordinator
 
 from .bundle_generator import generate_entities_from_bundle
 from .flash_warnings import async_maybe_create_flash_wear_notifications
-from .local_scan import async_local_scan_merge
+from .local_scan import async_local_scan_merge, async_relocalize_controllers
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -583,6 +583,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass,
                 controllers=controllers,
                 only_local_entries=not local_scan_now,
+                option_language=entry.options.get(CONF_LANGUAGE),
             )
         except Exception as err:  # noqa: BLE001
             # Type only: aiohttp errors can embed the PIN-bearing request URL.
@@ -605,6 +606,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.config_entries.async_update_entry(entry, options=new_opts)
             except Exception:  # noqa: BLE001
                 pass
+
+    # Language-aware naming: re-resolve discovery display names and enum
+    # labels offline for the current language (options setting, per-
+    # controller CONF_LANGUAGE, or the HA language). Runs on every setup so
+    # a language change applies on reload without a rescan; unique_ids,
+    # entity_ids and devices never change, so this can never churn entities.
+    if isinstance(controllers_raw, list) and controllers:
+        try:
+            relocalized_controllers, relocalized = await async_relocalize_controllers(
+                hass,
+                controllers=controllers,
+                option_language=entry.options.get(CONF_LANGUAGE),
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Name relocalization skipped: %s", type(err).__name__)
+        else:
+            controllers = relocalized_controllers
+            if relocalized:
+                try:
+                    hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: controllers})
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Failed to persist relocalized names: %s", err)
 
     runtime_controllers: List[Dict[str, Any]] = []
     write_counts: Dict[str, int] = {}

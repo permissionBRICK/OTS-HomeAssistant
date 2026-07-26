@@ -235,6 +235,18 @@ def normalize_language(value: Any) -> str:
     return LANGUAGE_EN
 
 
+def explicit_language(value: Any) -> Optional[str]:
+    """de/en when the value is an explicit language choice, else None.
+
+    Empty and "auto" (the options-flow "follow Home Assistant" choice) are
+    not explicit: the caller falls through to the next source in the
+    documented order (options -> per-controller setting -> HA language)."""
+    v = str(value or "").strip().lower()
+    if not v or v == "auto":
+        return None
+    return normalize_language(v)
+
+
 def resolve_point_name(rec: Dict[str, Any], language: str) -> tuple[str, str]:
     """The display name for a catalog point in the user's language.
 
@@ -316,6 +328,46 @@ def apply_v4_point_flags(rec: Dict[str, Any], extra_names: Optional[List[str]] =
     if rec.get("write_id") and any(SERVICE_NAME_PATTERNS.search(n) for n in evidence):
         rec["enabled_default"] = False
     return rec
+
+
+def resolve_option_labels(
+    rec: Dict[str, Any],
+    tokens_by_value: Dict[int, str],
+    language: str,
+    shared_labels: Optional[Dict[str, Dict[str, str]]] = None,
+) -> Dict[int, str]:
+    """value -> UNIQUE display label for a pump enum, indices preserved.
+
+    The pump descriptor is authoritative for WHICH options exist and their
+    numeric values: localization must never drop or shift one. When two
+    values' localized labels collide, the colliding entries fall back to
+    their distinct raw tokens; identical raw tokens (or a remaining cross-
+    collision) get a deterministic " (value)" suffix — ugly beats silently
+    unselectable.
+    """
+    localized = {
+        v: resolve_enum_label(rec, tok, language, shared_labels)
+        for v, tok in tokens_by_value.items()
+    }
+    counts: Dict[str, int] = {}
+    for lab in localized.values():
+        counts[lab] = counts.get(lab, 0) + 1
+
+    out: Dict[int, str] = {}
+    used: set = set()
+    for v in sorted(localized):
+        lab = localized[v]
+        token = str(tokens_by_value[v]).strip()
+        candidates = [lab] if counts[lab] == 1 else [token, lab]
+        chosen = next((c for c in candidates if c and c not in used), None)
+        if chosen is None:
+            base = next((c for c in candidates if c), str(v))
+            chosen = f"{base} ({v})"
+            while chosen in used:
+                chosen += "*"
+        used.add(chosen)
+        out[v] = chosen
+    return out
 
 
 class DiscoveryCatalog:
