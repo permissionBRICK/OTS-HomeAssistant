@@ -126,13 +126,12 @@ def bilingual_audit(catalog: Any, scan: Any, language: str) -> Dict[str, Any]:
     """Per-language audit of the bilingual catalog target: every point name
     and every live enum token must resolve in the requested language itself.
 
-    Classes: names — native / translated / cross_language (resolved from the
-    other language's evidence) / still_symbol (verbatim technical machine
-    names, the only permitted exceptions); enum tokens (from the live
-    member-4353 descriptors) — labelled / raw_token_numeric (undocumented
-    numeric states, identical in both languages) / raw_token_other /
-    cross_language. The gate requires zero cross_language in both classes
-    and zero raw_token_other.
+    Classes: names — native / translated / still_symbol (verbatim apk_symbol
+    code identifiers, the ONLY permitted exceptions) / cross_language
+    (resolved from the other language's evidence); enum tokens (from the
+    live member-4353 descriptors) — labelled / raw_token (fell through to
+    the raw token) / cross_language. The gate requires zero cross_language
+    and zero raw_token.
     """
     cat_mod = sys.modules["ots_local_lib.catalog"]
     language = cat_mod.normalize_language(language)
@@ -145,16 +144,16 @@ def bilingual_audit(catalog: Any, scan: Any, language: str) -> Dict[str, Any]:
         if lang_tag != language:
             name_cross.append({"id": rec["id"], "name": name, "source": source})
             continue
-        if rec.get("technical") or prov == "apk_symbol":
+        if prov == "apk_symbol":
             names["still_symbol"] += 1
         elif prov == "translated":
             names["translated"] += 1
         else:
             names["native"] += 1
 
-    enums = {"labelled": 0, "raw_token_numeric": 0}
+    enums = {"labelled": 0}
     enum_cross: List[Dict[str, Any]] = []
-    enum_raw_other: List[Dict[str, Any]] = []
+    enum_raw: List[Dict[str, Any]] = []
     for rid, tokens in (scan.enum_labels or {}).items():
         rec = catalog.points_by_id.get(str(rid))
         if rec is None:
@@ -169,10 +168,7 @@ def bilingual_audit(catalog: Any, scan: Any, language: str) -> Dict[str, Any]:
             if src == language:
                 enums["labelled"] += 1
             elif src == "token":
-                if token.lstrip("+-").isdigit():
-                    enums["raw_token_numeric"] += 1
-                else:
-                    enum_raw_other.append({"id": str(rid), "token": token})
+                enum_raw.append({"id": str(rid), "token": token})
             else:
                 enum_cross.append({"id": str(rid), "token": token, "label": label, "from": src})
 
@@ -180,8 +176,78 @@ def bilingual_audit(catalog: Any, scan: Any, language: str) -> Dict[str, Any]:
         "names": {**names, "cross_language": name_cross},
         "enum_tokens": {
             **enums,
-            "raw_token_other": enum_raw_other,
+            "raw_token": enum_raw,
             "cross_language": enum_cross,
+        },
+    }
+
+
+def static_asset_audit(catalog: Any) -> Dict[str, Any]:
+    """Audit of the shipped catalog asset alone — independent of what the
+    live scan happens to reach, so unreadable or absent-module points are
+    covered too.
+
+    Gates: every point resolves natively in both languages; the verbatim-
+    symbol exception is exactly the apk_symbol scope (a point whose ONLY
+    name evidence is the APK code identifier); the shared token maps carry
+    the same tokens in both languages; and no point records an enum label
+    gap (the builder recomputes gaps against the descriptor token evidence,
+    so a gap means a token would fall back to its raw spelling).
+    """
+    cat_mod = sys.modules["ots_local_lib.catalog"]
+
+    name_cross: List[Dict[str, Any]] = []
+    name_missing: List[str] = []
+    symbol_scope_violations: List[Dict[str, Any]] = []
+    symbol_ids: List[str] = []
+    symbol_names: set = set()
+    for rec in catalog.points:
+        is_symbol = False
+        for language in ("de", "en"):
+            name, source = cat_mod.resolve_point_name(rec, language)
+            prov, _, lang_tag = source.rpartition(":")
+            if not str(name).strip():
+                name_missing.append(rec["id"])
+            elif lang_tag != language:
+                name_cross.append({"id": rec["id"], "language": language, "source": source})
+            if prov == "apk_symbol":
+                is_symbol = True
+                if rec.get("name_source") != "apk_symbol":
+                    symbol_scope_violations.append({"id": rec["id"], "source": source})
+        if is_symbol:
+            symbol_ids.append(rec["id"])
+            symbol_names.add(str(rec.get("name")))
+
+    enum_gaps: List[Dict[str, Any]] = []
+    for rec in catalog.points:
+        gaps = rec.get("enum_label_gaps") or {}
+        for language, tokens in gaps.items():
+            enum_gaps.append({"id": rec["id"], "language": language, "tokens": tokens})
+
+    shared = catalog.enum_token_labels
+    root_pair_mismatch = sorted(
+        set(shared.get("en") or {}).symmetric_difference(shared.get("de") or {})
+    )
+
+    gate_failures = {
+        "name_cross_language": len(name_cross),
+        "name_missing": len(name_missing),
+        "symbol_scope_violations": len(symbol_scope_violations),
+        "enum_label_gaps": len(enum_gaps),
+        "root_token_pair_mismatch": len(root_pair_mismatch),
+    }
+    return {
+        "symbol_points": len(symbol_ids),
+        "symbol_names_unique": len(symbol_names),
+        "gate_failures": gate_failures,
+        "gate_passed": not any(gate_failures.values()),
+        "detail": {
+            "name_cross_language": name_cross,
+            "name_missing": name_missing,
+            "symbol_scope_violations": symbol_scope_violations,
+            "enum_label_gaps": enum_gaps,
+            "root_token_pair_mismatch": root_pair_mismatch,
+            "symbol_ids": symbol_ids,
         },
     }
 
@@ -570,12 +636,17 @@ async def run(
         lang_report["bilingual_audit"] = audit
         lang_report["gate_failures"]["name_cross_language"] = len(audit["names"]["cross_language"])
         lang_report["gate_failures"]["enum_cross_language"] = len(audit["enum_tokens"]["cross_language"])
-        lang_report["gate_failures"]["enum_raw_token_other"] = len(audit["enum_tokens"]["raw_token_other"])
+        lang_report["gate_failures"]["enum_raw_token"] = len(audit["enum_tokens"]["raw_token"])
         lang_report["gate_passed"] = not any(lang_report["gate_failures"].values())
 
         report["languages"][language] = lang_report
 
-    report["gate_passed"] = all(r["gate_passed"] for r in report["languages"].values())
+    # The static shipped-asset audit is language-independent and covers every
+    # catalog point, including ones this plant cannot read.
+    report["static_audit"] = static_asset_audit(catalog)
+    report["gate_passed"] = report["static_audit"]["gate_passed"] and all(
+        r["gate_passed"] for r in report["languages"].values()
+    )
     return report
 
 
@@ -605,6 +676,12 @@ def main() -> int:
 
     summary_keys = ("host", "catalog_version", "present_tags", "circuit_names", "plant", "catalog", "scan")
     print(json.dumps({k: report[k] for k in summary_keys}, ensure_ascii=False, indent=1))
+    sa = report["static_audit"]
+    print(
+        f"static_audit: gate_passed={sa['gate_passed']} symbol_points={sa['symbol_points']} "
+        f"symbol_names_unique={sa['symbol_names_unique']} failures="
+        + json.dumps({k: v for k, v in sa["gate_failures"].items() if v})
+    )
     for language, lr in report["languages"].items():
         print(f"--- language={language}")
         print(
@@ -627,8 +704,7 @@ def main() -> int:
         print(
             f"bilingual[{language}]: names native={n['native']} translated={n['translated']} "
             f"symbol={n['still_symbol']} cross={len(n['cross_language'])} | enum tokens "
-            f"labelled={e['labelled']} raw_numeric={e['raw_token_numeric']} "
-            f"raw_other={len(e['raw_token_other'])} cross={len(e['cross_language'])}"
+            f"labelled={e['labelled']} raw={len(e['raw_token'])} cross={len(e['cross_language'])}"
         )
     return 0 if report["gate_passed"] else 2
 

@@ -1,9 +1,283 @@
 {
  "app_source": "com.ochsner.app v1.2.0/1785 + reference plant seed",
- "catalog_version": "29187490b9aa41dd",
+ "catalog_version": "0aef40375b571547",
  "enum_token_label_sources": {
-  "de": "translations.enum_shared_en_to_de + enum_token_labels_both",
-  "en": "apk_strings + translations.enum_token_labels_both"
+  "de": {
+   "acknowledge": "translated",
+   "antifreeze": "translated",
+   "auto": "translated",
+   "bakeoutcooldown": "translated",
+   "bakeoutheatup": "translated",
+   "bakeouthold": "translated",
+   "bip": "translated",
+   "cool": "translated",
+   "cooldownphase1": "translated",
+   "cooldownphase2": "translated",
+   "coolnormal": "translated",
+   "coolreduced": "translated",
+   "defrost": "translated",
+   "deprecated": "fill",
+   "dewpointreached": "translated",
+   "discharge": "translated",
+   "eco": "fill",
+   "ecocool": "translated",
+   "ecoheat": "translated",
+   "emergency": "translated",
+   "emergencyoff": "translated",
+   "enabled": "fill",
+   "end": "translated",
+   "error": "translated",
+   "even": "translated",
+   "evodec": "translated",
+   "evoinc": "translated",
+   "exclusivechecked": "translated",
+   "exclusiveunchecked": "translated",
+   "external": "translated",
+   "fault": "fill",
+   "fixedtemperature": "translated",
+   "flowtemperaturelimitallhcs": "translated",
+   "flowtemperaturelimithc1": "translated",
+   "flowtemperaturelimithc2": "translated",
+   "flowtemperaturelimithc3": "translated",
+   "flowtemperaturelimithc4": "translated",
+   "flt": "translated",
+   "frtprt": "translated",
+   "heat": "translated",
+   "heatdefrost": "translated",
+   "heatnormal": "translated",
+   "heatreduced": "translated",
+   "heatupphase1": "translated",
+   "heatupphase2": "translated",
+   "holdingphase": "translated",
+   "holiday": "fill",
+   "holidaycool": "translated",
+   "holidayheat": "translated",
+   "hotwater": "translated",
+   "hotwater1": "translated",
+   "hotwater2": "translated",
+   "hotwaterdefrost": "translated",
+   "hotwaterprecedence": "translated",
+   "htg": "translated",
+   "inactive1": "translated",
+   "inactive2": "translated",
+   "inactive3": "translated",
+   "interruption": "translated",
+   "legionella": "translated",
+   "limitactive": "translated",
+   "limited": "translated",
+   "locked": "translated",
+   "lockedbivalently": "translated",
+   "manualcool": "translated",
+   "manualheat": "translated",
+   "manualshutdown": "translated",
+   "maxtempshutdown": "translated",
+   "mb19200": "translated",
+   "mb2400": "translated",
+   "mb38400": "translated",
+   "mb4800": "translated",
+   "mb9600": "translated",
+   "minpressure": "translated",
+   "minruntime": "translated",
+   "mintimeout": "translated",
+   "minus1": "translated",
+   "minus10": "translated",
+   "minus11": "translated",
+   "minus12": "translated",
+   "minus2": "translated",
+   "minus3": "translated",
+   "minus4": "translated",
+   "minus5": "translated",
+   "minus6": "translated",
+   "minus7": "translated",
+   "minus8": "translated",
+   "minus9": "translated",
+   "mode0": "translated",
+   "mode1": "translated",
+   "none": "translated",
+   "null": "fill",
+   "odd": "translated",
+   "offinterval": "translated",
+   "offreturnflowtemperature": "translated",
+   "offtoocold": "translated",
+   "offtoowarm": "translated",
+   "ok": "fill",
+   "on": "translated",
+   "one": "translated",
+   "party": "translated",
+   "passive": "translated",
+   "plus1": "translated",
+   "plus10": "translated",
+   "plus11": "translated",
+   "plus12": "translated",
+   "plus2": "translated",
+   "plus3": "translated",
+   "plus4": "translated",
+   "plus5": "translated",
+   "plus6": "translated",
+   "plus7": "translated",
+   "plus8": "translated",
+   "plus9": "translated",
+   "preference": "translated",
+   "ready": "translated",
+   "service": "translated",
+   "servicecool": "translated",
+   "serviceheat": "translated",
+   "slowdown": "translated",
+   "standardchecked": "translated",
+   "standardunchecked": "translated",
+   "standby": "translated",
+   "standby1": "translated",
+   "standby2": "translated",
+   "summer": "translated",
+   "target": "translated",
+   "timinoff": "translated",
+   "timinon": "translated",
+   "two": "translated",
+   "twvmax": "translated",
+   "unknown": "translated",
+   "unlock": "translated",
+   "vacation": "translated",
+   "winter": "translated",
+   "zero": "translated"
+  },
+  "en": {
+   "acknowledge": "apk",
+   "antifreeze": "apk",
+   "auto": "apk",
+   "bakeoutcooldown": "apk",
+   "bakeoutheatup": "apk",
+   "bakeouthold": "apk",
+   "bip": "apk",
+   "cool": "apk",
+   "cooldownphase1": "apk",
+   "cooldownphase2": "apk",
+   "coolnormal": "apk",
+   "coolreduced": "apk",
+   "defrost": "apk",
+   "deprecated": "fill",
+   "dewpointreached": "apk",
+   "discharge": "apk",
+   "eco": "fill",
+   "ecocool": "apk",
+   "ecoheat": "apk",
+   "emergency": "apk",
+   "emergencyoff": "apk",
+   "enabled": "fill",
+   "end": "apk",
+   "error": "apk",
+   "even": "apk",
+   "evodec": "apk",
+   "evoinc": "apk",
+   "exclusivechecked": "apk",
+   "exclusiveunchecked": "apk",
+   "external": "apk",
+   "fault": "fill",
+   "fixedtemperature": "apk",
+   "flowtemperaturelimitallhcs": "apk",
+   "flowtemperaturelimithc1": "apk",
+   "flowtemperaturelimithc2": "apk",
+   "flowtemperaturelimithc3": "apk",
+   "flowtemperaturelimithc4": "apk",
+   "flt": "apk",
+   "frtprt": "apk",
+   "heat": "apk",
+   "heatdefrost": "apk",
+   "heatnormal": "apk",
+   "heatreduced": "apk",
+   "heatupphase1": "apk",
+   "heatupphase2": "apk",
+   "holdingphase": "apk",
+   "holiday": "fill",
+   "holidaycool": "apk",
+   "holidayheat": "apk",
+   "hotwater": "apk",
+   "hotwater1": "apk",
+   "hotwater2": "apk",
+   "hotwaterdefrost": "apk",
+   "hotwaterprecedence": "apk",
+   "htg": "apk",
+   "inactive1": "apk",
+   "inactive2": "apk",
+   "inactive3": "apk",
+   "interruption": "apk",
+   "legionella": "apk",
+   "limitactive": "apk",
+   "limited": "apk",
+   "locked": "apk",
+   "lockedbivalently": "apk",
+   "manualcool": "apk",
+   "manualheat": "apk",
+   "manualshutdown": "apk",
+   "maxtempshutdown": "apk",
+   "mb19200": "apk",
+   "mb2400": "apk",
+   "mb38400": "apk",
+   "mb4800": "apk",
+   "mb9600": "apk",
+   "minpressure": "apk",
+   "minruntime": "apk",
+   "mintimeout": "apk",
+   "minus1": "apk",
+   "minus10": "apk",
+   "minus11": "apk",
+   "minus12": "apk",
+   "minus2": "apk",
+   "minus3": "apk",
+   "minus4": "apk",
+   "minus5": "apk",
+   "minus6": "apk",
+   "minus7": "apk",
+   "minus8": "apk",
+   "minus9": "apk",
+   "mode0": "apk",
+   "mode1": "apk",
+   "none": "apk",
+   "null": "fill",
+   "odd": "apk",
+   "offinterval": "apk",
+   "offreturnflowtemperature": "apk",
+   "offtoocold": "apk",
+   "offtoowarm": "apk",
+   "ok": "fill",
+   "on": "apk",
+   "one": "apk",
+   "party": "apk",
+   "passive": "apk",
+   "plus1": "apk",
+   "plus10": "apk",
+   "plus11": "apk",
+   "plus12": "apk",
+   "plus2": "apk",
+   "plus3": "apk",
+   "plus4": "apk",
+   "plus5": "apk",
+   "plus6": "apk",
+   "plus7": "apk",
+   "plus8": "apk",
+   "plus9": "apk",
+   "preference": "apk",
+   "ready": "apk",
+   "service": "apk",
+   "servicecool": "apk",
+   "serviceheat": "apk",
+   "slowdown": "apk",
+   "standardchecked": "apk",
+   "standardunchecked": "apk",
+   "standby": "apk",
+   "standby1": "apk",
+   "standby2": "apk",
+   "summer": "apk",
+   "target": "apk",
+   "timinoff": "apk",
+   "timinon": "apk",
+   "two": "apk",
+   "twvmax": "apk",
+   "unknown": "apk",
+   "unlock": "apk",
+   "vacation": "apk",
+   "winter": "apk",
+   "zero": "apk"
+  }
  },
  "enum_token_labels": {
   "de": {
@@ -3191,10 +3465,10 @@
    "enabled_default": false,
    "id": "ASIL1yiJAwE=",
    "name": "ZH2nok",
-   "name_de": "ZH2nok",
-   "name_de_source": "bundle",
-   "name_en": "ZH2nok",
-   "name_en_source": "bundle",
+   "name_de": "Störung Zusatzheizung 2",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater 2 fault",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -3259,10 +3533,10 @@
    "enabled_default": false,
    "id": "ASJ+HyiJAwE=",
    "name": "ZH1nok",
-   "name_de": "ZH1nok",
-   "name_de_source": "bundle",
-   "name_en": "ZH1nok",
-   "name_en_source": "bundle",
+   "name_de": "Störung Zusatzheizung 1",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater 1 fault",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -4260,6 +4534,32 @@
    ]
   },
   {
+   "enum_label_sources": {
+    "comfort": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "coolman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "heatman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "norm": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "red": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4342,6 +4642,32 @@
    ]
   },
   {
+   "enum_label_sources": {
+    "comfort": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "coolman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "heatman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "norm": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "red": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4382,6 +4708,32 @@
    "write_id": "AiIQvY58IgE="
   },
   {
+   "enum_label_sources": {
+    "comfort": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "coolman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "heatman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "norm": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "red": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4422,6 +4774,32 @@
    "write_id": "AiIQvcxcIgE="
   },
   {
+   "enum_label_sources": {
+    "comfort": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "coolman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "heatman": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "norm": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "red": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4495,12 +4873,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
    },
    "enum_labels_en": {
-    "off": "No/Cancel"
+    "off": "No/Cancel",
+    "on": "Yes"
    },
    "hc_tag": 11307,
    "id": "AiM6JSssAAE=",
@@ -4523,12 +4912,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
    },
    "enum_labels_en": {
-    "off": "No/Cancel"
+    "off": "No/Cancel",
+    "on": "Yes"
    },
    "hc_tag": 31886,
    "id": "AiM6JY58AAE=",
@@ -4551,12 +4951,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
    },
    "enum_labels_en": {
-    "off": "No/Cancel"
+    "off": "No/Cancel",
+    "on": "Yes"
    },
    "hc_tag": 23756,
    "id": "AiM6JcxcAAE=",
@@ -4579,12 +4990,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
    },
    "enum_labels_en": {
-    "off": "No/Cancel"
+    "off": "No/Cancel",
+    "on": "Yes"
    },
    "hc_tag": 19693,
    "id": "AiM6Je1MAAE=",
@@ -4697,23 +5119,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "auto": {
+     "de": "override",
+     "en": "override"
+    },
+    "date": {
+     "de": "override",
+     "en": "override"
+    },
+    "pass": {
+     "de": "override",
+     "en": "override"
+    },
+    "summer": {
+     "de": "override",
+     "en": "override"
+    },
+    "winter": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "auto": "Auto",
-    "date": "Date",
-    "pass": "Pass_HK",
-    "summer": "Summer_HK",
-    "winter": "Winter_HK"
+    "auto": "Automatik",
+    "date": "Nach Datum",
+    "pass": "Passiv",
+    "summer": "Sommer",
+    "winter": "Winter"
    },
    "enum_labels_en": {
-    "date": "Date",
-    "pass": "Pass_HK"
+    "auto": "Automatic",
+    "date": "By date",
+    "pass": "Passive",
+    "summer": "Summer",
+    "winter": "Winter"
    },
    "id": "AiMN7CssAAE=",
    "name": "Summer-Winter-Switch-HK",
-   "name_de": "Summer-Winter-Switch-HK",
-   "name_de_source": "bundle",
-   "name_en": "Summer-Winter-Switch-HK",
-   "name_en_source": "bundle",
+   "name_de": "Sommer-/Winterumschaltung Heizkreis",
+   "name_de_source": "translated",
+   "name_en": "Summer/winter changeover, heating circuit",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Auto": 0,
@@ -4733,23 +5180,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "auto": {
+     "de": "override",
+     "en": "override"
+    },
+    "date": {
+     "de": "override",
+     "en": "override"
+    },
+    "pass": {
+     "de": "override",
+     "en": "override"
+    },
+    "summer": {
+     "de": "override",
+     "en": "override"
+    },
+    "winter": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "auto": "Auto",
-    "date": "Date",
-    "pass": "Pass_HK",
-    "summer": "Summer_HK",
-    "winter": "Winter_HK"
+    "auto": "Automatik",
+    "date": "Nach Datum",
+    "pass": "Passiv",
+    "summer": "Sommer",
+    "winter": "Winter"
    },
    "enum_labels_en": {
-    "date": "Date",
-    "pass": "Pass_HK"
+    "auto": "Automatic",
+    "date": "By date",
+    "pass": "Passive",
+    "summer": "Summer",
+    "winter": "Winter"
    },
    "id": "AiMN7I58AAE=",
    "name": "Summer-Winter-Switch-HK",
-   "name_de": "Summer-Winter-Switch-HK",
-   "name_de_source": "bundle",
-   "name_en": "Summer-Winter-Switch-HK",
-   "name_en_source": "bundle",
+   "name_de": "Sommer-/Winterumschaltung Heizkreis",
+   "name_de_source": "translated",
+   "name_en": "Summer/winter changeover, heating circuit",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Auto": 0,
@@ -4769,23 +5241,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "auto": {
+     "de": "override",
+     "en": "override"
+    },
+    "date": {
+     "de": "override",
+     "en": "override"
+    },
+    "pass": {
+     "de": "override",
+     "en": "override"
+    },
+    "summer": {
+     "de": "override",
+     "en": "override"
+    },
+    "winter": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "auto": "Auto",
-    "date": "Date",
-    "pass": "Pass_HK",
-    "summer": "Summer_HK",
-    "winter": "Winter_HK"
+    "auto": "Automatik",
+    "date": "Nach Datum",
+    "pass": "Passiv",
+    "summer": "Sommer",
+    "winter": "Winter"
    },
    "enum_labels_en": {
-    "date": "Date",
-    "pass": "Pass_HK"
+    "auto": "Automatic",
+    "date": "By date",
+    "pass": "Passive",
+    "summer": "Summer",
+    "winter": "Winter"
    },
    "id": "AiMN7MxcAAE=",
    "name": "Summer-Winter-Switch-HK",
-   "name_de": "Summer-Winter-Switch-HK",
-   "name_de_source": "bundle",
-   "name_en": "Summer-Winter-Switch-HK",
-   "name_en_source": "bundle",
+   "name_de": "Sommer-/Winterumschaltung Heizkreis",
+   "name_de_source": "translated",
+   "name_en": "Summer/winter changeover, heating circuit",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Auto": 0,
@@ -4805,23 +5302,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "auto": {
+     "de": "override",
+     "en": "override"
+    },
+    "date": {
+     "de": "override",
+     "en": "override"
+    },
+    "pass": {
+     "de": "override",
+     "en": "override"
+    },
+    "summer": {
+     "de": "override",
+     "en": "override"
+    },
+    "winter": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "auto": "Auto",
-    "date": "Date",
-    "pass": "Pass_HK",
-    "summer": "Summer_HK",
-    "winter": "Winter_HK"
+    "auto": "Automatik",
+    "date": "Nach Datum",
+    "pass": "Passiv",
+    "summer": "Sommer",
+    "winter": "Winter"
    },
    "enum_labels_en": {
-    "date": "Date",
-    "pass": "Pass_HK"
+    "auto": "Automatic",
+    "date": "By date",
+    "pass": "Passive",
+    "summer": "Summer",
+    "winter": "Winter"
    },
    "id": "AiMN7O1MAAE=",
    "name": "Summer-Winter-Switch-HK",
-   "name_de": "Summer-Winter-Switch-HK",
-   "name_de_source": "bundle",
-   "name_en": "Summer-Winter-Switch-HK",
-   "name_en_source": "bundle",
+   "name_de": "Sommer-/Winterumschaltung Heizkreis",
+   "name_de_source": "translated",
+   "name_en": "Summer/winter changeover, heating circuit",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Auto": 0,
@@ -4840,6 +5362,28 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "aus": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "auto": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "pu": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvoff": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvon": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -4849,6 +5393,7 @@
    },
    "enum_labels_en": {
     "aus": "Off",
+    "auto": "Inactive",
     "pu": "Heating circulation pump",
     "vlvoff": "Mixing valve close",
     "vlvon": "Mixing valve open"
@@ -4876,9 +5421,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "one": {
+     "de": "override",
+     "en": "override"
+    },
+    "two": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "one": "eins",
-    "two": "zwei"
+    "one": "Eins",
+    "two": "Zwei"
+   },
+   "enum_labels_en": {
+    "one": "One",
+    "two": "Two"
    },
    "id": "AiMu+yApAAE=",
    "name": "Stop bit",
@@ -4899,6 +5458,23 @@
    "write_id": "AiMu+yApAAE="
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "coolspd": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "heatspd": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "coolspd": "Handbetrieb Kühlen",
@@ -4958,6 +5534,28 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "aus": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "auto": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "pu": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvoff": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvon": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -4967,6 +5565,7 @@
    },
    "enum_labels_en": {
     "aus": "Off",
+    "auto": "Inactive",
     "pu": "Heating circulation pump",
     "vlvoff": "Mixing valve close",
     "vlvon": "Mixing valve open"
@@ -4995,6 +5594,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "reduced": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "standard": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "reduced": "Notbetrieb",
     "standard": "Normalbetrieb"
@@ -5005,10 +5614,10 @@
    },
    "id": "AiN5rlsWAAE=",
    "name": "DHWEmgyMod",
-   "name_de": "DHWEmgyMod",
-   "name_de_source": "bundle",
-   "name_en": "DHWEmgyMod",
-   "name_en_source": "bundle",
+   "name_de": "Betriebswahl Notbetrieb Warmwasser",
+   "name_de_source": "translated",
+   "name_en": "Operating program, DHW emergency mode",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Normalbetrieb": 1,
@@ -5040,6 +5649,108 @@
    "write_id": "AiN95Ir8AAE="
   },
   {
+   "enum_label_sources": {
+    "-1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "-9": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "-1": "(UTC -01:00)",
     "-10": "(UTC -10:00)",
@@ -5136,6 +5847,15 @@
    "write_id": "AiNSjtVVAAE="
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Abgeschaltet"
@@ -5178,6 +5898,28 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "19200": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2400": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "38400": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4800": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9600": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "19200": "19200",
     "2400": "2400",
@@ -5215,12 +5957,23 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "ackallall": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "passive": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "ackallall": "Quittieren",
     "passive": "Inaktiv"
    },
    "enum_labels_en": {
-    "ackallall": "Confirm"
+    "ackallall": "Confirm",
+    "passive": "Inactive"
    },
    "id": "AiNxI4wCAAE=",
    "name": "Acknowledge error",
@@ -5242,10 +5995,29 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "even": {
+     "de": "override",
+     "en": "override"
+    },
+    "none": {
+     "de": "override",
+     "en": "override"
+    },
+    "odd": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "even": "even",
-    "none": "none",
-    "odd": "odd"
+    "even": "Gerade",
+    "none": "Keine",
+    "odd": "Ungerade"
+   },
+   "enum_labels_en": {
+    "even": "Even",
+    "none": "None",
+    "odd": "Odd"
    },
    "id": "AiOFwiApAAE=",
    "name": "Parity",
@@ -5269,9 +6041,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "confirmed": {
+     "de": "override",
+     "en": "override"
+    },
+    "unconfirmed": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "confirmed": "Confirmed",
-    "unconfirmed": "Unconfirmed"
+    "confirmed": "Bestätigt",
+    "unconfirmed": "Nicht bestätigt"
    },
    "enum_labels_en": {
     "confirmed": "Confirmed",
@@ -5279,10 +6061,10 @@
    },
    "id": "AiOUfbWVAAE=",
    "name": "HPMEmgyModConf",
-   "name_de": "HPMEmgyModConf",
-   "name_de_source": "bundle",
-   "name_en": "HPMEmgyModConf",
-   "name_en_source": "bundle",
+   "name_de": "Bestätigung Notbetrieb Wärmepumpe",
+   "name_de_source": "translated",
+   "name_en": "Heat pump emergency mode confirmation",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Confirmed": 1,
@@ -5299,6 +6081,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "reduced": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "standard": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "reduced": "Notbetrieb",
     "standard": "Normalbetrieb"
@@ -5309,10 +6101,10 @@
    },
    "id": "AiOkl7WVAAE=",
    "name": "HPMEmgyMod",
-   "name_de": "HPMEmgyMod",
-   "name_de_source": "bundle",
-   "name_en": "HPMEmgyMod",
-   "name_en_source": "bundle",
+   "name_de": "Betriebswahl Notbetrieb Wärmepumpe",
+   "name_de_source": "translated",
+   "name_en": "Operating program, heat pump emergency mode",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Normalbetrieb": 1,
@@ -5340,6 +6132,40 @@
    ]
   },
   {
+   "enum_label_sources": {
+    "hc1max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc2max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc3max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc4max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc5max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc6max": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hcallmax": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "spmax": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "hc1max": "Max. Vorlauftemperatur Heizkreis 1",
     "hc2max": "Max. Vorlauftemperatur Heizkreis 2",
@@ -5430,6 +6256,16 @@
    "technical": true
   },
   {
+   "enum_label_sources": {
+    "cal": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "cal": "Zeitprogramm",
     "off": "Aus"
@@ -5458,6 +6294,28 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "aus": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "auto": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "pu": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvoff": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "vlvon": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -5467,6 +6325,7 @@
    },
    "enum_labels_en": {
     "aus": "Off",
+    "auto": "Inactive",
     "pu": "Heating circulation pump",
     "vlvoff": "Mixing valve close",
     "vlvon": "Mixing valve open"
@@ -5494,6 +6353,24 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
@@ -5529,6 +6406,24 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
@@ -5564,6 +6459,24 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
@@ -5599,6 +6512,24 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
@@ -5634,11 +6565,22 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "passive": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "unlckall": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "passive": "Inaktiv",
     "unlckall": "Entsperren"
    },
    "enum_labels_en": {
+    "passive": "Inactive",
     "unlckall": "Unlock"
    },
    "id": "AiP9j4wCAAE=",
@@ -5662,6 +6604,36 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "0",
     "1": "Wärmepumpe 1",
@@ -5682,10 +6654,10 @@
    },
    "id": "AiPJigAAAAE=",
    "name": "cnfDevice",
-   "name_de": "cnfDevice",
-   "name_de_source": "bundle",
-   "name_en": "cnfDevice",
-   "name_en_source": "bundle",
+   "name_de": "Gerätekonfiguration",
+   "name_de_source": "translated",
+   "name_en": "Device configuration",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -5736,6 +6708,36 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "aus": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "auto": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "puwrg": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "ulvww": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "wep": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh2": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -5747,6 +6749,7 @@
    },
    "enum_labels_en": {
     "aus": "Off",
+    "auto": "Inactive",
     "puwrg": "Heat recovery pump",
     "ulvww": "3-way switching module, DHW position",
     "wep": "Heat generator pump",
@@ -5781,10 +6784,10 @@
    "enabled_default": false,
    "id": "AiPo7gAAAAE=",
    "name": "cnfTCP",
-   "name_de": "cnfTCP",
-   "name_de_source": "bundle",
-   "name_en": "cnfTCP",
-   "name_en_source": "bundle",
+   "name_de": "TCP-Netzwerkkonfiguration",
+   "name_de_source": "translated",
+   "name_en": "TCP network configuration",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "off_value": 0,
    "on_value": 1,
@@ -5797,6 +6800,52 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "aus": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "auto": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "pu": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "pu2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "ulv": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "wez": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "wezvlv": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "zh4": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -5812,6 +6861,7 @@
    },
    "enum_labels_en": {
     "aus": "Off",
+    "auto": "Inactive",
     "pu": "System pump",
     "pu2": "System pump 2",
     "ulv": "Zone cooling valve",
@@ -5849,6 +6899,40 @@
    "write_id": "AiPq0yiJAAE="
   },
   {
+   "enum_label_sources": {
+    "hc1min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc2min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc3min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc4min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc5min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hc6min": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "hcallmin": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "spmin": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "hc1min": "Min. Vorlauftemperatur Heizkreis 1",
     "hc2min": "Min. Vorlauftemperatur Heizkreis 2",
@@ -5896,9 +6980,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "confirmed": {
+     "de": "override",
+     "en": "override"
+    },
+    "unconfirmed": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "confirmed": "Confirmed",
-    "unconfirmed": "Unconfirmed"
+    "confirmed": "Bestätigt",
+    "unconfirmed": "Nicht bestätigt"
    },
    "enum_labels_en": {
     "confirmed": "Confirmed",
@@ -5906,10 +7000,10 @@
    },
    "id": "AiPuB1sWAAE=",
    "name": "DHWEmgModConf",
-   "name_de": "DHWEmgModConf",
-   "name_de_source": "bundle",
-   "name_en": "DHWEmgModConf",
-   "name_en_source": "bundle",
+   "name_de": "Bestätigung Notbetrieb Warmwasser",
+   "name_de_source": "translated",
+   "name_en": "DHW emergency mode confirmation",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "options": {
     "Confirmed": 1,
@@ -6597,10 +7691,10 @@
    "enabled_default": false,
    "id": "AyM4rCiJAAE=",
    "name": "ZHOprHrsAct",
-   "name_de": "ZHOprHrsAct",
-   "name_de_source": "bundle",
-   "name_en": "ZHOprHrsAct",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Zusatzheizung aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater operating hours, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6640,10 +7734,10 @@
    "enabled_default": false,
    "id": "AyM8VSiJAAE=",
    "name": "EngyDHW1",
-   "name_de": "EngyDHW1",
-   "name_de_source": "bundle",
-   "name_en": "EngyDHW1",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "DHW energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6657,10 +7751,10 @@
    "enabled_default": false,
    "id": "AyMCBCiJAAE=",
    "name": "EngyZHH3",
-   "name_de": "EngyZHH3",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHH3",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie Zusatzheizung vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater heating energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6674,10 +7768,10 @@
    "enabled_default": false,
    "id": "AyMCYiiJAAE=",
    "name": "ZHOprHrs2",
-   "name_de": "ZHOprHrs2",
-   "name_de_source": "bundle",
-   "name_en": "ZHOprHrs2",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Zusatzheizung vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater operating hours, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6691,10 +7785,10 @@
    "enabled_default": false,
    "id": "AyMOAyiJAAE=",
    "name": "EngyH2",
-   "name_de": "EngyH2",
-   "name_de_source": "bundle",
-   "name_en": "EngyH2",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Heating energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6708,10 +7802,10 @@
    "enabled_default": false,
    "id": "AyMPgyiJAAE=",
    "name": "EngyDfrZH1",
-   "name_de": "EngyDfrZH1",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfrZH1",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie Zusatzheizung Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater defrosting energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6740,10 +7834,10 @@
    "enabled_default": false,
    "id": "AyMWhCiJAAE=",
    "name": "E-EngyDHW1",
-   "name_de": "E-EngyDHW1",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDHW1",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Warmwasser Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for DHW, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6802,10 +7896,10 @@
    "enabled_default": false,
    "id": "AyMYzyiJAAE=",
    "name": "EngyZHDHW1",
-   "name_de": "EngyZHDHW1",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHDHW1",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie Zusatzheizung Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater DHW energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6868,10 +7962,10 @@
    "enabled_default": false,
    "id": "AyMjFCiJAAE=",
    "name": "EngyZHH2",
-   "name_de": "EngyZHH2",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHH2",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie Zusatzheizung vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater heating energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6885,10 +7979,10 @@
    "enabled_default": false,
    "id": "AyMjciiJAAE=",
    "name": "ZHOprHrs3",
-   "name_de": "ZHOprHrs3",
-   "name_de_source": "bundle",
-   "name_en": "ZHOprHrs3",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Zusatzheizung vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater operating hours, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6902,10 +7996,10 @@
    "enabled_default": false,
    "id": "AyMkHCiJAAE=",
    "name": "E-EngyC1",
-   "name_de": "E-EngyC1",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyC1",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Kühlen Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for cooling, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6919,10 +8013,10 @@
    "enabled_default": false,
    "id": "AyMvEyiJAAE=",
    "name": "EngyH3",
-   "name_de": "EngyH3",
-   "name_de_source": "bundle",
-   "name_en": "EngyH3",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Heating energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6936,10 +8030,10 @@
    "enabled_default": false,
    "id": "AyMxLSiJAAE=",
    "name": "EngyZHDHWAct",
-   "name_de": "EngyZHDHWAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHDHWAct",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie Zusatzheizung aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater DHW energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6953,10 +8047,10 @@
    "enabled_default": false,
    "id": "AyN+dSiJAAE=",
    "name": "EngyDHW3",
-   "name_de": "EngyDHW3",
-   "name_de_source": "bundle",
-   "name_en": "EngyDHW3",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "DHW energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -6998,10 +8092,10 @@
    "enabled_default": false,
    "id": "AyN1tCiJAAE=",
    "name": "E-EngyDHW2",
-   "name_de": "E-EngyDHW2",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDHW2",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Warmwasser vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for DHW, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7015,10 +8109,10 @@
    "enabled_default": false,
    "id": "AyN7/yiJAAE=",
    "name": "EngyZHDHW2",
-   "name_de": "EngyZHDHW2",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHDHW2",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie Zusatzheizung vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater DHW energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7032,10 +8126,10 @@
    "enabled_default": false,
    "id": "AyNAJCiJAAE=",
    "name": "EngyZHH1",
-   "name_de": "EngyZHH1",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHH1",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie Zusatzheizung Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater heating energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7049,10 +8143,10 @@
    "enabled_default": false,
    "id": "AyNGByiJAAE=",
    "name": "EngyDfrZHAct",
-   "name_de": "EngyDfrZHAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfrZHAct",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie Zusatzheizung aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater defrosting energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7066,10 +8160,10 @@
    "enabled_default": false,
    "id": "AyNHLCiJAAE=",
    "name": "E-EngyC2",
-   "name_de": "E-EngyC2",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyC2",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Kühlen vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for cooling, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7096,10 +8190,10 @@
    "enabled_default": false,
    "id": "AyNNoyiJAAE=",
    "name": "EngyDfrZH3",
-   "name_de": "EngyDfrZH3",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfrZH3",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie Zusatzheizung vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater defrosting energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7127,10 +8221,10 @@
    "enabled_default": false,
    "id": "AyNUpCiJAAE=",
    "name": "E-EngyDHW3",
-   "name_de": "E-EngyDHW3",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDHW3",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Warmwasser vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for DHW, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7144,10 +8238,10 @@
    "enabled_default": false,
    "id": "AyNa7yiJAAE=",
    "name": "EngyZHDHW3",
-   "name_de": "EngyZHDHW3",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHDHW3",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie Zusatzheizung vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater DHW energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7174,10 +8268,10 @@
    "enabled_default": false,
    "id": "AyNfZSiJAAE=",
    "name": "EngyDHW2",
-   "name_de": "EngyDHW2",
-   "name_de_source": "bundle",
-   "name_en": "EngyDHW2",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "DHW energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7191,10 +8285,10 @@
    "enabled_default": false,
    "id": "AyNhUiiJAAE=",
    "name": "ZHOprHrs1",
-   "name_de": "ZHOprHrs1",
-   "name_de_source": "bundle",
-   "name_en": "ZHOprHrs1",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Zusatzheizung Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater operating hours, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7234,10 +8328,10 @@
    "enabled_default": false,
    "id": "AyNmPCiJAAE=",
    "name": "E-EngyC3",
-   "name_de": "E-EngyC3",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyC3",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Kühlen vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for cooling, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7251,10 +8345,10 @@
    "enabled_default": false,
    "id": "AyNssyiJAAE=",
    "name": "EngyDfrZH2",
-   "name_de": "EngyDfrZH2",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfrZH2",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie Zusatzheizung vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater defrosting energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7281,10 +8375,10 @@
    "enabled_default": false,
    "id": "AyO+3CiJAAE=",
    "name": "CprOprHrsAct",
-   "name_de": "CprOprHrsAct",
-   "name_de_source": "bundle",
-   "name_en": "CprOprHrsAct",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Verdichter aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Compressor operating hours, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7298,10 +8392,10 @@
    "enabled_default": false,
    "id": "AyO/cyiJAAE=",
    "name": "EngyH1",
-   "name_de": "EngyH1",
-   "name_de_source": "bundle",
-   "name_en": "EngyH1",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Heating energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7315,10 +8409,10 @@
    "enabled_default": false,
    "id": "AyO98CiJAAE=",
    "name": "E-EngyH2",
-   "name_de": "E-EngyH2",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyH2",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Heizen vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for heating, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7346,10 +8440,10 @@
    "enabled_default": false,
    "id": "AyOAwCiJAAE=",
    "name": "E-EngyDfr3",
-   "name_de": "E-EngyDfr3",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDfr3",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Abtauen vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for defrosting, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7363,10 +8457,10 @@
    "enabled_default": false,
    "id": "AyOEOiiJAAE=",
    "name": "EngyZHHAct",
-   "name_de": "EngyZHHAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyZHHAct",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie Zusatzheizung aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater heating energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7380,10 +8474,10 @@
    "enabled_default": false,
    "id": "AyOFhCiJAAE=",
    "name": "E-EngyHAct",
-   "name_de": "E-EngyHAct",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyHAct",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Heizen aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for heating, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7410,10 +8504,10 @@
    "enabled_default": false,
    "id": "AyOLASiJAAE=",
    "name": "EngyDfr2",
-   "name_de": "EngyDfr2",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfr2",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Defrosting energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7453,10 +8547,10 @@
    "enabled_default": false,
    "id": "AyOX7yiJAAE=",
    "name": "EngyC1",
-   "name_de": "EngyC1",
-   "name_de_source": "bundle",
-   "name_en": "EngyC1",
-   "name_en_source": "bundle",
+   "name_de": "Kühlenergie Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Cooling energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7470,10 +8564,10 @@
    "enabled_default": false,
    "id": "AyOamiiJAAE=",
    "name": "E-EngyCAct",
-   "name_de": "E-EngyCAct",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyCAct",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Kühlen aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for cooling, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7487,10 +8581,10 @@
    "enabled_default": false,
    "id": "AyOc4CiJAAE=",
    "name": "E-EngyH3",
-   "name_de": "E-EngyH3",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyH3",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Heizen vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for heating, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7504,10 +8598,10 @@
    "enabled_default": false,
    "id": "AyOgSyiJAAE=",
    "name": "CprOprHrs1",
-   "name_de": "CprOprHrs1",
-   "name_de_source": "bundle",
-   "name_en": "CprOprHrs1",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Verdichter Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Compressor operating hours, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7521,10 +8615,10 @@
    "enabled_default": false,
    "id": "AyOh0CiJAAE=",
    "name": "E-EngyDfr2",
-   "name_de": "E-EngyDfr2",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDfr2",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Abtauen vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for defrosting, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7551,10 +8645,10 @@
    "enabled_default": false,
    "id": "AyOqESiJAAE=",
    "name": "EngyDfr3",
-   "name_de": "EngyDfr3",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfr3",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Defrosting energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7581,10 +8675,10 @@
    "enabled_default": false,
    "id": "AyOvVSiJAAE=",
    "name": "EngyHAct",
-   "name_de": "EngyHAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyHAct",
-   "name_en_source": "bundle",
+   "name_de": "Heizenergie aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Heating energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7613,10 +8707,10 @@
    "enabled_default": false,
    "id": "AyOwSyiJAAE=",
    "name": "EngyCAct",
-   "name_de": "EngyCAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyCAct",
-   "name_en_source": "bundle",
+   "name_de": "Kühlenergie aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Cooling energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7630,10 +8724,10 @@
    "enabled_default": false,
    "id": "AyP03yiJAAE=",
    "name": "EngyC2",
-   "name_de": "EngyC2",
-   "name_de_source": "bundle",
-   "name_en": "EngyC2",
-   "name_en_source": "bundle",
+   "name_de": "Kühlenergie vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Cooling energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7647,10 +8741,10 @@
    "enabled_default": false,
    "id": "AyP3viiJAAE=",
    "name": "EngyDHWAct",
-   "name_de": "EngyDHWAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyDHWAct",
-   "name_en_source": "bundle",
+   "name_de": "Warmwasserenergie aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "DHW energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7677,10 +8771,10 @@
    "enabled_default": false,
    "id": "AyPC4CiJAAE=",
    "name": "E-EngyDfr1",
-   "name_de": "E-EngyDfr1",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDfr1",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Abtauen Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for defrosting, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7694,10 +8788,10 @@
    "enabled_default": false,
    "id": "AyPDHyiJAAE=",
    "name": "E-EngyH1",
-   "name_de": "E-EngyH1",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyH1",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Heizen Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for heating, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7711,10 +8805,10 @@
    "enabled_default": false,
    "id": "AyPDeyiJAAE=",
    "name": "CprOprHrs2",
-   "name_de": "CprOprHrs2",
-   "name_de_source": "bundle",
-   "name_en": "CprOprHrs2",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Verdichter vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Compressor operating hours, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7728,10 +8822,10 @@
    "enabled_default": false,
    "id": "AyPJHSiJAAE=",
    "name": "E-EngyDHWAct",
-   "name_de": "E-EngyDHWAct",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDHWAct",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Warmwasser aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for DHW, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7758,10 +8852,10 @@
    "enabled_default": false,
    "id": "AyPVzyiJAAE=",
    "name": "EngyC3",
-   "name_de": "EngyC3",
-   "name_de_source": "bundle",
-   "name_en": "EngyC3",
-   "name_en_source": "bundle",
+   "name_de": "Kühlenergie vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Cooling energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7788,10 +8882,10 @@
    "enabled_default": false,
    "id": "AyPeUSiJAAE=",
    "name": "E-EngyDfrAct",
-   "name_de": "E-EngyDfrAct",
-   "name_de_source": "bundle",
-   "name_en": "E-EngyDfrAct",
-   "name_en_source": "bundle",
+   "name_de": "Strombedarf Abtauen aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Electrical energy consumption for defrosting, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7818,10 +8912,10 @@
    "enabled_default": false,
    "id": "AyPg8iiJAAE=",
    "name": "EngyDfrAct",
-   "name_de": "EngyDfrAct",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfrAct",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Defrosting energy, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7835,10 +8929,10 @@
    "enabled_default": false,
    "id": "AyPiayiJAAE=",
    "name": "CprOprHrs3",
-   "name_de": "CprOprHrs3",
-   "name_de_source": "bundle",
-   "name_en": "CprOprHrs3",
-   "name_en_source": "bundle",
+   "name_de": "Betriebsstunden Verdichter vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Compressor operating hours, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -7882,10 +8976,10 @@
    "enabled_default": false,
    "id": "AyPoMSiJAAE=",
    "name": "EngyDfr1",
-   "name_de": "EngyDfr1",
-   "name_de_source": "bundle",
-   "name_en": "EngyDfr1",
-   "name_en_source": "bundle",
+   "name_de": "Abtauenergie Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Defrosting energy, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -8235,27 +9329,71 @@
    ]
   },
   {
+   "enum_label_sources": {
+    "almof": {
+     "de": "override",
+     "en": "override"
+    },
+    "almon": {
+     "de": "override",
+     "en": "override"
+    },
+    "erof": {
+     "de": "override",
+     "en": "override"
+    },
+    "eron": {
+     "de": "override",
+     "en": "override"
+    },
+    "infof": {
+     "de": "override",
+     "en": "override"
+    },
+    "infon": {
+     "de": "override",
+     "en": "override"
+    },
+    "lockof": {
+     "de": "override",
+     "en": "override"
+    },
+    "lockon": {
+     "de": "override",
+     "en": "override"
+    },
+    "null": {
+     "de": "override",
+     "en": "override"
+    },
+    "ok": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "almof": "AlmOf",
-    "almon": "AlmOn",
-    "erof": "ErOf",
-    "eron": "ErOn",
-    "infof": "InfOf",
-    "infon": "InfOn",
-    "lockof": "LockOf",
-    "lockon": "LockOn",
+    "almof": "Alarm aus",
+    "almon": "Alarm ein",
+    "erof": "Störung aus",
+    "eron": "Störung ein",
+    "infof": "Info aus",
+    "infon": "Info ein",
+    "lockof": "Sperre aus",
+    "lockon": "Sperre ein",
     "null": "Null",
     "ok": "OK"
    },
    "enum_labels_en": {
-    "almof": "AlmOf",
-    "almon": "AlmOn",
-    "erof": "ErOf",
-    "eron": "ErOn",
-    "infof": "InfOf",
-    "infon": "InfOn",
-    "lockof": "LockOf",
-    "lockon": "LockOn"
+    "almof": "Alarm off",
+    "almon": "Alarm on",
+    "erof": "Error off",
+    "eron": "Error on",
+    "infof": "Info off",
+    "infon": "Info on",
+    "lockof": "Lockout off",
+    "lockon": "Lockout on",
+    "null": "Null",
+    "ok": "OK"
    },
    "id": "BSLZ1IwCAAE=",
    "name": "Summenstörung Wärmepumpe",
@@ -8621,13 +9759,27 @@
    "write_id": "ByIDxCiJHQE="
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 31886,
    "id": "ByIKwCiJSjA=",
@@ -8649,13 +9801,27 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 31886,
    "id": "ByIPECiJAAE=",
@@ -8677,13 +9843,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "id": "ByIeriiJAAE=",
    "name": "Status Stufe 2",
@@ -8704,13 +9884,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 31886,
    "id": "ByImpiiJSjA=",
@@ -8731,13 +9925,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 19693,
    "id": "ByJ62CiJAAE=",
@@ -8759,13 +9967,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 19693,
    "id": "ByK5oyiJSjA=",
@@ -8786,13 +10008,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 19693,
    "id": "ByKVxSiJSjA=",
@@ -8814,13 +10050,27 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 23756,
    "id": "ByKpnyiJAAE=",
@@ -8868,13 +10118,27 @@
    ]
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "id": "ByLMQCiJAAE=",
    "name": "Status Stufe 1",
@@ -8895,13 +10159,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 23756,
    "id": "ByLMoCiJSjA=",
@@ -8922,13 +10200,27 @@
    }
   },
   {
+   "enum_label_sources": {
+    "auto": {
+     "de": "bundle"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "on": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
    },
    "enum_labels_en": {
-    "off": "Off"
+    "off": "Off",
+    "on": "On"
    },
    "hc_tag": 23756,
    "id": "ByLgxiiJSjA=",
@@ -9088,8 +10380,8 @@
   {
    "id": "CiM6siiJAAE=",
    "name": "Seasonal performance factor",
-   "name_de": "JAZ-Sum1",
-   "name_de_source": "bundle",
+   "name_de": "JAZ gesamt Vorjahr",
+   "name_de_source": "translated",
    "name_en": "Seasonal performance factor",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -9104,10 +10396,10 @@
    "enabled_default": false,
    "id": "CiMALCiJAAE=",
    "name": "JAZ_H3",
-   "name_de": "JAZ_H3",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_H3",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Heizen vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor heating, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9120,10 +10412,10 @@
    "enabled_default": false,
    "id": "CiMH7CiJAAE=",
    "name": "JAZ_DHWAct",
-   "name_de": "JAZ_DHWAct",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_DHWAct",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Warmwasser aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor DHW, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9134,8 +10426,8 @@
   {
    "id": "CiMUVyiJAAE=",
    "name": "Seasonal performance factor",
-   "name_de": "JAZ-SumAct",
-   "name_de_source": "bundle",
+   "name_de": "JAZ gesamt aktuelles Jahr",
+   "name_de_source": "translated",
    "name_en": "Seasonal performance factor",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -9150,10 +10442,10 @@
    "enabled_default": false,
    "id": "CiMalSiJAAE=",
    "name": "JAZ_DHW1",
-   "name_de": "JAZ_DHW1",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_DHW1",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Warmwasser Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor DHW, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9181,10 +10473,10 @@
    "enabled_default": false,
    "id": "CiMeXI58AAE=",
    "name": "HC1Rt-Sp",
-   "name_de": "HC1Rt-Sp",
-   "name_de_source": "bundle",
-   "name_en": "HC1Rt-Sp",
-   "name_en_source": "bundle",
+   "name_de": "Aktueller Raumsollwert Heizkreis 1",
+   "name_de_source": "translated",
+   "name_en": "Current target room temperature, heating circuit 1",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9213,10 +10505,10 @@
    "enabled_default": false,
    "id": "CiMhPCiJAAE=",
    "name": "JAZ_H2",
-   "name_de": "JAZ_H2",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_H2",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Heizen vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor heating, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9240,8 +10532,8 @@
   {
    "id": "CiN4kiiJAAE=",
    "name": "Seasonal performance factor",
-   "name_de": "JAZ-Sum3",
-   "name_de_source": "bundle",
+   "name_de": "JAZ gesamt vor 3 Jahren",
+   "name_de_source": "translated",
    "name_en": "Seasonal performance factor",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -9256,10 +10548,10 @@
    "enabled_default": false,
    "id": "CiN5pSiJAAE=",
    "name": "JAZ_DHW2",
-   "name_de": "JAZ_DHW2",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_DHW2",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Warmwasser vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor DHW, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9272,10 +10564,10 @@
    "enabled_default": false,
    "id": "CiNCDCiJAAE=",
    "name": "JAZ_H1",
-   "name_de": "JAZ_H1",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_H1",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Heizen Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor heating, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9288,10 +10580,10 @@
    "enabled_default": false,
    "id": "CiNYtSiJAAE=",
    "name": "JAZ_DHW3",
-   "name_de": "JAZ_DHW3",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_DHW3",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Warmwasser vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor DHW, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9302,8 +10594,8 @@
   {
    "id": "CiNZgiiJAAE=",
    "name": "Seasonal performance factor",
-   "name_de": "JAZ-Sum2",
-   "name_de_source": "bundle",
+   "name_de": "JAZ gesamt vor 2 Jahren",
+   "name_de_source": "translated",
    "name_en": "Seasonal performance factor",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -9411,10 +10703,10 @@
    "enabled_default": false,
    "id": "CiO40CiJAAE=",
    "name": "JAZ_C1",
-   "name_de": "JAZ_C1",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_C1",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Kühlen Vorjahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor cooling, previous year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9442,10 +10734,10 @@
    "enabled_default": false,
    "id": "CiOJlSiJAAE=",
    "name": "JAZ_HAct",
-   "name_de": "JAZ_HAct",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_HAct",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Heizen aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor heating, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9458,10 +10750,10 @@
    "enabled_default": false,
    "id": "CiOWiyiJAAE=",
    "name": "JAZ_CAct",
-   "name_de": "JAZ_CAct",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_CAct",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Kühlen aktuelles Jahr",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor cooling, current year",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9490,10 +10782,10 @@
    "enabled_default": false,
    "id": "CiOt/MxcAAE=",
    "name": "HC3Rt-Sp",
-   "name_de": "HC3Rt-Sp",
-   "name_de_source": "bundle",
-   "name_en": "HC3Rt-Sp",
-   "name_en_source": "bundle",
+   "name_de": "Aktueller Raumsollwert Heizkreis 3",
+   "name_de_source": "translated",
+   "name_en": "Current target room temperature, heating circuit 3",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9523,10 +10815,10 @@
    "enabled_default": false,
    "id": "CiP68CiJAAE=",
    "name": "JAZ_C3",
-   "name_de": "JAZ_C3",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_C3",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Kühlen vor 3 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor cooling, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9554,10 +10846,10 @@
    "enabled_default": false,
    "id": "CiPb4CiJAAE=",
    "name": "JAZ_C2",
-   "name_de": "JAZ_C2",
-   "name_de_source": "bundle",
-   "name_en": "JAZ_C2",
-   "name_en_source": "bundle",
+   "name_de": "JAZ Kühlen vor 2 Jahren",
+   "name_de_source": "translated",
+   "name_en": "Seasonal performance factor cooling, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9634,10 +10926,10 @@
    "enabled_default": false,
    "id": "CiPkJO1MAAE=",
    "name": "HC2Rt-Sp",
-   "name_de": "HC2Rt-Sp",
-   "name_de_source": "bundle",
-   "name_en": "HC2Rt-Sp",
-   "name_en_source": "bundle",
+   "name_de": "Aktueller Raumsollwert Heizkreis 2",
+   "name_de_source": "translated",
+   "name_en": "Current target room temperature, heating circuit 2",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -9664,6 +10956,64 @@
    "technical": true
   },
   {
+   "enum_label_sources": {
+    "bip": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "dhw": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "dhwfolg": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "error": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "evu": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "frost": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "htg": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "lock": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "prt": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "stby": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "timinoff": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "timinon": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "twvmax": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "bip": "Bivalent gesperrt",
     "dhw": "Warmwasser",
@@ -9681,14 +11031,20 @@
     "twvmax": "Maximaltemperaturabschaltung"
    },
    "enum_labels_en": {
+    "bip": "Outdoor temperature shutdown",
     "dhw": "DHW",
     "dhwfolg": "DHW",
+    "error": "Fault",
     "evu": "Locked externally",
     "frost": "Frost protection mode",
+    "htg": "Heating mode",
     "lock": "Switched off manually",
     "off": "Standby",
     "prt": "Minimum system pressure",
-    "stby": "Standby"
+    "stby": "Standby",
+    "timinoff": "Starting procedure",
+    "timinon": "Shutdown procedure",
+    "twvmax": "Maximum temperature shutdown"
    },
    "id": "CyM4OMdZAAE=",
    "name": "Operating status: internal auxiliary heater",
@@ -9720,6 +11076,32 @@
    }
   },
   {
+   "enum_label_sources": {
+    "clg": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "dfrdhw": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "dfrh": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "dhw": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "htg": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "off": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "clg": "Kühlbetrieb",
     "dfrdhw": "Abtaubetrieb Warmwasser",
@@ -9733,6 +11115,7 @@
     "dfrdhw": "Defrost mode DHW",
     "dfrh": "Defrost mode heating",
     "dhw": "DHW mode",
+    "htg": "Heating mode",
     "off": "Switched off"
    },
    "id": "CyMOIMdZAAE=",
@@ -9757,19 +11140,107 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ],
-    "en": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ]
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "13": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "14": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "15": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "16": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "17": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "18": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "19": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "20": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "21": {
+     "de": "override",
+     "en": "override"
+    },
+    "22": {
+     "de": "override",
+     "en": "override"
+    },
+    "23": {
+     "de": "override",
+     "en": "override"
+    },
+    "24": {
+     "de": "override",
+     "en": "override"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
    },
    "enum_labels_de": {
     "0": "Betriebswahl abgeschaltet",
@@ -9786,6 +11257,10 @@
     "19": "Notbetrieb",
     "2": "Normal Heizbetrieb",
     "20": "Zwangsdrosselung",
+    "21": "Unbekannter Zustand 21",
+    "22": "Unbekannter Zustand 22",
+    "23": "Unbekannter Zustand 23",
+    "24": "Unbekannter Zustand 24",
     "3": "Reduziert Kühlbetrieb",
     "4": "Normal Kühlbetrieb",
     "5": "Frostschutzbetrieb",
@@ -9809,6 +11284,10 @@
     "19": "Emergency mode",
     "2": "Standard heating",
     "20": "Forced throttling",
+    "21": "Unknown state 21",
+    "22": "Unknown state 22",
+    "23": "Unknown state 23",
+    "24": "Unknown state 24",
     "3": "Reduced cooling",
     "4": "Standard cooling",
     "5": "Frost protection mode",
@@ -9881,19 +11360,107 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ],
-    "en": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ]
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "13": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "14": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "15": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "16": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "17": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "18": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "19": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "20": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "21": {
+     "de": "override",
+     "en": "override"
+    },
+    "22": {
+     "de": "override",
+     "en": "override"
+    },
+    "23": {
+     "de": "override",
+     "en": "override"
+    },
+    "24": {
+     "de": "override",
+     "en": "override"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
    },
    "enum_labels_de": {
     "0": "Betriebswahl abgeschaltet",
@@ -9910,6 +11477,10 @@
     "19": "Notbetrieb",
     "2": "Normal Heizbetrieb",
     "20": "Zwangsdrosselung",
+    "21": "Unbekannter Zustand 21",
+    "22": "Unbekannter Zustand 22",
+    "23": "Unbekannter Zustand 23",
+    "24": "Unbekannter Zustand 24",
     "3": "Reduziert Kühlbetrieb",
     "4": "Normal Kühlbetrieb",
     "5": "Frostschutzbetrieb",
@@ -9933,6 +11504,10 @@
     "19": "Emergency mode",
     "2": "Standard heating",
     "20": "Forced throttling",
+    "21": "Unknown state 21",
+    "22": "Unknown state 22",
+    "23": "Unknown state 23",
+    "24": "Unknown state 24",
     "3": "Reduced cooling",
     "4": "Standard cooling",
     "5": "Frost protection mode",
@@ -9979,19 +11554,107 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ],
-    "en": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ]
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "13": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "14": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "15": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "16": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "17": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "18": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "19": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "20": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "21": {
+     "de": "override",
+     "en": "override"
+    },
+    "22": {
+     "de": "override",
+     "en": "override"
+    },
+    "23": {
+     "de": "override",
+     "en": "override"
+    },
+    "24": {
+     "de": "override",
+     "en": "override"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
    },
    "enum_labels_de": {
     "0": "Betriebswahl abgeschaltet",
@@ -10008,6 +11671,10 @@
     "19": "Notbetrieb",
     "2": "Normal Heizbetrieb",
     "20": "Zwangsdrosselung",
+    "21": "Unbekannter Zustand 21",
+    "22": "Unbekannter Zustand 22",
+    "23": "Unbekannter Zustand 23",
+    "24": "Unbekannter Zustand 24",
     "3": "Reduziert Kühlbetrieb",
     "4": "Normal Kühlbetrieb",
     "5": "Frostschutzbetrieb",
@@ -10031,6 +11698,10 @@
     "19": "Emergency mode",
     "2": "Standard heating",
     "20": "Forced throttling",
+    "21": "Unknown state 21",
+    "22": "Unknown state 22",
+    "23": "Unknown state 23",
+    "24": "Unknown state 24",
     "3": "Reduced cooling",
     "4": "Standard cooling",
     "5": "Frost protection mode",
@@ -10077,19 +11748,107 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ],
-    "en": [
-     "21",
-     "22",
-     "23",
-     "24"
-    ]
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "13": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "14": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "15": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "16": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "17": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "18": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "19": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "20": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "21": {
+     "de": "override",
+     "en": "override"
+    },
+    "22": {
+     "de": "override",
+     "en": "override"
+    },
+    "23": {
+     "de": "override",
+     "en": "override"
+    },
+    "24": {
+     "de": "override",
+     "en": "override"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
    },
    "enum_labels_de": {
     "0": "Betriebswahl abgeschaltet",
@@ -10106,6 +11865,10 @@
     "19": "Notbetrieb",
     "2": "Normal Heizbetrieb",
     "20": "Zwangsdrosselung",
+    "21": "Unbekannter Zustand 21",
+    "22": "Unbekannter Zustand 22",
+    "23": "Unbekannter Zustand 23",
+    "24": "Unbekannter Zustand 24",
     "3": "Reduziert Kühlbetrieb",
     "4": "Normal Kühlbetrieb",
     "5": "Frostschutzbetrieb",
@@ -10129,6 +11892,10 @@
     "19": "Emergency mode",
     "2": "Standard heating",
     "20": "Forced throttling",
+    "21": "Unknown state 21",
+    "22": "Unknown state 22",
+    "23": "Unknown state 23",
+    "24": "Unknown state 24",
     "3": "Reduced cooling",
     "4": "Standard cooling",
     "5": "Frost protection mode",
@@ -10203,26 +11970,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "passiv": {
+     "de": "override",
+     "en": "override"
+    },
+    "pltflt": {
+     "de": "override",
+     "en": "override"
+    },
+    "redconf": {
+     "de": "override",
+     "en": "override"
+    },
+    "redunconf": {
+     "de": "override",
+     "en": "override"
+    },
+    "stdconf": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
     "passiv": "Passiv",
-    "pltflt": "PltFlt",
-    "redconf": "RedConf",
-    "redunconf": "RedUnConf",
-    "stdconf": "StdConf"
+    "pltflt": "Anlagenstörung",
+    "redconf": "Reduziert, bestätigt",
+    "redunconf": "Reduziert, nicht bestätigt",
+    "stdconf": "Standard, bestätigt"
    },
    "enum_labels_en": {
     "passiv": "Passive",
-    "pltflt": "PltFlt",
-    "redconf": "RedConf",
-    "redunconf": "RedUnConf",
-    "stdconf": "StdConf"
+    "pltflt": "Plant fault",
+    "redconf": "Reduced, confirmed",
+    "redunconf": "Reduced, unconfirmed",
+    "stdconf": "Standard, confirmed"
    },
    "id": "CyNBRFsWAAE=",
    "name": "DHWEmgySta",
-   "name_de": "DHWEmgySta",
-   "name_de_source": "bundle",
-   "name_en": "DHWEmgySta",
-   "name_en_source": "bundle",
+   "name_de": "Status Notbetrieb Warmwasser",
+   "name_de_source": "translated",
+   "name_en": "DHW emergency mode status",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -10257,26 +12046,48 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_sources": {
+    "passiv": {
+     "de": "override",
+     "en": "override"
+    },
+    "pltflt": {
+     "de": "override",
+     "en": "override"
+    },
+    "redconf": {
+     "de": "override",
+     "en": "override"
+    },
+    "redunconf": {
+     "de": "override",
+     "en": "override"
+    },
+    "stdconf": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
     "passiv": "Passiv",
-    "pltflt": "PltFlt",
-    "redconf": "RedConf",
-    "redunconf": "RedUnConf",
-    "stdconf": "StdConf"
+    "pltflt": "Anlagenstörung",
+    "redconf": "Reduziert, bestätigt",
+    "redunconf": "Reduziert, nicht bestätigt",
+    "stdconf": "Standard, bestätigt"
    },
    "enum_labels_en": {
     "passiv": "Passive",
-    "pltflt": "PltFlt",
-    "redconf": "RedConf",
-    "redunconf": "RedUnConf",
-    "stdconf": "StdConf"
+    "pltflt": "Plant fault",
+    "redconf": "Reduced, confirmed",
+    "redunconf": "Reduced, unconfirmed",
+    "stdconf": "Standard, confirmed"
    },
    "id": "CyNfYLWVAAE=",
    "name": "HPMEmgySta",
-   "name_de": "HPMEmgySta",
-   "name_de_source": "bundle",
-   "name_en": "HPMEmgySta",
-   "name_en_source": "bundle",
+   "name_de": "Status Notbetrieb Wärmepumpe",
+   "name_de_source": "translated",
+   "name_en": "Heat pump emergency mode status",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -10293,6 +12104,36 @@
    }
   },
   {
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10335,6 +12176,36 @@
    }
   },
   {
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10377,6 +12248,36 @@
    }
   },
   {
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10419,6 +12320,36 @@
    }
   },
   {
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10517,15 +12448,99 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "21",
-     "22"
-    ],
-    "en": [
-     "21",
-     "22"
-    ]
+   "enum_label_sources": {
+    "0": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "1": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "10": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "11": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "12": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "13": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "14": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "15": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "16": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "17": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "18": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "19": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "2": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "20": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "21": {
+     "de": "override",
+     "en": "override"
+    },
+    "22": {
+     "de": "override",
+     "en": "override"
+    },
+    "3": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "4": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "5": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "6": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "7": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "8": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "9": {
+     "de": "bundle",
+     "en": "translated"
+    }
    },
    "enum_labels_de": {
     "0": "Aus",
@@ -10542,6 +12557,8 @@
     "19": "Minimale Einzeit",
     "2": "Kühlen",
     "20": "min. Anlagendruck",
+    "21": "Unbekannter Zustand 21",
+    "22": "Unbekannter Zustand 22",
     "3": "Warmwasser",
     "4": "Abtauen",
     "5": "Extern gesperrt",
@@ -10565,6 +12582,8 @@
     "19": "Shutdown procedure",
     "2": "Cooling",
     "20": "Minimum system pressure",
+    "21": "Unknown state 21",
+    "22": "Unknown state 22",
     "3": "DHW",
     "4": "Defrost",
     "5": "Locked externally",
@@ -10610,6 +12629,28 @@
    }
   },
   {
+   "enum_label_sources": {
+    "day": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "no": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rfrc": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rlim": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "su": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
@@ -10646,6 +12687,28 @@
    }
   },
   {
+   "enum_label_sources": {
+    "day": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "no": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rfrc": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rlim": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "su": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
@@ -10682,6 +12745,28 @@
    }
   },
   {
+   "enum_label_sources": {
+    "day": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "no": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rfrc": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rlim": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "su": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
@@ -10718,6 +12803,28 @@
    }
   },
   {
+   "enum_label_sources": {
+    "day": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "no": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rfrc": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "rlim": {
+     "de": "bundle",
+     "en": "translated"
+    },
+    "su": {
+     "de": "bundle",
+     "en": "translated"
+    }
+   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
@@ -10771,10 +12878,10 @@
    "enabled_default": false,
    "id": "CyOpcYwCAAE=",
    "name": "MenuZHAvi",
-   "name_de": "MenuZHAvi",
-   "name_de_source": "bundle",
-   "name_en": "MenuZHAvi",
-   "name_en_source": "bundle",
+   "name_de": "Menü Zusatzheizung verfügbar",
+   "name_de_source": "translated",
+   "name_en": "Auxiliary heater menu available",
+   "name_en_source": "translated",
    "name_source": "bundle",
    "platform": "sensor",
    "sources": [
@@ -10811,8 +12918,8 @@
   {
    "id": "DCM2oyiJAAE=",
    "name": "Electrical energy consumption",
-   "name_de": "E-EngySum1",
-   "name_de_source": "bundle",
+   "name_de": "Strombedarf gesamt Vorjahr",
+   "name_de_source": "translated",
    "name_en": "Electrical energy consumption",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10826,8 +12933,8 @@
   {
    "id": "DCN0gyiJAAE=",
    "name": "Electrical energy consumption",
-   "name_de": "E-EngySum3",
-   "name_de_source": "bundle",
+   "name_de": "Strombedarf gesamt vor 3 Jahren",
+   "name_de_source": "translated",
    "name_en": "Electrical energy consumption",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10854,8 +12961,8 @@
   {
    "id": "DCNBAiiJAAE=",
    "name": "Thermal energy",
-   "name_de": "Th-EngySumAct",
-   "name_de_source": "bundle",
+   "name_de": "Wärmeenergie gesamt aktuelles Jahr",
+   "name_de_source": "translated",
    "name_en": "Thermal energy",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10869,8 +12976,8 @@
   {
    "id": "DCNVkyiJAAE=",
    "name": "Electrical energy consumption",
-   "name_de": "E-EngySum2",
-   "name_de_source": "bundle",
+   "name_de": "Strombedarf gesamt vor 2 Jahren",
+   "name_de_source": "translated",
    "name_en": "Electrical energy consumption",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10910,8 +13017,8 @@
   {
    "id": "DCOMuiiJAAE=",
    "name": "Thermal energy",
-   "name_de": "Th-EngySum3",
-   "name_de_source": "bundle",
+   "name_de": "Wärmeenergie gesamt vor 3 Jahren",
+   "name_de_source": "translated",
    "name_en": "Thermal energy",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10925,8 +13032,8 @@
   {
    "id": "DCOtqiiJAAE=",
    "name": "Thermal energy",
-   "name_de": "Th-EngySum2",
-   "name_de_source": "bundle",
+   "name_de": "Wärmeenergie gesamt vor 2 Jahren",
+   "name_de_source": "translated",
    "name_en": "Thermal energy",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10940,8 +13047,8 @@
   {
    "id": "DCP7vSiJAAE=",
    "name": "Electrical energy consumption",
-   "name_de": "E-EngySumAct",
-   "name_de_source": "bundle",
+   "name_de": "Strombedarf gesamt aktuelles Jahr",
+   "name_de_source": "translated",
    "name_en": "Electrical energy consumption",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -10955,8 +13062,8 @@
   {
    "id": "DCPOmiiJAAE=",
    "name": "Thermal energy",
-   "name_de": "Th-EngySum1",
-   "name_de_source": "bundle",
+   "name_de": "Wärmeenergie gesamt Vorjahr",
+   "name_de_source": "translated",
    "name_en": "Thermal energy",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
@@ -11351,11 +13458,29 @@
   },
   {
    "enabled_default": false,
+   "enum_label_sources": {
+    "deprecated": {
+     "de": "override",
+     "en": "override"
+    },
+    "disabled": {
+     "de": "override",
+     "en": "override"
+    },
+    "enabled": {
+     "de": "override",
+     "en": "override"
+    }
+   },
    "enum_labels_de": {
-    "disabled": "Verbindung aktiv"
+    "deprecated": "Veraltet",
+    "disabled": "Deaktiviert",
+    "enabled": "Aktiviert"
    },
    "enum_labels_en": {
-    "disabled": "Connection active"
+    "deprecated": "Deprecated",
+    "disabled": "Disabled",
+    "enabled": "Enabled"
    },
    "id": "MgABAAAAAQA=",
    "name": "Data connection to cloud",
@@ -11382,14 +13507,14 @@
   "by_name_de_source": {
    "apk_label": 0,
    "apk_symbol": 29,
-   "bundle": 431,
-   "translated": 121
+   "bundle": 337,
+   "translated": 215
   },
   "by_name_en_source": {
    "apk_label": 334,
    "apk_symbol": 29,
-   "bundle": 82,
-   "translated": 136
+   "bundle": 0,
+   "translated": 218
   },
   "by_name_source": {
    "apk_label": 334,
@@ -11400,11 +13525,11 @@
   "disabled_technical": 106,
   "en_suffixes_ambiguous": 9,
   "enabled": 431,
-  "enum_points_fully_mapped_de": 62,
-  "enum_points_with_de_gaps": 5,
+  "enum_points_fully_mapped_de": 67,
+  "enum_points_with_de_gaps": 0,
   "enum_points_with_de_labels": 67,
-  "enum_points_with_en_gaps": 5,
-  "enum_points_with_en_labels": 65,
+  "enum_points_with_en_gaps": 0,
+  "enum_points_with_en_labels": 67,
   "excluded_descriptor": 0,
   "excluded_schedule": 672,
   "excluded_unnamed": 149,
@@ -11427,6 +13552,7 @@
   },
   "shared_token_labels_de": 136,
   "shared_token_labels_en": 136,
+  "shared_tokens_untranslated_de": [],
   "writable_points": 196
  },
  "tags": [

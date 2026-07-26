@@ -46,12 +46,13 @@ NAMING (pump-first overall; the packaged name is the offline part):
   name_en/name_de with per-side provenance (name_en_source/name_de_source in
   apk_label|bundle|apk_symbol|translated). Each language keeps its native
   evidence verbatim; a missing side is filled from the reviewed translation
-  data (tools/catalog_translations.json, source "translated"). Technical
-  machine symbols are never translated — the symbol ships verbatim on both
-  sides. The runtime picks per the user's language
-  (catalog.resolve_point_name); cross-language fallback survives only for
-  prose names whose translation is missing, which the bilingual audit
-  reports (stats.name_translation_gaps).
+  data (tools/catalog_translations.json, source "translated"). A technical
+  machine name from bundle/APK-label evidence needs a reviewed pair in
+  names_symbol_bilingual (identity entries record that an acronym IS the
+  label); only apk_symbol evidence ships verbatim on both sides — the
+  single permitted exception (29 points, 25 unique). The runtime picks per
+  the user's language (catalog.resolve_point_name); a missing translation
+  is recorded in stats.name_translation_gaps and fails the bilingual gate.
 
 ENUM LABELS (the controller cannot localize: jsongen ignores LNG, so the
 member-4353 tokens are symbolic keys and the display labels ship here):
@@ -77,6 +78,11 @@ member-4353 tokens are symbolic keys and the display labels ship here):
     tokens the shared English map does not cover.
   * Tokens with no label evidence on either side but an unambiguous token
     meaning get shared {en, de} fills (translations.enum_token_labels_both).
+  * Reviewed per-point overrides (translations.enum_point_overrides) outrank
+    everything: they correct wrong joins and raw symbols the bundle stored
+    in the German slot, and give evidence-less numeric states an explicit
+    faithful label. The shipped asset must have NO enum_label_gaps left —
+    a gap means a raw-token fallback and fails the bilingual gate.
   * A normalized key claimed by two different raw tokens of one state list
     (signs preserved, so "-12" vs "12" stay distinct) is never mapped —
     a join must never shift a label between numeric values.
@@ -169,36 +175,46 @@ def _load_json(path: Path) -> Any:
 _TRANSLATION_SECTIONS = (
     "names_en_to_de",
     "names_de_to_en",
+    "names_symbol_bilingual",
     "enum_shared_en_to_de",
     "enum_labels_de_to_en",
     "enum_token_labels_both",
+    "enum_point_overrides",
 )
+
+# Sections whose leaf values are reviewed {en, de} pairs rather than strings.
+_PAIR_SECTIONS = {"names_symbol_bilingual", "enum_token_labels_both"}
 
 
 def _load_translations(path: Path) -> Dict[str, Dict[str, Any]]:
     """The reviewed bilingual label data (tools/catalog_translations.json).
 
-    Light validation only: sections present, every entry a non-empty string
-    (or {en, de} pair), and printf placeholders preserved — a translation
-    that drops "%1$s" would break the template it belongs to.
+    Light validation only: sections present, every leaf a non-empty string
+    (string entries and {en, de} pairs; enum_point_overrides nests pairs per
+    point id), and printf placeholders preserved — a translation that drops
+    "%1$s" would break the template it belongs to.
     """
     data = _load_json(path)
+
+    def check(section: str, key: str, value: Any, *, pair: bool) -> None:
+        values = [value.get("en"), value.get("de")] if pair else [value]
+        for v in values:
+            if not (isinstance(v, str) and v.strip()):
+                raise SystemExit(f"{path}: {section}[{key!r}] has an empty value")
+            if sorted(_PLACEHOLDER_LABEL.findall(key)) != sorted(_PLACEHOLDER_LABEL.findall(v)):
+                raise SystemExit(f"{path}: {section}[{key!r}] changes placeholders")
+
     out: Dict[str, Dict[str, Any]] = {}
     for section in _TRANSLATION_SECTIONS:
         entries = data.get(section)
         if not isinstance(entries, dict):
             raise SystemExit(f"{path}: missing section {section}")
         for key, value in entries.items():
-            values = (
-                [value.get("en"), value.get("de")]
-                if section == "enum_token_labels_both"
-                else [value]
-            )
-            for v in values:
-                if not (isinstance(v, str) and v.strip()):
-                    raise SystemExit(f"{path}: {section}[{key!r}] has an empty value")
-                if sorted(_PLACEHOLDER_LABEL.findall(key)) != sorted(_PLACEHOLDER_LABEL.findall(v)):
-                    raise SystemExit(f"{path}: {section}[{key!r}] changes placeholders")
+            if section == "enum_point_overrides":
+                for token, pair in value.items():
+                    check(section, token, pair, pair=True)
+            else:
+                check(section, key, value, pair=section in _PAIR_SECTIONS)
         out[section] = entries
     return out
 
@@ -297,18 +313,16 @@ def _value_labels_de(ref: Dict[str, Any]) -> Dict[int, str]:
 def _attach_enum_labels(
     ref: Dict[str, Any],
     tokens: List[str],
-    en_map: Dict[str, str],
-    shared_de: Dict[str, str],
     de_to_en: Dict[str, str],
 ) -> None:
     """Index-join one reference enum point: token at list index N <-> value N.
 
-    Adds enum_labels_de (normalized token -> German label, bundle join),
-    enum_labels_en (English translations of the point's own German labels
-    for tokens the shared APK map does not cover) and enum_label_gaps
-    (tokens still unlabelled in a language after the shared maps) to the
-    reference record, so heating-circuit propagation carries them to the
-    derived circuits (same tokens, same template).
+    Adds enum_labels_de (normalized token -> German label, bundle join) and
+    enum_labels_en (the reviewed English translation of EVERY own German
+    label — point/index evidence always outranks a generic shared token
+    meaning, in both languages) to the reference record, plus the raw token
+    list under ``_enum_tokens`` so per-point overrides and gap computation
+    run after heating-circuit propagation (same tokens, same template).
     """
     v2de = _value_labels_de(ref)
     # A normalized key claimed by two different raw tokens in ONE list would
@@ -322,38 +336,91 @@ def _attach_enum_labels(
     collisions = {k for k, toks in key_tokens.items() if len(toks) > 1}
     de_labels: Dict[str, str] = {}
     en_labels: Dict[str, str] = {}
-    gaps_de: List[str] = []
-    gaps_en: List[str] = []
     for idx, token in enumerate(tokens):
         token = token.strip()
         key = normalize_enum_token(token)
-        if not token or not key:
-            # Placeholder slots like "-" normalize to nothing: never a key.
+        if not token or not key or key in collisions:
+            # Placeholder slots ("-") and colliding keys are never mapped.
             continue
-        own_de = v2de.get(idx) if key not in collisions else None
+        own_de = v2de.get(idx)
         if own_de:
             de_labels.setdefault(key, own_de)
-        elif key in collisions or key not in shared_de:
-            gaps_de.append(token)
-        if key in collisions or key not in en_map:
-            # The point's own German label, translated, fills the EN side —
-            # per point, so a point-specific label never travels elsewhere.
-            own_en = de_to_en.get(own_de) if own_de else None
-            if own_en and key not in collisions:
+            own_en = de_to_en.get(own_de)
+            if own_en:
                 en_labels.setdefault(key, own_en)
-            else:
-                gaps_en.append(token)
     if de_labels:
         ref["enum_labels_de"] = de_labels
     if en_labels:
         ref["enum_labels_en"] = en_labels
-    gaps = {}
-    if gaps_de:
-        gaps["de"] = gaps_de
-    if gaps_en:
-        gaps["en"] = gaps_en
+    ref["_enum_tokens"] = [t.strip() for t in tokens]
+
+
+def _finalize_enum_labels(
+    rec: Dict[str, Any],
+    tokens: List[str],
+    overrides: Dict[str, Any],
+    en_map: Dict[str, str],
+    shared_de: Dict[str, str],
+) -> None:
+    """Apply reviewed per-point overrides and recompute gaps + provenance.
+
+    Runs on the FINAL point record (after heating-circuit propagation copied
+    the join to derived circuits). Overrides outrank the bundle join and the
+    shared maps in both languages — they are the reviewed correction channel
+    for wrong joins (the cloud select's inverted 'Verbindung aktiv') and for
+    raw symbols the bundle stored in the German slot. enum_label_sources
+    records the per-token per-side provenance of the point's own maps
+    (de: bundle|override, en: translated|override); tokens carried only by
+    the shared maps have their provenance in the catalog root.
+    ``enum_label_gaps`` afterwards lists tokens that still resolve to a raw
+    fallback in a language — the bilingual gate requires none.
+    """
+    de_labels = dict(rec.get("enum_labels_de") or {})
+    en_labels = dict(rec.get("enum_labels_en") or {})
+    sources: Dict[str, Dict[str, str]] = {}
+    for key in de_labels:
+        sources.setdefault(key, {})["de"] = "bundle"
+    for key in en_labels:
+        sources.setdefault(key, {})["en"] = "translated"
+    for key, pair in overrides.items():
+        de_labels[key] = str(pair["de"])
+        en_labels[key] = str(pair["en"])
+        sources.setdefault(key, {})["de"] = "override"
+        sources[key]["en"] = "override"
+
+    key_tokens: Dict[str, set] = {}
+    for token in tokens:
+        key = normalize_enum_token(token)
+        if key:
+            key_tokens.setdefault(key, set()).add(token.strip())
+    collisions = {k for k, toks in key_tokens.items() if len(toks) > 1}
+    gaps: Dict[str, List[str]] = {"de": [], "en": []}
+    for token in tokens:
+        token = token.strip()
+        key = normalize_enum_token(token)
+        if not token or not key:
+            continue
+        if key in collisions and key not in overrides:
+            gaps["de"].append(token)
+            gaps["en"].append(token)
+            continue
+        if key not in de_labels and key not in shared_de:
+            gaps["de"].append(token)
+        if key not in en_labels and key not in en_map:
+            gaps["en"].append(token)
+
+    for field, mapping in (("enum_labels_de", de_labels), ("enum_labels_en", en_labels)):
+        if mapping:
+            rec[field] = mapping
+        else:
+            rec.pop(field, None)
+    if sources:
+        rec["enum_label_sources"] = {k: sources[k] for k in sorted(sources)}
+    gaps = {lang: toks for lang, toks in gaps.items() if toks}
     if gaps:
-        ref["enum_label_gaps"] = gaps
+        rec["enum_label_gaps"] = gaps
+    else:
+        rec.pop("enum_label_gaps", None)
 
 
 def _choose_name(
@@ -401,9 +468,12 @@ def _bilingual_names(
 
     Each language prefers its native evidence (EN: APK label, DE: bundle
     name); a missing side is filled from the reviewed translation data
-    (source "translated"). Technical machine symbols — apk_symbol names and
-    any chosen name that is_technical_name — are never translated: the
-    symbol ships verbatim on both sides. A prose name whose translation is
+    (source "translated"). A technical machine name from bundle or APK-label
+    evidence is NOT exempt: it must have a reviewed {en, de} pair in
+    names_symbol_bilingual (an identity entry like DHCP records the decision
+    that the acronym IS the label). Only apk_symbol evidence — a point whose
+    sole name is the APK code identifier — ships the symbol verbatim on both
+    sides, the single permitted exception. A prose name whose translation is
     missing keeps the other language's string (recorded in ``name_gaps`` so
     the bilingual audit sees it) rather than dropping the point.
     """
@@ -412,36 +482,49 @@ def _bilingual_names(
         key=lambda lab: (-len(lab), lab),
     )
     label = usable[0] if usable else None
+    symbol_pairs = tr["names_symbol_bilingual"]
+
+    def _native_side(name: str, source: str, side: str) -> Tuple[str, str]:
+        """The side the evidence is written in — verbatim, except that a
+        technical machine name needs a reviewed pair (identity entries keep
+        the native provenance: the string IS the label)."""
+        pair = symbol_pairs.get(name)
+        if pair and str(pair[side]) != name:
+            return str(pair[side]), "translated"
+        if pair is None and is_technical_name(name):
+            # An unreviewed machine name is a gap, never silently accepted.
+            name_gaps[side].add(name)
+        return name, source
+
+    def _translated_side(name: str, source: str, side: str) -> Tuple[str, str]:
+        """The opposite side: the reviewed pair for machine names, the
+        reviewed prose translation otherwise; a missing entry keeps the
+        evidence string and is recorded as a gap."""
+        pair = symbol_pairs.get(name)
+        if pair:
+            translated = str(pair[side])
+            return translated, source if translated == name else "translated"
+        if not is_technical_name(name):
+            section = "names_de_to_en" if side == "en" else "names_en_to_de"
+            translated = tr[section].get(name)
+            if translated:
+                return translated, "translated"
+        name_gaps[side].add(name)
+        return name, source
 
     if label:
-        en, en_src = label, "apk_label"
+        en, en_src = _native_side(label, "apk_label", "en")
     elif bundle_name:
-        if is_technical_name(bundle_name):
-            en, en_src = bundle_name, "bundle"
-        else:
-            translated = tr["names_de_to_en"].get(bundle_name)
-            if translated:
-                en, en_src = translated, "translated"
-            else:
-                en, en_src = bundle_name, "bundle"
-                name_gaps["en"].add(bundle_name)
+        en, en_src = _translated_side(bundle_name, "bundle", "en")
     elif symbols:
         en, en_src = symbols[0], "apk_symbol"
     else:
         return None
 
     if bundle_name:
-        de, de_src = bundle_name, "bundle"
+        de, de_src = _native_side(bundle_name, "bundle", "de")
     elif label:
-        if is_technical_name(label):
-            de, de_src = label, "apk_label"
-        else:
-            translated = tr["names_en_to_de"].get(label)
-            if translated:
-                de, de_src = translated, "translated"
-            else:
-                de, de_src = label, "apk_label"
-                name_gaps["de"].add(label)
+        de, de_src = _translated_side(label, "apk_label", "de")
     else:
         de, de_src = symbols[0], "apk_symbol"
 
@@ -704,15 +787,24 @@ def build_catalog(
     # Shared German token labels: per-token translations of the shared APK
     # English map (same token-keyed justification as the EN side), plus the
     # {en, de} fills for tokens with no label evidence at all. The fills
-    # extend BOTH shared maps.
+    # extend BOTH shared maps. Per-token provenance is recorded and shipped.
     shared_de: Dict[str, str] = {
         key: tr["enum_shared_en_to_de"][key]
         for key in en_map
         if key in tr["enum_shared_en_to_de"]
     }
+    token_sources = {
+        "en": {key: "apk" for key in en_map},
+        "de": {key: "translated" for key in shared_de},
+    }
     for key, both in tr["enum_token_labels_both"].items():
-        en_map.setdefault(key, str(both["en"]))
-        shared_de.setdefault(key, str(both["de"]))
+        if key not in en_map:
+            en_map[key] = str(both["en"])
+            token_sources["en"][key] = "fill"
+        if key not in shared_de:
+            shared_de[key] = str(both["de"])
+            token_sources["de"][key] = "fill"
+    shared_untranslated = sorted(k for k in en_map if k not in shared_de)
 
     apk_records = [r for r in model["catalog"] if r.get("classification") == "ochsner_object_address"]
     names_by_id = names.get("apk_id_catalog") or {}
@@ -725,7 +817,7 @@ def build_catalog(
         if not tokens:
             continue
         if ref.get("platform") == "select" or ref.get("options") or ref.get("value_map"):
-            _attach_enum_labels(ref, tokens, en_map, shared_de, tr["enum_labels_de_to_en"])
+            _attach_enum_labels(ref, tokens, tr["enum_labels_de_to_en"])
 
     # No shared German map: bundle evidence is point-specific (review round
     # 1) — consistency on one reference plant does not justify relabelling
@@ -845,10 +937,16 @@ def build_catalog(
                 "hc_tag",
                 "enum_labels_de",
                 "enum_labels_en",
-                "enum_label_gaps",
             ):
                 if ref.get(k) is not None:
                     rec[k] = ref[k]
+            _finalize_enum_labels(
+                rec,
+                (ref.get("_enum_tokens") or []),
+                tr["enum_point_overrides"].get(oa_id) or {},
+                en_map,
+                shared_de,
+            )
         elif entry["oa"].instance_tag in HC_TAGS:
             # A circuit's own point groups under that circuit's device even
             # without reference metadata: the OA tag identifies the circuit.
@@ -882,12 +980,12 @@ def build_catalog(
             "en": dict(sorted(en_map.items())),
             "de": dict(sorted(shared_de.items())),
         },
-        # Provenance of the shared token maps (per-point maps carry theirs in
-        # the field name: enum_labels_de = bundle join, enum_labels_en =
-        # translated from that point's German labels).
+        # Per-token provenance of the shared maps (en: apk resource | fill,
+        # de: reviewed translation | fill); per-point maps carry theirs in
+        # each point's enum_label_sources.
         "enum_token_label_sources": {
-            "en": "apk_strings + translations.enum_token_labels_both",
-            "de": "translations.enum_shared_en_to_de + enum_token_labels_both",
+            "en": dict(sorted(token_sources["en"].items())),
+            "de": dict(sorted(token_sources["de"].items())),
         },
         "hc_tags": HC_TAGS,
         "points": point_list,
@@ -952,6 +1050,7 @@ def build_catalog(
             "reference_selects": ref_select_stats,
             "shared_token_labels_en": len(en_map),
             "shared_token_labels_de": len(shared_de),
+            "shared_tokens_untranslated_de": shared_untranslated,
             "en_suffixes_ambiguous": en_ambiguous,
         },
     }
