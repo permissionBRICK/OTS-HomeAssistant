@@ -127,3 +127,71 @@ def test_resolve_language_order_and_explicit_auto():
     # Nothing anywhere: HA language, default en.
     assert resolve_language(hass_de) == "de"
     assert resolve_language(SimpleNamespace(config=SimpleNamespace(language=None))) == "en"
+
+
+def make_options_flow(options=None, data=None):
+    from types import SimpleNamespace
+
+    entry = SimpleNamespace(options=dict(options or {}), data=dict(data or {}))
+    flow = cf.ClimatixGenericOptionsFlowHandler(entry)
+    flow.hass = None
+    return flow
+
+
+def test_options_flow_language_setting():
+    """The displayed language always MATCHES the effective behavior (review
+    round 5): without a stored option the form shows the legacy controller
+    language (or auto); every SUBMITTED value is stored explicitly — "auto"
+    included, so a saved "follow HA" really follows HA."""
+
+    from custom_components.ochsner_local_ots.const import (
+        CONF_CONTROLLERS,
+        CONF_LANGUAGE as LANG,
+    )
+
+    base = {"scan_interval": 30, "polling_threshold": 20, "max_ids_per_read_request": 40}
+
+    def language_default(flow):
+        res = run(flow.async_step_init(None))
+        for key in res["data_schema"].schema:
+            if str(key) == LANG:
+                return key.default()
+        raise AssertionError("language field missing")
+
+    # Fresh entry: shows auto; submitting it stores explicit auto.
+    flow = make_options_flow()
+    assert language_default(flow) == "auto"
+    res = run(flow.async_step_init({**base, LANG: "auto"}))
+    assert res["type"] == "create_entry"
+    assert res["data"][LANG] == "auto"
+
+    # Legacy bundle controller with stored "DE": the form shows "de" (what
+    # the runtime resolves), NOT "follow HA".
+    legacy_data = {CONF_CONTROLLERS: [{LANG: "DE"}]}
+    flow = make_options_flow(data=legacy_data)
+    assert language_default(flow) == "de"
+    # Submitting the displayed value keeps the same effective behavior.
+    res = run(flow.async_step_init({**base, LANG: "de"}))
+    assert res["data"][LANG] == "de"
+    # Explicitly choosing follow-HA on the legacy entry stores "auto",
+    # which bypasses the controller language at runtime.
+    flow = make_options_flow(data=legacy_data)
+    res = run(flow.async_step_init({**base, LANG: "auto"}))
+    assert res["data"][LANG] == "auto"
+
+    # Merely opening the form (no submit) changes nothing.
+    flow = make_options_flow(data=legacy_data)
+    res = run(flow.async_step_init(None))
+    assert res["type"] == "form"
+
+    # An invalid value falls back to the displayed default.
+    flow = make_options_flow(options={LANG: "de"})
+    res = run(flow.async_step_init({**base, LANG: "fr"}))
+    assert res["data"][LANG] == "de"
+
+
+def test_onboarding_user_step_has_no_language_field():
+    flow = make_flow()
+    res = run(flow.async_step_user(None))
+    schema_keys = [str(k) for k in res["data_schema"].schema]
+    assert schema_keys == ["local_ip"]

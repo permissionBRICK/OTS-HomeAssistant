@@ -37,6 +37,7 @@
         "title": "Options",
         "description": "Gated polling default threshold is 20. You can increase it if you see connection errors.",
         "data": {
+          "language": "Language of entity names and labels",
           "scan_interval": "Polling interval (seconds)",
           "polling_threshold": "Polling / auto delay multiplier",
           "max_ids_per_read_request": "Max values per read request",
@@ -101,6 +102,15 @@
       },
       "read_rate_5m": {
         "name": "Read rate (5m)"
+      }
+    }
+  },
+  "selector": {
+    "language": {
+      "options": {
+        "auto": "Follow the Home Assistant language",
+        "de": "Deutsch",
+        "en": "English"
       }
     }
   }

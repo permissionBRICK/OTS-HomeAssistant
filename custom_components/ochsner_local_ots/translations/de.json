@@ -37,6 +37,7 @@
         "title": "Optionen",
         "description": "Standard-Schwelle für gedrosselte Abfragen ist 20. Du kannst sie erhöhen, falls Verbindungsfehler auftreten.",
         "data": {
+          "language": "Sprache der Entitätsnamen und Beschriftungen",
           "scan_interval": "Abfrageintervall (Sekunden)",
           "polling_threshold": "Polling / auto Verzögerung Multiplikator",
           "max_ids_per_read_request": "Max. Werte pro Leseanfrage",
@@ -101,6 +102,15 @@
       },
       "read_rate_5m": {
         "name": "Leserate (5 min)"
+      }
+    }
+  },
+  "selector": {
+    "language": {
+      "options": {
+        "auto": "Der Home-Assistant-Sprache folgen",
+        "de": "Deutsch",
+        "en": "English"
       }
     }
   }

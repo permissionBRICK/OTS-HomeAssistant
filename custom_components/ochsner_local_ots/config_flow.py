@@ -23,6 +23,7 @@ from .const import (
     CONF_DISCOVERY_SOURCE,
     CONF_ENTITY_OVERRIDES,
     CONF_ID,
+    CONF_LANGUAGE,
     CONF_LOCAL_SCAN_NOW,
     CONF_MAX,
     CONF_MIN,
@@ -62,6 +63,7 @@ from .const import (
 )
 
 from .bundle_refresh import async_redownload_bundles_and_merge
+from .catalog import explicit_language
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +72,10 @@ _LOGGER = logging.getLogger(__name__)
 CONF_OTS_USER = "ots_user"
 CONF_OTS_PASS = "ots_pass"
 CONF_LOCAL_IP = "local_ip"
+
+# Options-flow language choices: follow Home Assistant, Deutsch, English.
+LANGUAGE_AUTO = "auto"
+LANGUAGE_OPTIONS = (LANGUAGE_AUTO, "de", "en")
 
 
 class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -347,6 +353,13 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         errors: Dict[str, str] = {}
 
         existing_options = dict(self.config_entry.options or {})
+        # The displayed language must MATCH the effective behavior: without
+        # a stored option the legacy per-controller CONF_LANGUAGE applies,
+        # so that is what the form shows (never "follow HA" while the
+        # runtime would resolve the controller language).
+        language_cur = str(existing_options.get(CONF_LANGUAGE) or "")
+        if language_cur not in LANGUAGE_OPTIONS:
+            language_cur = self._effective_language_default()
         current = int(existing_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
         poll_threshold_cur = int(existing_options.get(CONF_POLLING_THRESHOLD, DEFAULT_POLLING_THRESHOLD))
         max_ids_cur = int(existing_options.get(CONF_MAX_IDS_PER_READ_REQUEST, DEFAULT_MAX_IDS_PER_READ_REQUEST))
@@ -395,6 +408,18 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                             out[CONF_MAX_IDS_PER_READ_REQUEST] = max_ids
                             out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
 
+                            # Language of entity names / enum labels: every
+                            # SUBMITTED value is stored explicitly ("auto"
+                            # included, so it really follows HA) — what the
+                            # form showed is what the runtime does. Only a
+                            # never-submitted form keeps no key (legacy
+                            # per-controller CONF_LANGUAGE fallback, which
+                            # is also the displayed default then).
+                            language_sel = str(user_input.get(CONF_LANGUAGE) or language_cur)
+                            if language_sel not in LANGUAGE_OPTIONS:
+                                language_sel = language_cur
+                            out[CONF_LANGUAGE] = language_sel
+
                             # Ensure entity overrides always survive option updates.
                             if CONF_ENTITY_OVERRIDES not in out:
                                 out[CONF_ENTITY_OVERRIDES] = {}
@@ -420,6 +445,16 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
+                vol.Optional(
+                    CONF_LANGUAGE,
+                    default=language_cur,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(LANGUAGE_OPTIONS),
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="language",
+                    )
+                ),
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
                     default=current,
@@ -466,6 +501,19 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         schema = schema.extend({vol.Optional("configure_entities", default=edit_entities_default): selector.BooleanSelector()})
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    def _effective_language_default(self) -> str:
+        """What the runtime resolves WITHOUT a stored option: the first
+        controller's explicit CONF_LANGUAGE (legacy bundle entries store
+        e.g. "DE"), else follow-HA."""
+        controllers = self.config_entry.data.get(CONF_CONTROLLERS)
+        if isinstance(controllers, list):
+            for ctrl in controllers:
+                if isinstance(ctrl, dict):
+                    lang = explicit_language(ctrl.get(CONF_LANGUAGE))
+                    if lang:
+                        return lang
+        return LANGUAGE_AUTO
 
     def _has_bundle_controllers(self) -> bool:
         raw = self.config_entry.data.get(CONF_CONTROLLERS)
