@@ -5,12 +5,14 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
 from .api import ClimatixGenericApi, extract_first_numeric_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_BUNDLE_MAX,
@@ -110,6 +112,12 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
 
         # Stable override key: do not depend on whether a bundle provides a UUID.
         override_key = f"{host}:number:{self._read_id}".replace("=", "")
+
+        # Local discovery flags (bundle entities never set these).
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         # Apply UI overrides (options flow). These are keyed by unique_id.
         bundle_min = cfg.get(CONF_BUNDLE_MIN)

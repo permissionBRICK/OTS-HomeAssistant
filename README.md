@@ -35,18 +35,28 @@ Copy this folder into your HA config directory:
 
 After that restart Home Assistant.
 
-### 2) Add the integration into Home Assistant (New Automatic process via UI)
+### 2) Add the integration into Home Assistant (accountless, IP-only)
 
 Steps:
 1) Add a new integration via the HA UI
 2) Search for Ochsner Local OTS
-3) Enter your Ochsner OTS Credentials (they are not stored, they are just needed to retrieve the configuration from the cloud once)
-4) Select which Heatpump you want to add (in case you have multiple)
-5) Enter your local Heatpump IP Address (this is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
-6) Enter a Name for your Heatpump
-7) Click finish - This could take a few seconds while all the available values are automatically scanned and then imported.
-8) Done!
+3) Enter your local Heatpump IP Address - that's it. No cloud account, no OTS login. (The IP is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
+4) The integration scans the controller with its built-in datapoint catalog and creates all readable entities automatically. This takes a few seconds.
+5) Done!
 
+The standard Climatix credentials and PIN are used automatically. In the rare case your controller was reconfigured, the flow offers advanced settings (port / username / password / PIN) after a failed connection attempt.
+
+#### What the local catalog scan can and cannot find (honest coverage)
+
+The accountless scan is a **best-effort local catalog scan**, not a promise of full parity with a cloud bundle:
+
+- The catalog ships the addresses extracted from the OCHSNER app **plus** everything known from a real reference plant (names, units, enum options, safe ranges, write bindings). On that reference plant the scan reproduces the bundle-based setup (392/392 datapoint ids, identical names/options/units) — **by construction**, because its datapoints seed the catalog. Other plants benefit from every seeded datapoint they share with it, but this is not a universal 100% guarantee.
+- From the app alone (i.e. for datapoints the reference plant does not have), the measured ceiling is **53.3% of addresses** and **40.8% with a good human label**. Unknown or weakly-named points are still created, but as **disabled-by-default diagnostic entities** so they never clutter your setup.
+- Writable datapoints (setpoints, mode selectors, curve parameters, DHW boost, ...) are exposed as writable number/select/switch/text entities with exactly the same rules the bundle path uses. Destructive one-shot points (reset/factory/...) are created disabled-by-default.
+- Owner/customer name and network configuration datapoints are only created as disabled-by-default diagnostic entities.
+- Heating circuits are discovered generically (any number of circuits) and named with the names configured on your controller.
+
+Existing installations are fully preserved: entities keep their unique IDs and devices, and upgrading never renames or duplicates anything. Existing bundle-based entries can additionally run **"Local catalog scan now"** from the integration options to add any datapoints the local catalog knows on top of their bundle (additions only). The cloud-bundle re-download remains available for entries that were created with a bundle.
 
 ---
 
@@ -54,9 +64,9 @@ Steps:
 
 Instead of interacting with the heat pump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heat pump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
 
-The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID, which can be found by downloading and parsing the configuration bundle of your heatpump from the Ochsner Cloud.
+The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID. The datapoint id system was reverse engineered (an id is the Base64 encoding of object type, module instance tag, point index and member id), which makes it possible to ship a datapoint catalog with the integration and probe which of those datapoints your controller actually has - entirely locally, with only the IP address, no cloud account needed.
 
-Luckily, the newest version does all of this automatically, so the python tool is no longer needed, and all you need to do is install the Integration into Home Assistant, and enter your OTS credentials once! The OTS Cloud is only required for initial setup. Once the integration has downloaded your config file, the integration works entirely local, no matter what happens to the Ochsner cloud in the future.
+Setup runs a two-phase scan: first one representative datapoint per known module to see which modules your plant has (heating circuits, DHW, buffer, ...), then all catalog datapoints of the present modules. Only ids that the controller answers with a value become entities. The scan is strictly read-only and takes only a few seconds; afterwards the entity list is stored in Home Assistant, so the scan does not run again unless you ask for a rescan. The integration works entirely locally, no matter what happens to the Ochsner cloud.
 
 This has been tested and confirmed working so far with:
  - Air Hawk 518

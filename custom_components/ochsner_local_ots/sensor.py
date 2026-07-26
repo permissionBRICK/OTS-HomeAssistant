@@ -14,6 +14,8 @@ from homeassistant.config_entries import ConfigEntry
 
 from .api import extract_first_numeric_value, extract_first_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_ID,
@@ -142,6 +144,13 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
                 self._attr_entity_registry_enabled_default = False
         except Exception:
             pass
+
+        # Local discovery flags: weakly-named / privacy-sensitive points are
+        # still created but start disabled and/or diagnostic.
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self._attr_native_unit_of_measurement = cfg.get(CONF_UNIT)
         self._value_map: Dict[str, str] = {str(k): str(v) for k, v in (cfg.get(CONF_VALUE_MAP) or {}).items()}

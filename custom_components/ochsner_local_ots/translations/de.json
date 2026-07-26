@@ -2,34 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ochsner Login",
-        "description": "Bitte gib deine Ochsner-(OTS)-Zugangsdaten ein. Diese werden nur während der Einrichtung verwendet, um deine Anlagen abzurufen, und werden nicht in Home Assistant gespeichert.",
-        "data": {
-          "ots_user": "Ochsner Benutzername",
-          "ots_pass": "Ochsner Passwort"
-        }
-      },
-      "select_plants": {
-        "title": "Anlagen auswählen",
-        "description": "Wähle eine Anlage zum Import aus.",
-        "data": {
-          "plants": "Anlagen"
-        }
-      },
-      "hosts": {
-        "title": "Lokale IP-Adresse",
-        "description": "Gib die lokale IP-Adresse für {plant} ein. Stelle sicher, dass diese IP im Router statisch/reserviert ist.",
+        "title": "Ochsner Wärmepumpe (lokal)",
+        "description": "Gib die lokale IP-Adresse deiner Wärmepumpe ein. Es wird kein Cloud-Konto benötigt: Die Integration scannt den Regler mit dem mitgelieferten Datenpunkt-Katalog (Best-Effort; Abdeckung variiert je nach Modell, Firmware und Ausstattung). Stelle sicher, dass diese IP im Router statisch/reserviert ist.",
         "data": {
           "local_ip": "Lokale IP-Adresse",
-          "name": "Name"
+          "advanced": "Erweiterte Verbindungseinstellungen anzeigen"
+        }
+      },
+      "advanced": {
+        "title": "Erweiterte Verbindungseinstellungen",
+        "description": "Nur nötig, wenn der Regler nicht die Standard-Climatix-Zugangsdaten/PIN verwendet. Belasse die Standardwerte, außer dein Regler wurde umkonfiguriert.",
+        "data": {
+          "local_ip": "Lokale IP-Adresse",
+          "port": "Port",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "pin": "PIN"
         }
       }
     },
     "error": {
-      "auth": "Login fehlgeschlagen. Bitte Zugangsdaten prüfen.",
-      "no_selection": "Bitte auswählen welche Anlage importiert werden soll.",
       "invalid_host": "Bitte eine gültige IP/Host eingeben.",
-      "not_supported": "An dieser IP konnte kein unterstützter Climatix-Regler verifiziert werden (erwartet {\"Error\":7} von /jsongen.html)."
+      "cannot_connect": "An dieser IP konnte kein Climatix-Regler erreicht werden (Adresse prüfen und sicherstellen, dass das Gerät im Netzwerk ist).",
+      "auth_failed": "Der Regler hat die Standard-Zugangsdaten abgelehnt. Bitte in den erweiterten Einstellungen Benutzername/Passwort des Reglers eingeben.",
+      "probe_failed": "Verbunden, aber kein Katalog-Datenpunkt war lesbar. Das deutet meist auf eine abweichende PIN hin — bitte in den erweiterten Einstellungen eingeben."
+    },
+    "abort": {
+      "already_configured": "Dieser Regler ist bereits eingerichtet."
     }
   },
   "options": {
@@ -41,8 +40,9 @@
           "scan_interval": "Abfrageintervall (Sekunden)",
           "polling_threshold": "Polling / auto Verzögerung Multiplikator",
           "max_ids_per_read_request": "Max. Werte pro Leseanfrage",
-          "rescan_on_start": "Bundle beim Start erneut scannen",
+          "rescan_on_start": "Beim Start erneut scannen",
           "rescan_now": "Jetzt scannen (fehlende Entitäten hinzufügen)",
+          "local_scan_now": "Lokalen Katalog-Scan ausführen (ohne Konto; fehlende Entitäten hinzufügen)",
           "redownload_bundle": "Bundle von OTS neu herunterladen (fehlende Entitäten hinzufügen)",
           "configure_entities": "Geräteklasse und Einheit für Sensoren/Nummern konfigurieren"
         }
@@ -66,6 +66,14 @@
           "max": "Maximum",
           "step": "Schrittweite",
           "edit_another": "Weitere Entität bearbeiten"
+        }
+      },
+      "redownload": {
+        "title": "Bundle neu herunterladen",
+        "description": "Bitte gib deine Ochsner-(OTS)-Zugangsdaten ein. {note}",
+        "data": {
+          "ots_user": "Ochsner Benutzername",
+          "ots_pass": "Ochsner Passwort"
         }
       }
     },

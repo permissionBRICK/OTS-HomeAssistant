@@ -55,6 +55,19 @@ CONF_BUNDLE_STORAGE_KEY = "bundle_storage_key"
 CONF_RESCAN_ON_START = "rescan_on_start"
 CONF_RESCAN_NOW = "rescan_now"
 CONF_REDOWNLOAD_BUNDLE = "redownload_bundle"
+# One-shot: run the accountless local catalog scan and merge missing entities.
+# Available on every entry; this is also the migration path that lets existing
+# bundle-based entries grow accountless coverage without any entity churn.
+CONF_LOCAL_SCAN_NOW = "local_scan_now"
+
+# Accountless local discovery
+CONF_DISCOVERY_SOURCE = "discovery_source"
+DISCOVERY_SOURCE_LOCAL = "local_scan"
+CONF_CATALOG_VERSION = "catalog_version"
+
+# Per-entity flags produced by local discovery (additive; bundle entities
+# never carry them, so existing behavior is unchanged).
+CONF_DIAGNOSTIC = "diagnostic"
 
 # Localization (used during onboarding entity generation)
 CONF_LANGUAGE = "language"

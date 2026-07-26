@@ -4,12 +4,14 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
 from .api import extract_first_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_ID,
@@ -74,6 +76,12 @@ class ClimatixGenericBinarySensor(CoordinatorEntity[ClimatixCoordinator], Binary
         self._attr_unique_id = (
             str(configured_uuid) if configured_uuid else f"{host}:binary_sensor:{self._id}".replace("=", "")
         )
+
+        # Local discovery flags (bundle entities never set these).
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def device_info(self) -> DeviceInfo:
