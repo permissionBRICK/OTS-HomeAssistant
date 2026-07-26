@@ -455,12 +455,15 @@ def _mode_point(catalog_mod, sel_id):
         "platform": "select",
         "name": "Heating circuit operating program",
         "name_source": "apk_label",
+        "name_en": "Heating circuit operating program",
+        "name_en_source": "apk_label",
         "name_de": "Betriebswahl Heizkreis",
         "name_de_source": "bundle",
         "sources": ["reference"],
         "write_id": sel_id,
         "options": {"Komfort": 0, "Aus": 1},
         "enum_labels_de": {"comfort": "Komfort", "off": "Aus", "auto": "Automatik"},
+        "enum_labels_en": {"comfort": "Comfort", "off": "Off"},
     }
 
 

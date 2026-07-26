@@ -250,21 +250,62 @@ def explicit_language(value: Any) -> Optional[str]:
 def resolve_point_name(rec: Dict[str, Any], language: str) -> tuple[str, str]:
     """The display name for a catalog point in the user's language.
 
-    Returns (name, source) where source is e.g. "bundle:de" for
-    debuggability. The packaged record carries the English-priority choice in
-    ``name``/``name_source`` (APK label > bundle > symbol) and, when the
-    German bundle name differs, that name in ``name_de``/``name_de_source``;
-    German preference is simply the other priority order. Identity read from
-    the pump (circuit names, plant model) is applied by the caller on top and
-    always wins.
+    Returns (name, source) where source is e.g. "bundle:de" or
+    "translated:en" — the suffix is the language the returned name is
+    actually in, so a cross-language fallback is visible (requested de,
+    suffix :en). The packaged record carries an explicit bilingual pair
+    (name_en/name_de with per-side provenance); after the bilingual catalog
+    the cross path only survives for legacy records (stored bundle overlays)
+    that predate the pair. Identity read from the pump (circuit names, plant
+    model) is applied by the caller on top and always wins.
     """
-    name = str(rec.get("name") or rec.get("id") or "")
-    source = str(rec.get("name_source") or "")
-    if normalize_language(language) == LANGUAGE_DE:
-        name_de = rec.get("name_de")
-        if isinstance(name_de, str) and name_de:
-            return name_de, f"{rec.get('name_de_source') or 'bundle'}:de"
-    return name, f"{source}:en"
+    lang = normalize_language(language)
+    if lang == LANGUAGE_DE:
+        # name_de serves both new records (always present) and legacy ones
+        # (shipped only when it differed from the English-priority name).
+        chain = (("name_de", LANGUAGE_DE), ("name_en", LANGUAGE_EN), ("name", LANGUAGE_EN))
+    else:
+        chain = (("name_en", LANGUAGE_EN), ("name", LANGUAGE_EN), ("name_de", LANGUAGE_DE))
+    for key, cand in chain:
+        name = rec.get(key)
+        if isinstance(name, str) and name:
+            source = rec.get("name_source" if key == "name" else f"{key}_source") or ""
+            return name, f"{source}:{cand}"
+    return str(rec.get("id") or ""), ":en"
+
+
+def resolve_enum_label_source(
+    rec: Dict[str, Any],
+    token: str,
+    language: str,
+    shared_labels: Optional[Dict[str, Dict[str, str]]] = None,
+) -> tuple[str, str]:
+    """(label, source) for one pump enum token; source is the language the
+    label is in ("de"/"en") or "token" for the raw-token fallback.
+
+    Per language the chain is: the point's own map first (enum_labels_de is
+    the point-specific bundle join and always outranks anything shared;
+    enum_labels_en its reviewed translation), then the shared token map
+    (catalog root ``enum_token_labels``: EN from the APK <Type>IFType_<state>
+    resources, DE their reviewed translations), then the same two lookups in
+    the other language, then the raw token — an option is never empty. After
+    the bilingual catalog the cross-language step only survives for tokens
+    with no label evidence at all (undocumented numeric states).
+    """
+    token = str(token).strip()
+    key = normalize_enum_token(token)
+    if not key:
+        # Placeholder tokens like "-" normalize to nothing: no lookup.
+        return token, "token"
+    lang = normalize_language(language)
+    other = LANGUAGE_EN if lang == LANGUAGE_DE else LANGUAGE_DE
+    for cand in (lang, other):
+        for source_map in (rec.get(f"enum_labels_{cand}"), (shared_labels or {}).get(cand)):
+            if isinstance(source_map, dict):
+                label = source_map.get(key)
+                if isinstance(label, str) and label:
+                    return label, cand
+    return token, "token"
 
 
 def resolve_enum_label(
@@ -274,34 +315,8 @@ def resolve_enum_label(
     shared_labels: Optional[Dict[str, Dict[str, str]]] = None,
 ) -> str:
     """Localized display label for one pump enum token, falling back to the
-    raw token (an option is never empty).
-
-    German uses ONLY the point's own index-joined map (enum_labels_de): the
-    bundle evidence is point-specific, so a label from another point's join
-    is never applied — an unmapped token stays a raw token. English uses the
-    shared APK-resource map (catalog root ``enum_token_labels``), which is
-    justified per token by the <Type>IFType_<state> resources themselves.
-    """
-    token = str(token).strip()
-    key = normalize_enum_token(token)
-    if not key:
-        # Placeholder tokens like "-" normalize to nothing: no lookup.
-        return token
-    lang = normalize_language(language)
-    if lang == LANGUAGE_DE:
-        own = rec.get("enum_labels_de")
-        if isinstance(own, dict):
-            label = own.get(key)
-            if isinstance(label, str) and label:
-                return label
-        return token
-    if shared_labels:
-        shared = shared_labels.get(lang)
-        if isinstance(shared, dict):
-            label = shared.get(key)
-            if isinstance(label, str) and label:
-                return label
-    return token
+    other language and finally to the raw token (an option is never empty)."""
+    return resolve_enum_label_source(rec, token, language, shared_labels)[0]
 
 
 def apply_v4_point_flags(rec: Dict[str, Any], extra_names: Optional[List[str]] = None) -> Dict[str, Any]:
