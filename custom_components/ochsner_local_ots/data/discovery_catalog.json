@@ -1,6 +1,6 @@
 {
  "app_source": "com.ochsner.app v1.2.0/1785 + reference plant seed",
- "catalog_version": "0aef40375b571547",
+ "catalog_version": "6ec949efa0cca96d",
  "enum_token_label_sources": {
   "de": {
    "acknowledge": "translated",
@@ -5144,14 +5144,14 @@
    "enum_labels_de": {
     "auto": "Automatik",
     "date": "Nach Datum",
-    "pass": "Passiv",
+    "pass": "Automatik (Heizen/Kühlen)",
     "summer": "Sommer",
     "winter": "Winter"
    },
    "enum_labels_en": {
     "auto": "Automatic",
     "date": "By date",
-    "pass": "Passive",
+    "pass": "Automatic (heating/cooling)",
     "summer": "Summer",
     "winter": "Winter"
    },
@@ -5205,14 +5205,14 @@
    "enum_labels_de": {
     "auto": "Automatik",
     "date": "Nach Datum",
-    "pass": "Passiv",
+    "pass": "Automatik (Heizen/Kühlen)",
     "summer": "Sommer",
     "winter": "Winter"
    },
    "enum_labels_en": {
     "auto": "Automatic",
     "date": "By date",
-    "pass": "Passive",
+    "pass": "Automatic (heating/cooling)",
     "summer": "Summer",
     "winter": "Winter"
    },
@@ -5266,14 +5266,14 @@
    "enum_labels_de": {
     "auto": "Automatik",
     "date": "Nach Datum",
-    "pass": "Passiv",
+    "pass": "Automatik (Heizen/Kühlen)",
     "summer": "Sommer",
     "winter": "Winter"
    },
    "enum_labels_en": {
     "auto": "Automatic",
     "date": "By date",
-    "pass": "Passive",
+    "pass": "Automatic (heating/cooling)",
     "summer": "Summer",
     "winter": "Winter"
    },
@@ -5327,14 +5327,14 @@
    "enum_labels_de": {
     "auto": "Automatik",
     "date": "Nach Datum",
-    "pass": "Passiv",
+    "pass": "Automatik (Heizen/Kühlen)",
     "summer": "Sommer",
     "winter": "Winter"
    },
    "enum_labels_en": {
     "auto": "Automatic",
     "date": "By date",
-    "pass": "Passive",
+    "pass": "Automatic (heating/cooling)",
     "summer": "Summer",
     "winter": "Winter"
    },
@@ -10382,8 +10382,8 @@
    "name": "Seasonal performance factor",
    "name_de": "JAZ gesamt Vorjahr",
    "name_de_source": "translated",
-   "name_en": "Seasonal performance factor",
-   "name_en_source": "apk_label",
+   "name_en": "Seasonal performance factor, previous year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -10428,8 +10428,8 @@
    "name": "Seasonal performance factor",
    "name_de": "JAZ gesamt aktuelles Jahr",
    "name_de_source": "translated",
-   "name_en": "Seasonal performance factor",
-   "name_en_source": "apk_label",
+   "name_en": "Seasonal performance factor, current year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -10534,8 +10534,8 @@
    "name": "Seasonal performance factor",
    "name_de": "JAZ gesamt vor 3 Jahren",
    "name_de_source": "translated",
-   "name_en": "Seasonal performance factor",
-   "name_en_source": "apk_label",
+   "name_en": "Seasonal performance factor, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -10596,8 +10596,8 @@
    "name": "Seasonal performance factor",
    "name_de": "JAZ gesamt vor 2 Jahren",
    "name_de_source": "translated",
-   "name_en": "Seasonal performance factor",
-   "name_en_source": "apk_label",
+   "name_en": "Seasonal performance factor, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -12920,8 +12920,8 @@
    "name": "Electrical energy consumption",
    "name_de": "Strombedarf gesamt Vorjahr",
    "name_de_source": "translated",
-   "name_en": "Electrical energy consumption",
-   "name_en_source": "apk_label",
+   "name_en": "Total electrical energy consumption, previous year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -12935,8 +12935,8 @@
    "name": "Electrical energy consumption",
    "name_de": "Strombedarf gesamt vor 3 Jahren",
    "name_de_source": "translated",
-   "name_en": "Electrical energy consumption",
-   "name_en_source": "apk_label",
+   "name_en": "Total electrical energy consumption, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -12963,8 +12963,8 @@
    "name": "Thermal energy",
    "name_de": "Wärmeenergie gesamt aktuelles Jahr",
    "name_de_source": "translated",
-   "name_en": "Thermal energy",
-   "name_en_source": "apk_label",
+   "name_en": "Total thermal energy, current year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -12978,8 +12978,8 @@
    "name": "Electrical energy consumption",
    "name_de": "Strombedarf gesamt vor 2 Jahren",
    "name_de_source": "translated",
-   "name_en": "Electrical energy consumption",
-   "name_en_source": "apk_label",
+   "name_en": "Total electrical energy consumption, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -13019,8 +13019,8 @@
    "name": "Thermal energy",
    "name_de": "Wärmeenergie gesamt vor 3 Jahren",
    "name_de_source": "translated",
-   "name_en": "Thermal energy",
-   "name_en_source": "apk_label",
+   "name_en": "Total thermal energy, 3 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -13034,8 +13034,8 @@
    "name": "Thermal energy",
    "name_de": "Wärmeenergie gesamt vor 2 Jahren",
    "name_de_source": "translated",
-   "name_en": "Thermal energy",
-   "name_en_source": "apk_label",
+   "name_en": "Total thermal energy, 2 years ago",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -13049,8 +13049,8 @@
    "name": "Electrical energy consumption",
    "name_de": "Strombedarf gesamt aktuelles Jahr",
    "name_de_source": "translated",
-   "name_en": "Electrical energy consumption",
-   "name_en_source": "apk_label",
+   "name_en": "Total electrical energy consumption, current year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -13064,8 +13064,8 @@
    "name": "Thermal energy",
    "name_de": "Wärmeenergie gesamt Vorjahr",
    "name_de_source": "translated",
-   "name_en": "Thermal energy",
-   "name_en_source": "apk_label",
+   "name_en": "Total thermal energy, previous year",
+   "name_en_source": "translated",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -13511,10 +13511,10 @@
    "translated": 215
   },
   "by_name_en_source": {
-   "apk_label": 334,
+   "apk_label": 322,
    "apk_symbol": 29,
    "bundle": 0,
-   "translated": 218
+   "translated": 230
   },
   "by_name_source": {
    "apk_label": 334,
