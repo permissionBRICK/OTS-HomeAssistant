@@ -261,19 +261,28 @@ def test_service_evidence_in_alternate_names_disables(builder):
 
 
 def test_language_aware_names_shipped(builder):
-    """German bundle names ship as name_de wherever they differ from the
-    English-priority choice; the source is recorded."""
+    """Every point ships the explicit bilingual pair with per-side
+    provenance; each language keeps its native evidence verbatim."""
 
     cat = build(builder)
     pts = {p["id"]: p for p in cat["points"]}
     p = pts["AiIQvY58IgE="]  # Betriebswahl Heizkreis (ground-truth point)
     assert p["name"] == "Heating circuit operating program"
     assert p["name_source"] == "apk_label"
+    assert p["name_en"] == "Heating circuit operating program"
+    assert p["name_en_source"] == "apk_label"
     assert p["name_de"] == "Betriebswahl Heizkreis"
     assert p["name_de_source"] == "bundle"
-    # name_de only ships when it differs (the asset stays compact).
-    assert not any(p.get("name_de") == p["name"] for p in cat["points"])
-    assert cat["stats"]["name_de_points"] >= 200
+    sources = {"apk_label", "bundle", "apk_symbol", "translated"}
+    for q in cat["points"]:
+        assert q.get("name_en") and q.get("name_de"), q["id"]
+        assert q["name_en_source"] in sources and q["name_de_source"] in sources, q["id"]
+        # Native evidence is never overwritten by a translation.
+        if q["name_source"] == "apk_label":
+            assert q["name_en"] == q["name"], q["id"]
+        if q["name_source"] == "bundle":
+            assert q["name_de"] == q["name"], q["id"]
+    assert cat["stats"]["name_de_points"] == cat["stats"]["points_total"]
 
 
 def test_enum_de_index_join_ground_truth(builder):
@@ -300,15 +309,18 @@ def test_enum_de_index_join_ground_truth(builder):
     assert all(q.get("enum_labels_de") == p["enum_labels_de"] for q in variants)
 
 
-def test_shared_token_label_map_en_only(builder):
-    """The shared map is English only (APK IFType suffixes, unambiguous
+def test_shared_token_label_maps(builder):
+    """The shared EN map comes from the APK IFType suffixes (unambiguous
     ones). Ambiguous suffixes ("off" is 'Off' for some types, 'Operating
-    program switched off' for others) are not forced, placeholder tokens
-    ('-') never become keys, and there is NO shared German map — German
-    bundle evidence is point-specific (review round 1)."""
+    program switched off' for others) are not forced and placeholder tokens
+    ('-') never become keys. The shared DE map holds only reviewed
+    translations of those shared EN labels — point-specific German bundle
+    evidence still never travels between points (review round 1)."""
 
     cat = build(builder)
-    assert set(cat["enum_token_labels"]) == {"en"}
+    assert set(cat["enum_token_labels"]) == {"en", "de"}
+    de = cat["enum_token_labels"]["de"]
+    assert all(k in cat["enum_token_labels"]["en"] for k in de)
     en = cat["enum_token_labels"]["en"]
     assert en["auto"] == "Automatic"
     assert en["timinoff"] == "Starting procedure"  # ti_min_off, faithful to the APK
