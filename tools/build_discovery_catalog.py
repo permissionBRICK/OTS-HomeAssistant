@@ -512,8 +512,17 @@ def _bilingual_names(
         name_gaps[side].add(name)
         return name, source
 
+    bundle_pair = symbol_pairs.get(bundle_name) if bundle_name else None
     if label:
-        en, en_src = _native_side(label, "apk_label", "en")
+        pair_en = str(bundle_pair["en"]) if bundle_pair else None
+        if pair_en and pair_en not in (bundle_name, label):
+            # A reviewed technical bundle pair carries proven specificity a
+            # generic APK label lacks ("Electrical energy consumption" vs
+            # E-EngySum2's per-year bucket): the reviewed English side wins
+            # so the four points of a family stay distinguishable.
+            en, en_src = pair_en, "translated"
+        else:
+            en, en_src = _native_side(label, "apk_label", "en")
     elif bundle_name:
         en, en_src = _translated_side(bundle_name, "bundle", "en")
     elif symbols:

@@ -219,26 +219,45 @@ def static_asset_audit(catalog: Any) -> Dict[str, Any]:
             symbol_names.add(str(rec.get("name")))
 
     enum_gaps: List[Dict[str, Any]] = []
+    point_provenance_mismatch: List[Dict[str, Any]] = []
     for rec in catalog.points:
         gaps = rec.get("enum_label_gaps") or {}
         for language, tokens in gaps.items():
             enum_gaps.append({"id": rec["id"], "language": language, "tokens": tokens})
+        # Per-point provenance must cover exactly the point's own label keys.
+        own_keys = set(rec.get("enum_labels_de") or {}) | set(rec.get("enum_labels_en") or {})
+        prov_keys = set(rec.get("enum_label_sources") or {})
+        if own_keys != prov_keys:
+            point_provenance_mismatch.append(
+                {"id": rec["id"], "tokens": sorted(own_keys.symmetric_difference(prov_keys))}
+            )
 
     shared = catalog.enum_token_labels
     root_pair_mismatch = sorted(
         set(shared.get("en") or {}).symmetric_difference(shared.get("de") or {})
     )
+    # Shared-map provenance must name every token on both sides.
+    root_prov = cat_mod.load_catalog_raw().get("enum_token_label_sources") or {}
+    root_provenance_mismatch = sorted(
+        set(shared.get("en") or {}).symmetric_difference(root_prov.get("en") or {})
+    ) + sorted(set(shared.get("de") or {}).symmetric_difference(root_prov.get("de") or {}))
 
     gate_failures = {
         "name_cross_language": len(name_cross),
         "name_missing": len(name_missing),
         "symbol_scope_violations": len(symbol_scope_violations),
+        # The permitted exception is EXACTLY the specified apk_symbol scope:
+        # 29 points carrying 25 unique technical code identifiers.
+        "symbol_cardinality_deviation": 0 if (len(symbol_ids), len(symbol_names)) == (29, 25) else 1,
         "enum_label_gaps": len(enum_gaps),
         "root_token_pair_mismatch": len(root_pair_mismatch),
+        "root_provenance_incomplete": len(root_provenance_mismatch),
+        "point_provenance_mismatch": len(point_provenance_mismatch),
     }
     return {
         "symbol_points": len(symbol_ids),
         "symbol_names_unique": len(symbol_names),
+        "symbol_expected": {"points": 29, "unique_names": 25},
         "gate_failures": gate_failures,
         "gate_passed": not any(gate_failures.values()),
         "detail": {
@@ -247,6 +266,8 @@ def static_asset_audit(catalog: Any) -> Dict[str, Any]:
             "symbol_scope_violations": symbol_scope_violations,
             "enum_label_gaps": enum_gaps,
             "root_token_pair_mismatch": root_pair_mismatch,
+            "root_provenance_incomplete": root_provenance_mismatch,
+            "point_provenance_mismatch": point_provenance_mismatch,
             "symbol_ids": symbol_ids,
         },
     }

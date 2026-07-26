@@ -279,8 +279,9 @@ def test_language_aware_names_shipped(builder):
         assert q.get("name_en") and q.get("name_de"), q["id"]
         assert q["name_en_source"] in sources and q["name_de_source"] in sources, q["id"]
         # Native PROSE evidence is never overwritten by a translation; a
-        # technical machine name gets its reviewed pair on both sides.
-        if q["name_source"] == "apk_label" and not fn(q["name"]):
+        # technical machine name gets its reviewed pair on both sides, and
+        # that pair may outrank a GENERIC APK label (the Sum families).
+        if q["name_source"] == "apk_label" and not fn(q["name"]) and q["name_en_source"] == "apk_label":
             assert q["name_en"] == q["name"], q["id"]
         if q["name_source"] == "bundle" and not fn(q["name"]):
             assert q["name_de"] == q["name"], q["id"]
@@ -294,6 +295,19 @@ def test_language_aware_names_shipped(builder):
     p = pts["AyOgSyiJAAE="]  # CprOprHrs1
     assert p["name_en"] == "Compressor operating hours, previous year"
     assert p["name_de"] == "Betriebsstunden Verdichter Vorjahr"
+    # A reviewed technical bundle pair outranks a GENERIC APK label on the
+    # English side too: the four points of each Sum family must stay
+    # distinguishable per year bucket in BOTH languages.
+    for de_prefix, en_base in (
+        ("Strombedarf gesamt", "Total electrical energy consumption"),
+        ("Wärmeenergie gesamt", "Total thermal energy"),
+        ("JAZ gesamt", "Seasonal performance factor"),
+    ):
+        family = [q for q in cat["points"] if str(q["name_de"]).startswith(de_prefix)]
+        assert len(family) == 4, de_prefix
+        assert len({q["name_en"] for q in family}) == 4, de_prefix
+        assert all(str(q["name_en"]).startswith(en_base) for q in family), de_prefix
+        assert all(q["name_en_source"] == "translated" for q in family), de_prefix
     # Verbatim both sides is reserved for apk_symbol evidence.
     for q in cat["points"]:
         if q["name_en_source"] == "apk_symbol" or q["name_de_source"] == "apk_symbol":

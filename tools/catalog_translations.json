@@ -34,6 +34,11 @@
   "   Unconfirmed, the AlmOf/ErOn fault-class family), and to give the",
   "   undocumented numeric states 21..24 an explicit faithful label",
   "   ('Unknown state N') instead of a raw fallback.",
+  "   Summer/winter 'Pass' (value 4): the APK's HCSummerWinterIFType",
+  "   serializer maps 2->cool, 3->heat, 4->auto, and the app WRITES 4 for",
+  "   its automatic heating/cooling mode (values 0 'Auto' and 1 'Date' are",
+  "   controller-native and never exposed by the app) - hence 'Automatic",
+  "   (heating/cooling)', distinct from value 0's plain 'Automatic'.",
   " * enum_shared_en_to_de: normalized enum token -> German label, translating",
   "   the shared APK-resource English label (enum_token_labels.en) for that",
   "   token. Shared application is justified exactly like the EN map: it is",
@@ -659,28 +664,28 @@
   "AiMN7CssAAE=": {
    "auto": {"en": "Automatic", "de": "Automatik"},
    "date": {"en": "By date", "de": "Nach Datum"},
-   "pass": {"en": "Passive", "de": "Passiv"},
+   "pass": {"en": "Automatic (heating/cooling)", "de": "Automatik (Heizen/Kühlen)"},
    "summer": {"en": "Summer", "de": "Sommer"},
    "winter": {"en": "Winter", "de": "Winter"}
   },
   "AiMN7I58AAE=": {
    "auto": {"en": "Automatic", "de": "Automatik"},
    "date": {"en": "By date", "de": "Nach Datum"},
-   "pass": {"en": "Passive", "de": "Passiv"},
+   "pass": {"en": "Automatic (heating/cooling)", "de": "Automatik (Heizen/Kühlen)"},
    "summer": {"en": "Summer", "de": "Sommer"},
    "winter": {"en": "Winter", "de": "Winter"}
   },
   "AiMN7MxcAAE=": {
    "auto": {"en": "Automatic", "de": "Automatik"},
    "date": {"en": "By date", "de": "Nach Datum"},
-   "pass": {"en": "Passive", "de": "Passiv"},
+   "pass": {"en": "Automatic (heating/cooling)", "de": "Automatik (Heizen/Kühlen)"},
    "summer": {"en": "Summer", "de": "Sommer"},
    "winter": {"en": "Winter", "de": "Winter"}
   },
   "AiMN7O1MAAE=": {
    "auto": {"en": "Automatic", "de": "Automatik"},
    "date": {"en": "By date", "de": "Nach Datum"},
-   "pass": {"en": "Passive", "de": "Passiv"},
+   "pass": {"en": "Automatic (heating/cooling)", "de": "Automatik (Heizen/Kühlen)"},
    "summer": {"en": "Summer", "de": "Sommer"},
    "winter": {"en": "Winter", "de": "Winter"}
   },
