@@ -1,12 +1,149 @@
 {
  "app_source": "com.ochsner.app v1.2.0/1785 + reference plant seed",
- "catalog_version": "1c4e4e5218365920",
+ "catalog_version": "29187490b9aa41dd",
  "enum_token_label_sources": {
   "de": "translations.enum_shared_en_to_de + enum_token_labels_both",
   "en": "apk_strings + translations.enum_token_labels_both"
  },
  "enum_token_labels": {
-  "de": {},
+  "de": {
+   "acknowledge": "Quittieren",
+   "antifreeze": "Frostschutzbetrieb",
+   "auto": "Automatik",
+   "bakeoutcooldown": "Auskühlphase Ausheizprogramm",
+   "bakeoutheatup": "Aufheizphase Ausheizprogramm",
+   "bakeouthold": "Haltephase Ausheizprogramm",
+   "bip": "Bivalent gesperrt",
+   "cool": "Kühlen",
+   "cooldownphase1": "Abkühlphase 1",
+   "cooldownphase2": "Abkühlphase 2",
+   "coolnormal": "Normal Kühlbetrieb",
+   "coolreduced": "Reduziert Kühlbetrieb",
+   "defrost": "Abtauen",
+   "deprecated": "Veraltet",
+   "dewpointreached": "Taupunktunterschreitung",
+   "discharge": "Zwangsentnahme",
+   "eco": "Eco",
+   "ecocool": "ECO Kühlen",
+   "ecoheat": "ECO Heizen",
+   "emergency": "Notbetrieb",
+   "emergencyoff": "Notbetrieb abgeschaltet",
+   "enabled": "Aktiviert",
+   "end": "Ende",
+   "error": "Störung",
+   "even": "Gerade",
+   "evodec": "Vorübergehende Sollwertabsenkung",
+   "evoinc": "Vorübergehende Sollwertanhebung",
+   "exclusivechecked": "Exklusiv mit Prüfung",
+   "exclusiveunchecked": "Exklusiv ohne Prüfung",
+   "external": "Extern eingeschaltet",
+   "fault": "Störung",
+   "fixedtemperature": "Temperatureinstellung",
+   "flowtemperaturelimitallhcs": "Max. Vorlauftemperatur aller Heizkreise",
+   "flowtemperaturelimithc1": "Max. Vorlauftemperatur Heizkreis 1",
+   "flowtemperaturelimithc2": "Max. Vorlauftemperatur Heizkreis 2",
+   "flowtemperaturelimithc3": "Max. Vorlauftemperatur Heizkreis 3",
+   "flowtemperaturelimithc4": "Max. Vorlauftemperatur Heizkreis 4",
+   "flt": "Störung",
+   "frtprt": "Frostschutzbetrieb",
+   "heat": "Heizen",
+   "heatdefrost": "Abtauen",
+   "heatnormal": "Normal Heizbetrieb",
+   "heatreduced": "Reduziert Heizbetrieb",
+   "heatupphase1": "Aufheizphase 1",
+   "heatupphase2": "Aufheizphase 2",
+   "holdingphase": "Haltephase",
+   "holiday": "Urlaub",
+   "holidaycool": "Urlaub Kühlen",
+   "holidayheat": "Urlaub Heizen",
+   "hotwater": "Warmwasser",
+   "hotwater1": "Warmwasser",
+   "hotwater2": "Warmwasser",
+   "hotwaterdefrost": "Abtauen",
+   "hotwaterprecedence": "Warmwasservorrang",
+   "htg": "Heizen",
+   "inactive1": "Verbindung inaktiv",
+   "inactive2": "Verbindung inaktiv",
+   "inactive3": "Verbindung inaktiv",
+   "interruption": "Ladeunterbrechung",
+   "legionella": "Legionellenschutz",
+   "limitactive": "Aus",
+   "limited": "Nicht freigegeben",
+   "locked": "Aus - Sperrzeit",
+   "lockedbivalently": "Bivalent gesperrt",
+   "manualcool": "Handbetrieb Kühlen",
+   "manualheat": "Handbetrieb Heizen",
+   "manualshutdown": "Betriebswahl abgeschaltet",
+   "maxtempshutdown": "Maximaltemperaturabschaltung",
+   "mb19200": "19200",
+   "mb2400": "2400",
+   "mb38400": "38400",
+   "mb4800": "4800",
+   "mb9600": "9600",
+   "minpressure": "min. Anlagendruck",
+   "minruntime": "Minimale Einzeit",
+   "mintimeout": "Minimale Auszeit",
+   "minus1": "(UTC -01:00)",
+   "minus10": "(UTC -10:00)",
+   "minus11": "(UTC -11:00)",
+   "minus12": "(UTC -12:00)",
+   "minus2": "(UTC -02:00)",
+   "minus3": "(UTC -03:00)",
+   "minus4": "(UTC -04:00)",
+   "minus5": "(UTC -05:00)",
+   "minus6": "(UTC -06:00)",
+   "minus7": "(UTC -07:00)",
+   "minus8": "(UTC -08:00)",
+   "minus9": "(UTC -09:00)",
+   "mode0": "Aus",
+   "mode1": "Zeitprogramm",
+   "none": "Keine",
+   "null": "NULL",
+   "odd": "Ungerade",
+   "offinterval": "Zeitintervall",
+   "offreturnflowtemperature": "Rücklauftemperatur Zirkulation",
+   "offtoocold": "Aus - Raum zu kalt",
+   "offtoowarm": "Aus - Raum zu warm",
+   "ok": "OK",
+   "on": "Ein",
+   "one": "Eins",
+   "party": "Partybetrieb",
+   "passive": "Passiv",
+   "plus1": "(UTC +01:00)",
+   "plus10": "(UTC +10:00)",
+   "plus11": "(UTC +11:00)",
+   "plus12": "(UTC +12:00)",
+   "plus2": "(UTC +02:00)",
+   "plus3": "(UTC +03:00)",
+   "plus4": "(UTC +04:00)",
+   "plus5": "(UTC +05:00)",
+   "plus6": "(UTC +06:00)",
+   "plus7": "(UTC +07:00)",
+   "plus8": "(UTC +08:00)",
+   "plus9": "(UTC +09:00)",
+   "preference": "Vorrangbetrieb",
+   "ready": "Standby",
+   "service": "Service-Mode Pool",
+   "servicecool": "Service-Mode Kühlen",
+   "serviceheat": "Service-Mode Heizen",
+   "slowdown": "Zwangsdrosselung",
+   "standardchecked": "Standard mit Prüfung",
+   "standardunchecked": "Standard ohne Prüfung",
+   "standby": "Standby",
+   "standby1": "Standby",
+   "standby2": "Standby",
+   "summer": "Sommer",
+   "target": "Standby",
+   "timinoff": "Minimale Auszeit",
+   "timinon": "Minimale Einzeit",
+   "two": "Zwei",
+   "twvmax": "Maximaltemperaturabschaltung",
+   "unknown": "Unbekannt",
+   "unlock": "Entsperren",
+   "vacation": "Urlaub",
+   "winter": "Winter",
+   "zero": "(UTC 00:00)"
+  },
   "en": {
    "acknowledge": "Confirm",
    "antifreeze": "Frost protection mode",
@@ -21,12 +158,15 @@
    "coolnormal": "Standard cooling",
    "coolreduced": "Reduced cooling",
    "defrost": "Defrost",
+   "deprecated": "Deprecated",
    "dewpointreached": "Dew point shutdown",
    "discharge": "Forced draw-off",
+   "eco": "Eco",
    "ecocool": "ECO cooling",
    "ecoheat": "ECO heating",
    "emergency": "Emergency mode",
    "emergencyoff": "Emergency mode switched off",
+   "enabled": "Enabled",
    "end": "End",
    "error": "Fault",
    "even": "Even",
@@ -35,6 +175,7 @@
    "exclusivechecked": "Exclusive with test",
    "exclusiveunchecked": "Exclusive without test",
    "external": "Switched on externally",
+   "fault": "Fault",
    "fixedtemperature": "Temperature setting",
    "flowtemperaturelimitallhcs": "Maximum flow temperature of all heating circuits",
    "flowtemperaturelimithc1": "Maximum flow temperature, heating circuit 1",
@@ -50,6 +191,7 @@
    "heatupphase1": "Heating phase 1",
    "heatupphase2": "Heating phase 2",
    "holdingphase": "Holding phase",
+   "holiday": "Holiday mode",
    "holidaycool": "Cooling holiday",
    "holidayheat": "Heating holiday",
    "hotwater": "DHW",
@@ -94,11 +236,13 @@
    "mode0": "Off",
    "mode1": "Time program",
    "none": "None",
+   "null": "NULL",
    "odd": "Odd",
    "offinterval": "Time interval",
    "offreturnflowtemperature": "DHW circulation pump return temperature",
    "offtoocold": "OFF - Room too cold",
    "offtoowarm": "OFF - Room too warm",
+   "ok": "OK",
    "on": "On",
    "one": "One",
    "party": "Party mode",
@@ -3232,18 +3376,6 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "OK",
-     "Fault",
-     "NULL"
-    ],
-    "en": [
-     "OK",
-     "Fault",
-     "NULL"
-    ]
-   },
    "id": "ASJtqVsWAAE=",
    "name": "Notbetrieb Warmwasser",
    "name_de": "Notbetrieb Warmwasser",
@@ -4128,23 +4260,6 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "Eco",
-     "Party",
-     "Holiday"
-    ],
-    "en": [
-     "Comfort",
-     "Off",
-     "Red",
-     "Norm",
-     "HeatMan",
-     "CoolMan",
-     "Eco",
-     "Holiday"
-    ]
-   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4152,6 +4267,14 @@
     "norm": "Normalbetrieb",
     "off": "Aus",
     "red": "Reduziert"
+   },
+   "enum_labels_en": {
+    "comfort": "Comfort",
+    "coolman": "Manual cooling",
+    "heatman": "Manual heating",
+    "norm": "Standard mode",
+    "off": "Off",
+    "red": "Reduced"
    },
    "hc_tag": 11307,
    "id": "AiIQvSssIgE=",
@@ -4219,23 +4342,6 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "Eco",
-     "Party",
-     "Holiday"
-    ],
-    "en": [
-     "Comfort",
-     "Off",
-     "Red",
-     "Norm",
-     "HeatMan",
-     "CoolMan",
-     "Eco",
-     "Holiday"
-    ]
-   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4243,6 +4349,14 @@
     "norm": "Normalbetrieb",
     "off": "Aus",
     "red": "Reduziert"
+   },
+   "enum_labels_en": {
+    "comfort": "Comfort",
+    "coolman": "Manual cooling",
+    "heatman": "Manual heating",
+    "norm": "Standard mode",
+    "off": "Off",
+    "red": "Reduced"
    },
    "hc_tag": 31886,
    "id": "AiIQvY58IgE=",
@@ -4268,23 +4382,6 @@
    "write_id": "AiIQvY58IgE="
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "Eco",
-     "Party",
-     "Holiday"
-    ],
-    "en": [
-     "Comfort",
-     "Off",
-     "Red",
-     "Norm",
-     "HeatMan",
-     "CoolMan",
-     "Eco",
-     "Holiday"
-    ]
-   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4292,6 +4389,14 @@
     "norm": "Normalbetrieb",
     "off": "Aus",
     "red": "Reduziert"
+   },
+   "enum_labels_en": {
+    "comfort": "Comfort",
+    "coolman": "Manual cooling",
+    "heatman": "Manual heating",
+    "norm": "Standard mode",
+    "off": "Off",
+    "red": "Reduced"
    },
    "hc_tag": 23756,
    "id": "AiIQvcxcIgE=",
@@ -4317,23 +4422,6 @@
    "write_id": "AiIQvcxcIgE="
   },
   {
-   "enum_label_gaps": {
-    "de": [
-     "Eco",
-     "Party",
-     "Holiday"
-    ],
-    "en": [
-     "Comfort",
-     "Off",
-     "Red",
-     "Norm",
-     "HeatMan",
-     "CoolMan",
-     "Eco",
-     "Holiday"
-    ]
-   },
    "enum_labels_de": {
     "comfort": "Komfort",
     "coolman": "Handbetrieb Kühlen",
@@ -4341,6 +4429,14 @@
     "norm": "Normalbetrieb",
     "off": "Aus",
     "red": "Reduziert"
+   },
+   "enum_labels_en": {
+    "comfort": "Comfort",
+    "coolman": "Manual cooling",
+    "heatman": "Manual heating",
+    "norm": "Standard mode",
+    "off": "Off",
+    "red": "Reduced"
    },
    "hc_tag": 19693,
    "id": "AiIQve1MIgE=",
@@ -4399,14 +4495,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
+   },
+   "enum_labels_en": {
+    "off": "No/Cancel"
    },
    "hc_tag": 11307,
    "id": "AiM6JSssAAE=",
@@ -4429,14 +4523,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
+   },
+   "enum_labels_en": {
+    "off": "No/Cancel"
    },
    "hc_tag": 31886,
    "id": "AiM6JY58AAE=",
@@ -4459,14 +4551,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
+   },
+   "enum_labels_en": {
+    "off": "No/Cancel"
    },
    "hc_tag": 23756,
    "id": "AiM6JcxcAAE=",
@@ -4489,14 +4579,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "off": "Nein/Abbrechen",
     "on": "Ja"
+   },
+   "enum_labels_en": {
+    "off": "No/Cancel"
    },
    "hc_tag": 19693,
    "id": "AiM6Je1MAAE=",
@@ -4609,18 +4697,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Date",
-     "Pass"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Auto",
     "date": "Date",
     "pass": "Pass_HK",
     "summer": "Summer_HK",
     "winter": "Winter_HK"
+   },
+   "enum_labels_en": {
+    "date": "Date",
+    "pass": "Pass_HK"
    },
    "id": "AiMN7CssAAE=",
    "name": "Summer-Winter-Switch-HK",
@@ -4647,18 +4733,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Date",
-     "Pass"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Auto",
     "date": "Date",
     "pass": "Pass_HK",
     "summer": "Summer_HK",
     "winter": "Winter_HK"
+   },
+   "enum_labels_en": {
+    "date": "Date",
+    "pass": "Pass_HK"
    },
    "id": "AiMN7I58AAE=",
    "name": "Summer-Winter-Switch-HK",
@@ -4685,18 +4769,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Date",
-     "Pass"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Auto",
     "date": "Date",
     "pass": "Pass_HK",
     "summer": "Summer_HK",
     "winter": "Winter_HK"
+   },
+   "enum_labels_en": {
+    "date": "Date",
+    "pass": "Pass_HK"
    },
    "id": "AiMN7MxcAAE=",
    "name": "Summer-Winter-Switch-HK",
@@ -4723,18 +4805,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Date",
-     "Pass"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Auto",
     "date": "Date",
     "pass": "Pass_HK",
     "summer": "Summer_HK",
     "winter": "Winter_HK"
+   },
+   "enum_labels_en": {
+    "date": "Date",
+    "pass": "Pass_HK"
    },
    "id": "AiMN7O1MAAE=",
    "name": "Summer-Winter-Switch-HK",
@@ -4760,20 +4840,18 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Aus",
-     "VlvOn",
-     "Pu",
-     "VlvOff"
-    ]
-   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
     "pu": "Heizkreispumpe",
     "vlvoff": "Mischer zu",
     "vlvon": "Mischer auf"
+   },
+   "enum_labels_en": {
+    "aus": "Off",
+    "pu": "Heating circulation pump",
+    "vlvoff": "Mixing valve close",
+    "vlvon": "Mixing valve open"
    },
    "hc_tag": 23756,
    "id": "AiMfKiiJAAE=",
@@ -4821,18 +4899,16 @@
    "write_id": "AiMu+yApAAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "HeatSpd",
-     "CoolSpd",
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "coolspd": "Handbetrieb Kühlen",
     "heatspd": "Handbetrieb Heizen",
     "off": "Abgeschaltet"
+   },
+   "enum_labels_en": {
+    "coolspd": "Manual cooling",
+    "heatspd": "Manual heating",
+    "off": "Switched off"
    },
    "id": "AiMu5MdZAAE=",
    "name": "Betriebswahl Wärmepumpe",
@@ -4882,20 +4958,18 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Aus",
-     "VlvOn",
-     "Pu",
-     "VlvOff"
-    ]
-   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
     "pu": "Heizkreispumpe",
     "vlvoff": "Mischer zu",
     "vlvon": "Mischer auf"
+   },
+   "enum_labels_en": {
+    "aus": "Off",
+    "pu": "Heating circulation pump",
+    "vlvoff": "Mixing valve close",
+    "vlvon": "Mixing valve open"
    },
    "hc_tag": 19693,
    "id": "AiN+kiiJAAE=",
@@ -4921,15 +4995,13 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Reduced",
-     "Standard"
-    ]
-   },
    "enum_labels_de": {
     "reduced": "Notbetrieb",
     "standard": "Normalbetrieb"
+   },
+   "enum_labels_en": {
+    "reduced": "Emergency mode",
+    "standard": "Standard mode"
    },
    "id": "AiN5rlsWAAE=",
    "name": "DHWEmgyMod",
@@ -4968,36 +5040,34 @@
    "write_id": "AiN95Ir8AAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "-12",
-     "-11",
-     "-10",
-     "-9",
-     "-8",
-     "-7",
-     "-6",
-     "-5",
-     "-4",
-     "-3",
-     "-2",
-     "-1",
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12"
-    ]
-   },
    "enum_labels_de": {
+    "-1": "(UTC -01:00)",
+    "-10": "(UTC -10:00)",
+    "-11": "(UTC -11:00)",
+    "-12": "(UTC -12:00)",
+    "-2": "(UTC -02:00)",
+    "-3": "(UTC -03:00)",
+    "-4": "(UTC -04:00)",
+    "-5": "(UTC -05:00)",
+    "-6": "(UTC -06:00)",
+    "-7": "(UTC -07:00)",
+    "-8": "(UTC -08:00)",
+    "-9": "(UTC -09:00)",
+    "0": "(UTC  00:00)",
+    "1": "(UTC +01:00)",
+    "10": "(UTC +10:00)",
+    "11": "(UTC +11:00)",
+    "12": "(UTC +12:00)",
+    "2": "(UTC +02:00)",
+    "3": "(UTC +03:00)",
+    "4": "(UTC +04:00)",
+    "5": "(UTC +05:00)",
+    "6": "(UTC +06:00)",
+    "7": "(UTC +07:00)",
+    "8": "(UTC +08:00)",
+    "9": "(UTC +09:00)"
+   },
+   "enum_labels_en": {
     "-1": "(UTC -01:00)",
     "-10": "(UTC -10:00)",
     "-11": "(UTC -11:00)",
@@ -5066,14 +5136,12 @@
    "write_id": "AiNSjtVVAAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Abgeschaltet"
+   },
+   "enum_labels_en": {
+    "off": "Switched off"
    },
    "id": "AiNiMcdZAAE=",
    "name": "Betriebswahl Zusatzheizung",
@@ -5110,16 +5178,14 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "2400",
-     "4800",
-     "9600",
-     "19200",
-     "38400"
-    ]
-   },
    "enum_labels_de": {
+    "19200": "19200",
+    "2400": "2400",
+    "38400": "38400",
+    "4800": "4800",
+    "9600": "9600"
+   },
+   "enum_labels_en": {
     "19200": "19200",
     "2400": "2400",
     "38400": "38400",
@@ -5149,14 +5215,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "AckAllAll"
-    ]
-   },
    "enum_labels_de": {
     "ackallall": "Quittieren",
     "passive": "Inaktiv"
+   },
+   "enum_labels_en": {
+    "ackallall": "Confirm"
    },
    "id": "AiNxI4wCAAE=",
    "name": "Acknowledge error",
@@ -5205,13 +5269,11 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Unconfirmed",
-     "Confirmed"
-    ]
-   },
    "enum_labels_de": {
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed"
+   },
+   "enum_labels_en": {
     "confirmed": "Confirmed",
     "unconfirmed": "Unconfirmed"
    },
@@ -5237,15 +5299,13 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Reduced",
-     "Standard"
-    ]
-   },
    "enum_labels_de": {
     "reduced": "Notbetrieb",
     "standard": "Normalbetrieb"
+   },
+   "enum_labels_en": {
+    "reduced": "Emergency mode",
+    "standard": "Standard mode"
    },
    "id": "AiOkl7WVAAE=",
    "name": "HPMEmgyMod",
@@ -5280,18 +5340,6 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "SpMax",
-     "HC1Max",
-     "HC2Max",
-     "HC3Max",
-     "HC4Max",
-     "HC5Max",
-     "HC6Max",
-     "HCAllMax"
-    ]
-   },
    "enum_labels_de": {
     "hc1max": "Max. Vorlauftemperatur Heizkreis 1",
     "hc2max": "Max. Vorlauftemperatur Heizkreis 2",
@@ -5301,6 +5349,16 @@
     "hc6max": "Max. Vorlauftemperatur Heizkreis 6",
     "hcallmax": "Max. Vorlauftemperatur aller Heizkreise",
     "spmax": "Temperatur- Einstellung"
+   },
+   "enum_labels_en": {
+    "hc1max": "Maximum flow temperature, heating circuit 1",
+    "hc2max": "Maximum flow temperature, heating circuit 2",
+    "hc3max": "Maximum flow temperature, heating circuit 3",
+    "hc4max": "Maximum flow temperature, heating circuit 4",
+    "hc5max": "Maximum flow temperature, heating circuit 5",
+    "hc6max": "Maximum flow temperature, heating circuit 6",
+    "hcallmax": "Maximum flow temperature of all heating circuits",
+    "spmax": "Temperature setting"
    },
    "id": "AiOzgC60AAE=",
    "name": "Operating program: maximum buffer tank temperature",
@@ -5372,15 +5430,13 @@
    "technical": true
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off",
-     "Cal"
-    ]
-   },
    "enum_labels_de": {
     "cal": "Zeitprogramm",
     "off": "Aus"
+   },
+   "enum_labels_en": {
+    "cal": "Time program",
+    "off": "Off"
    },
    "id": "AiP5J8dZAAE=",
    "name": "Betriebswahl Silentmode",
@@ -5402,20 +5458,18 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Aus",
-     "VlvOn",
-     "Pu",
-     "VlvOff"
-    ]
-   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
     "pu": "Heizkreispumpe",
     "vlvoff": "Mischer zu",
     "vlvon": "Mischer auf"
+   },
+   "enum_labels_en": {
+    "aus": "Off",
+    "pu": "Heating circulation pump",
+    "vlvoff": "Mixing valve close",
+    "vlvon": "Mixing valve open"
    },
    "hc_tag": 31886,
    "id": "AiP8SiiJAAE=",
@@ -5440,19 +5494,17 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3"
-    ]
-   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
     "2": "Exklusiv ohne Prüfung",
     "3": "Exklusiv mit Prüfung"
+   },
+   "enum_labels_en": {
+    "0": "Standard without test",
+    "1": "Standard with test",
+    "2": "Exclusive without test",
+    "3": "Exclusive with test"
    },
    "hc_tag": 11307,
    "id": "AiP8dCssAAE=",
@@ -5477,19 +5529,17 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3"
-    ]
-   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
     "2": "Exklusiv ohne Prüfung",
     "3": "Exklusiv mit Prüfung"
+   },
+   "enum_labels_en": {
+    "0": "Standard without test",
+    "1": "Standard with test",
+    "2": "Exclusive without test",
+    "3": "Exclusive with test"
    },
    "hc_tag": 31886,
    "id": "AiP8dI58AAE=",
@@ -5514,19 +5564,17 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3"
-    ]
-   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
     "2": "Exklusiv ohne Prüfung",
     "3": "Exklusiv mit Prüfung"
+   },
+   "enum_labels_en": {
+    "0": "Standard without test",
+    "1": "Standard with test",
+    "2": "Exclusive without test",
+    "3": "Exclusive with test"
    },
    "hc_tag": 23756,
    "id": "AiP8dMxcAAE=",
@@ -5551,19 +5599,17 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3"
-    ]
-   },
    "enum_labels_de": {
     "0": "Standard ohne Prüfung",
     "1": "Standard mit Prüfung",
     "2": "Exklusiv ohne Prüfung",
     "3": "Exklusiv mit Prüfung"
+   },
+   "enum_labels_en": {
+    "0": "Standard without test",
+    "1": "Standard with test",
+    "2": "Exclusive without test",
+    "3": "Exclusive with test"
    },
    "hc_tag": 19693,
    "id": "AiP8dO1MAAE=",
@@ -5588,14 +5634,12 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "UnlckAll"
-    ]
-   },
    "enum_labels_de": {
     "passive": "Inaktiv",
     "unlckall": "Entsperren"
+   },
+   "enum_labels_en": {
+    "unlckall": "Unlock"
    },
    "id": "AiP9j4wCAAE=",
    "name": "Unlock system",
@@ -5618,17 +5662,6 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6"
-    ]
-   },
    "enum_labels_de": {
     "0": "0",
     "1": "Wärmepumpe 1",
@@ -5637,6 +5670,15 @@
     "4": "Wärmepumpe 4",
     "5": "Wärmepumpe 5",
     "6": "Wärmepumpe 6"
+   },
+   "enum_labels_en": {
+    "0": "0",
+    "1": "Heat pump 1",
+    "2": "Heat pump 2",
+    "3": "Heat pump 3",
+    "4": "Heat pump 4",
+    "5": "Heat pump 5",
+    "6": "Heat pump 6"
    },
    "id": "AiPJigAAAAE=",
    "name": "cnfDevice",
@@ -5694,16 +5736,6 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Aus",
-     "WEP",
-     "ULVWW",
-     "ZH1",
-     "ZH2",
-     "PuWrg"
-    ]
-   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -5712,6 +5744,14 @@
     "wep": "Wärmeerzeugerpumpe",
     "zh1": "Zusatzheizung 1",
     "zh2": "Zusatzheizung 2"
+   },
+   "enum_labels_en": {
+    "aus": "Off",
+    "puwrg": "Heat recovery pump",
+    "ulvww": "3-way switching module, DHW position",
+    "wep": "Heat generator pump",
+    "zh1": "Auxiliary heater 1",
+    "zh2": "Auxiliary heater 2"
    },
    "id": "AiPhhSiJAAE=",
    "name": "Relaistest Wärmepumpe",
@@ -5757,20 +5797,6 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Aus",
-     "Pu",
-     "Pu2",
-     "ZH1",
-     "ZH2",
-     "ZH3",
-     "ZH4",
-     "ULV",
-     "WEZ",
-     "WEZVlv"
-    ]
-   },
    "enum_labels_de": {
     "aus": "Aus",
     "auto": "Inaktiv",
@@ -5783,6 +5809,18 @@
     "zh2": "externe Zusatzheizung 2",
     "zh3": "externe Zusatzheizung 3",
     "zh4": "externe Zusatzheizung 4"
+   },
+   "enum_labels_en": {
+    "aus": "Off",
+    "pu": "System pump",
+    "pu2": "System pump 2",
+    "ulv": "Zone cooling valve",
+    "wez": "External heat generator",
+    "wezvlv": "External heat generator valve",
+    "zh1": "External auxiliary heater 1",
+    "zh2": "External auxiliary heater 2",
+    "zh3": "External auxiliary heater 3",
+    "zh4": "External auxiliary heater 4"
    },
    "id": "AiPq0yiJAAE=",
    "name": "Relaistest",
@@ -5811,18 +5849,6 @@
    "write_id": "AiPq0yiJAAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "SpMin",
-     "HC1Min",
-     "HC2Min",
-     "HC3Min",
-     "HC4Min",
-     "HC5Min",
-     "HC6Min",
-     "HCAllMin"
-    ]
-   },
    "enum_labels_de": {
     "hc1min": "Min. Vorlauftemperatur Heizkreis 1",
     "hc2min": "Min. Vorlauftemperatur Heizkreis 2",
@@ -5832,6 +5858,16 @@
     "hc6min": "Min. Vorlauftemperatur Heizkreis 6",
     "hcallmin": "Min. Vorlauftemperatur aller Heizkreise",
     "spmin": "Temperatur- Einstellung"
+   },
+   "enum_labels_en": {
+    "hc1min": "Minimum flow temperature, heating circuit 1",
+    "hc2min": "Minimum flow temperature, heating circuit 2",
+    "hc3min": "Minimum flow temperature, heating circuit 3",
+    "hc4min": "Minimum flow temperature, heating circuit 4",
+    "hc5min": "Minimum flow temperature, heating circuit 5",
+    "hc6min": "Minimum flow temperature, heating circuit 6",
+    "hcallmin": "Minimum flow temperature of all heating circuits",
+    "spmin": "Temperature setting"
    },
    "id": "AiPtey60AAE=",
    "name": "Operating program: minimum buffer tank temperature",
@@ -5860,13 +5896,11 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "Unconfirmed",
-     "Confirmed"
-    ]
-   },
    "enum_labels_de": {
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed"
+   },
+   "enum_labels_en": {
     "confirmed": "Confirmed",
     "unconfirmed": "Unconfirmed"
    },
@@ -8201,20 +8235,6 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Null",
-     "OK",
-     "LockOf",
-     "LockOn",
-     "ErOf",
-     "ErOn",
-     "AlmOf",
-     "AlmOn",
-     "InfOf",
-     "InfOn"
-    ]
-   },
    "enum_labels_de": {
     "almof": "AlmOf",
     "almon": "AlmOn",
@@ -8226,6 +8246,16 @@
     "lockon": "LockOn",
     "null": "Null",
     "ok": "OK"
+   },
+   "enum_labels_en": {
+    "almof": "AlmOf",
+    "almon": "AlmOn",
+    "erof": "ErOf",
+    "eron": "ErOn",
+    "infof": "InfOf",
+    "infon": "InfOn",
+    "lockof": "LockOf",
+    "lockon": "LockOn"
    },
    "id": "BSLZ1IwCAAE=",
    "name": "Summenstörung Wärmepumpe",
@@ -8591,15 +8621,13 @@
    "write_id": "ByIDxCiJHQE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 31886,
    "id": "ByIKwCiJSjA=",
@@ -8621,15 +8649,13 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 31886,
    "id": "ByIPECiJAAE=",
@@ -8651,15 +8677,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "id": "ByIeriiJAAE=",
    "name": "Status Stufe 2",
@@ -8680,15 +8704,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 31886,
    "id": "ByImpiiJSjA=",
@@ -8709,15 +8731,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 19693,
    "id": "ByJ62CiJAAE=",
@@ -8739,15 +8759,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 19693,
    "id": "ByK5oyiJSjA=",
@@ -8768,15 +8786,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 19693,
    "id": "ByKVxSiJSjA=",
@@ -8798,15 +8814,13 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 23756,
    "id": "ByKpnyiJAAE=",
@@ -8854,15 +8868,13 @@
    ]
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "id": "ByLMQCiJAAE=",
    "name": "Status Stufe 1",
@@ -8883,15 +8895,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 23756,
    "id": "ByLMoCiJSjA=",
@@ -8912,15 +8922,13 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off"
-    ]
-   },
    "enum_labels_de": {
     "auto": "Automatik",
     "off": "Aus",
     "on": "Ein"
+   },
+   "enum_labels_en": {
+    "off": "Off"
    },
    "hc_tag": 23756,
    "id": "ByLgxiiJSjA=",
@@ -9656,18 +9664,6 @@
    "technical": true
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off",
-     "Stby",
-     "Dhw",
-     "Frost",
-     "EVU",
-     "DHWFolg",
-     "Lock",
-     "PRt"
-    ]
-   },
    "enum_labels_de": {
     "bip": "Bivalent gesperrt",
     "dhw": "Warmwasser",
@@ -9683,6 +9679,16 @@
     "timinoff": "Minimale Auszeit",
     "timinon": "Minimale Einzeit",
     "twvmax": "Maximaltemperaturabschaltung"
+   },
+   "enum_labels_en": {
+    "dhw": "DHW",
+    "dhwfolg": "DHW",
+    "evu": "Locked externally",
+    "frost": "Frost protection mode",
+    "lock": "Switched off manually",
+    "off": "Standby",
+    "prt": "Minimum system pressure",
+    "stby": "Standby"
    },
    "id": "CyM4OMdZAAE=",
    "name": "Operating status: internal auxiliary heater",
@@ -9714,15 +9720,6 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "Off",
-     "DHW",
-     "Clg",
-     "DfrH",
-     "DfrDHW"
-    ]
-   },
    "enum_labels_de": {
     "clg": "Kühlbetrieb",
     "dfrdhw": "Abtaubetrieb Warmwasser",
@@ -9730,6 +9727,13 @@
     "dhw": "Warmwasserbetrieb",
     "htg": "Heizbetrieb",
     "off": "Abgeschaltet"
+   },
+   "enum_labels_en": {
+    "clg": "Cooling mode",
+    "dfrdhw": "Defrost mode DHW",
+    "dfrh": "Defrost mode heating",
+    "dhw": "DHW mode",
+    "off": "Switched off"
    },
    "id": "CyMOIMdZAAE=",
    "name": "System operating status",
@@ -9761,27 +9765,6 @@
      "24"
     ],
     "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12",
-     "13",
-     "14",
-     "15",
-     "16",
-     "17",
-     "18",
-     "19",
-     "20",
      "21",
      "22",
      "23",
@@ -9810,6 +9793,29 @@
     "7": "Warmwasservorrang",
     "8": "Heiz-/ Kühlgrenze aktiv",
     "9": "Handbetrieb Heizen"
+   },
+   "enum_labels_en": {
+    "0": "Operating program switched off",
+    "1": "Reduced heating",
+    "10": "Manual cooling",
+    "11": "Heating phase screed drying program",
+    "12": "Holding phase screed drying program",
+    "13": "Cooling phase screed drying program",
+    "14": "Party mode",
+    "15": "Maximum temperature shutdown",
+    "16": "Service mode heating",
+    "17": "Service mode cooling",
+    "18": "Dew point undershot",
+    "19": "Emergency mode",
+    "2": "Standard heating",
+    "20": "Forced throttling",
+    "3": "Reduced cooling",
+    "4": "Standard cooling",
+    "5": "Frost protection mode",
+    "6": "Defrost mode",
+    "7": "DHW priority",
+    "8": "Heating/cooling limit active",
+    "9": "Manual heating"
    },
    "id": "CyMogissAAE=",
    "name": "Status heating circuit 4",
@@ -9883,27 +9889,6 @@
      "24"
     ],
     "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12",
-     "13",
-     "14",
-     "15",
-     "16",
-     "17",
-     "18",
-     "19",
-     "20",
      "21",
      "22",
      "23",
@@ -9932,6 +9917,29 @@
     "7": "Warmwasservorrang",
     "8": "Heiz-/ Kühlgrenze aktiv",
     "9": "Handbetrieb Heizen"
+   },
+   "enum_labels_en": {
+    "0": "Operating program switched off",
+    "1": "Reduced heating",
+    "10": "Manual cooling",
+    "11": "Heating phase screed drying program",
+    "12": "Holding phase screed drying program",
+    "13": "Cooling phase screed drying program",
+    "14": "Party mode",
+    "15": "Maximum temperature shutdown",
+    "16": "Service mode heating",
+    "17": "Service mode cooling",
+    "18": "Dew point undershot",
+    "19": "Emergency mode",
+    "2": "Standard heating",
+    "20": "Forced throttling",
+    "3": "Reduced cooling",
+    "4": "Standard cooling",
+    "5": "Frost protection mode",
+    "6": "Defrost mode",
+    "7": "DHW priority",
+    "8": "Heating/cooling limit active",
+    "9": "Manual heating"
    },
    "id": "CyMogo58AAE=",
    "name": "Status heating circuit 1",
@@ -9979,27 +9987,6 @@
      "24"
     ],
     "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12",
-     "13",
-     "14",
-     "15",
-     "16",
-     "17",
-     "18",
-     "19",
-     "20",
      "21",
      "22",
      "23",
@@ -10028,6 +10015,29 @@
     "7": "Warmwasservorrang",
     "8": "Heiz-/ Kühlgrenze aktiv",
     "9": "Handbetrieb Heizen"
+   },
+   "enum_labels_en": {
+    "0": "Operating program switched off",
+    "1": "Reduced heating",
+    "10": "Manual cooling",
+    "11": "Heating phase screed drying program",
+    "12": "Holding phase screed drying program",
+    "13": "Cooling phase screed drying program",
+    "14": "Party mode",
+    "15": "Maximum temperature shutdown",
+    "16": "Service mode heating",
+    "17": "Service mode cooling",
+    "18": "Dew point undershot",
+    "19": "Emergency mode",
+    "2": "Standard heating",
+    "20": "Forced throttling",
+    "3": "Reduced cooling",
+    "4": "Standard cooling",
+    "5": "Frost protection mode",
+    "6": "Defrost mode",
+    "7": "DHW priority",
+    "8": "Heating/cooling limit active",
+    "9": "Manual heating"
    },
    "id": "CyMogsxcAAE=",
    "name": "Status heating circuit 3",
@@ -10075,27 +10085,6 @@
      "24"
     ],
     "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12",
-     "13",
-     "14",
-     "15",
-     "16",
-     "17",
-     "18",
-     "19",
-     "20",
      "21",
      "22",
      "23",
@@ -10124,6 +10113,29 @@
     "7": "Warmwasservorrang",
     "8": "Heiz-/ Kühlgrenze aktiv",
     "9": "Handbetrieb Heizen"
+   },
+   "enum_labels_en": {
+    "0": "Operating program switched off",
+    "1": "Reduced heating",
+    "10": "Manual cooling",
+    "11": "Heating phase screed drying program",
+    "12": "Holding phase screed drying program",
+    "13": "Cooling phase screed drying program",
+    "14": "Party mode",
+    "15": "Maximum temperature shutdown",
+    "16": "Service mode heating",
+    "17": "Service mode cooling",
+    "18": "Dew point undershot",
+    "19": "Emergency mode",
+    "2": "Standard heating",
+    "20": "Forced throttling",
+    "3": "Reduced cooling",
+    "4": "Standard cooling",
+    "5": "Frost protection mode",
+    "6": "Defrost mode",
+    "7": "DHW priority",
+    "8": "Heating/cooling limit active",
+    "9": "Manual heating"
    },
    "id": "CyMogu1MAAE=",
    "name": "Status heating circuit 2",
@@ -10191,17 +10203,15 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "passiv",
-     "RedUnConf",
-     "RedConf",
-     "StdConf",
-     "PltFlt"
-    ]
-   },
    "enum_labels_de": {
     "passiv": "Passiv",
+    "pltflt": "PltFlt",
+    "redconf": "RedConf",
+    "redunconf": "RedUnConf",
+    "stdconf": "StdConf"
+   },
+   "enum_labels_en": {
+    "passiv": "Passive",
     "pltflt": "PltFlt",
     "redconf": "RedConf",
     "redunconf": "RedUnConf",
@@ -10247,17 +10257,15 @@
   {
    "diagnostic": true,
    "enabled_default": false,
-   "enum_label_gaps": {
-    "en": [
-     "passiv",
-     "RedUnConf",
-     "RedConf",
-     "StdConf",
-     "PltFlt"
-    ]
-   },
    "enum_labels_de": {
     "passiv": "Passiv",
+    "pltflt": "PltFlt",
+    "redconf": "RedConf",
+    "redunconf": "RedUnConf",
+    "stdconf": "StdConf"
+   },
+   "enum_labels_en": {
+    "passiv": "Passive",
     "pltflt": "PltFlt",
     "redconf": "RedConf",
     "redunconf": "RedUnConf",
@@ -10285,17 +10293,6 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6"
-    ]
-   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10304,6 +10301,15 @@
     "4": "Aufheizphase 2",
     "5": "Abkühlphase 2",
     "6": "Ende"
+   },
+   "enum_labels_en": {
+    "0": "Not active",
+    "1": "Heating phase 1",
+    "2": "Holding phase",
+    "3": "Cooling phase 1",
+    "4": "Heating phase 2",
+    "5": "Cooling phase 2",
+    "6": "End"
    },
    "hc_tag": 11307,
    "id": "CyNiTSssAAE=",
@@ -10329,17 +10335,6 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6"
-    ]
-   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10348,6 +10343,15 @@
     "4": "Aufheizphase 2",
     "5": "Abkühlphase 2",
     "6": "Ende"
+   },
+   "enum_labels_en": {
+    "0": "Not active",
+    "1": "Heating phase 1",
+    "2": "Holding phase",
+    "3": "Cooling phase 1",
+    "4": "Heating phase 2",
+    "5": "Cooling phase 2",
+    "6": "End"
    },
    "hc_tag": 31886,
    "id": "CyNiTY58AAE=",
@@ -10373,17 +10377,6 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6"
-    ]
-   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10392,6 +10385,15 @@
     "4": "Aufheizphase 2",
     "5": "Abkühlphase 2",
     "6": "Ende"
+   },
+   "enum_labels_en": {
+    "0": "Not active",
+    "1": "Heating phase 1",
+    "2": "Holding phase",
+    "3": "Cooling phase 1",
+    "4": "Heating phase 2",
+    "5": "Cooling phase 2",
+    "6": "End"
    },
    "hc_tag": 23756,
    "id": "CyNiTcxcAAE=",
@@ -10417,17 +10419,6 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6"
-    ]
-   },
    "enum_labels_de": {
     "0": "Nicht aktiv",
     "1": "Aufheizphase 1",
@@ -10436,6 +10427,15 @@
     "4": "Aufheizphase 2",
     "5": "Abkühlphase 2",
     "6": "Ende"
+   },
+   "enum_labels_en": {
+    "0": "Not active",
+    "1": "Heating phase 1",
+    "2": "Holding phase",
+    "3": "Cooling phase 1",
+    "4": "Heating phase 2",
+    "5": "Cooling phase 2",
+    "6": "End"
    },
    "hc_tag": 19693,
    "id": "CyNiTe1MAAE=",
@@ -10523,27 +10523,6 @@
      "22"
     ],
     "en": [
-     "0",
-     "1",
-     "2",
-     "3",
-     "4",
-     "5",
-     "6",
-     "7",
-     "8",
-     "9",
-     "10",
-     "11",
-     "12",
-     "13",
-     "14",
-     "15",
-     "16",
-     "17",
-     "18",
-     "19",
-     "20",
      "21",
      "22"
     ]
@@ -10570,6 +10549,29 @@
     "7": "Handbetrieb Kühlen",
     "8": "Bivalent gesperrt",
     "9": "Umschaltung"
+   },
+   "enum_labels_en": {
+    "0": "Off",
+    "1": "Heating",
+    "10": "Operating mode change",
+    "11": "Pump pre-run",
+    "12": "Standby",
+    "13": "Pump overrun",
+    "14": "Fault",
+    "15": "Current limitation",
+    "16": "DHW sequencing",
+    "17": "Switched off manually",
+    "18": "Starting procedure",
+    "19": "Shutdown procedure",
+    "2": "Cooling",
+    "20": "Minimum system pressure",
+    "3": "DHW",
+    "4": "Defrost",
+    "5": "Locked externally",
+    "6": "Manual heating",
+    "7": "Manual cooling",
+    "8": "Outdoor temperature shutdown",
+    "9": "Changeover"
    },
    "id": "CyNmeMdZAAE=",
    "name": "Status Wärmepumpe",
@@ -10608,21 +10610,19 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "No",
-     "Su",
-     "RFrc",
-     "RLim",
-     "Day"
-    ]
-   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
     "rfrc": "Zwangsheizung",
     "rlim": "Aus - Raum zu warm",
     "su": "Sommer"
+   },
+   "enum_labels_en": {
+    "day": "Heating limit active",
+    "no": "On",
+    "rfrc": "Forced heating",
+    "rlim": "OFF - Room too warm",
+    "su": "Summer"
    },
    "hc_tag": 11307,
    "id": "CyO9/issAAE=",
@@ -10646,21 +10646,19 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "No",
-     "Su",
-     "RFrc",
-     "RLim",
-     "Day"
-    ]
-   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
     "rfrc": "Zwangsheizung",
     "rlim": "Aus - Raum zu warm",
     "su": "Sommer"
+   },
+   "enum_labels_en": {
+    "day": "Heating limit active",
+    "no": "On",
+    "rfrc": "Forced heating",
+    "rlim": "OFF - Room too warm",
+    "su": "Summer"
    },
    "hc_tag": 31886,
    "id": "CyO9/o58AAE=",
@@ -10684,21 +10682,19 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "No",
-     "Su",
-     "RFrc",
-     "RLim",
-     "Day"
-    ]
-   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
     "rfrc": "Zwangsheizung",
     "rlim": "Aus - Raum zu warm",
     "su": "Sommer"
+   },
+   "enum_labels_en": {
+    "day": "Heating limit active",
+    "no": "On",
+    "rfrc": "Forced heating",
+    "rlim": "OFF - Room too warm",
+    "su": "Summer"
    },
    "hc_tag": 23756,
    "id": "CyO9/sxcAAE=",
@@ -10722,21 +10718,19 @@
    }
   },
   {
-   "enum_label_gaps": {
-    "en": [
-     "No",
-     "Su",
-     "RFrc",
-     "RLim",
-     "Day"
-    ]
-   },
    "enum_labels_de": {
     "day": "Heizgrenze aktiv",
     "no": "Ein",
     "rfrc": "Zwangsheizung",
     "rlim": "Aus - Raum zu warm",
     "su": "Sommer"
+   },
+   "enum_labels_en": {
+    "day": "Heating limit active",
+    "no": "On",
+    "rfrc": "Forced heating",
+    "rlim": "OFF - Room too warm",
+    "su": "Summer"
    },
    "hc_tag": 19693,
    "id": "CyO9/u1MAAE=",
@@ -11357,19 +11351,11 @@
   },
   {
    "enabled_default": false,
-   "enum_label_gaps": {
-    "de": [
-     "Deprecated",
-     "Enabled"
-    ],
-    "en": [
-     "Disabled",
-     "Deprecated",
-     "Enabled"
-    ]
-   },
    "enum_labels_de": {
     "disabled": "Verbindung aktiv"
+   },
+   "enum_labels_en": {
+    "disabled": "Connection active"
    },
    "id": "MgABAAAAAQA=",
    "name": "Data connection to cloud",
@@ -11414,11 +11400,11 @@
   "disabled_technical": 106,
   "en_suffixes_ambiguous": 9,
   "enabled": 431,
-  "enum_points_fully_mapped_de": 57,
-  "enum_points_with_de_gaps": 11,
+  "enum_points_fully_mapped_de": 62,
+  "enum_points_with_de_gaps": 5,
   "enum_points_with_de_labels": 67,
-  "enum_points_with_en_gaps": 66,
-  "enum_points_with_en_labels": 0,
+  "enum_points_with_en_gaps": 5,
+  "enum_points_with_en_labels": 65,
   "excluded_descriptor": 0,
   "excluded_schedule": 672,
   "excluded_unnamed": 149,
@@ -11434,13 +11420,13 @@
   "points_total": 581,
   "reference_points": 394,
   "reference_selects": {
-   "de_fully_mapped": 33,
+   "de_fully_mapped": 37,
    "de_mapped": 37,
    "total": 39,
    "with_descriptor": 38
   },
-  "shared_token_labels_de": 0,
-  "shared_token_labels_en": 129,
+  "shared_token_labels_de": 136,
+  "shared_token_labels_en": 136,
   "writable_points": 196
  },
  "tags": [

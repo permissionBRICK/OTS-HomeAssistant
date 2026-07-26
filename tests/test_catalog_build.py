@@ -288,7 +288,8 @@ def test_language_aware_names_shipped(builder):
 def test_enum_de_index_join_ground_truth(builder):
     """The verified index join: Betriebswahl Heizkreis tokens map to the
     bundle's German labels by list index; pump-only states (Eco, Party,
-    Holiday) stay visible as gaps, never invented labels."""
+    Holiday) are covered by the shared reviewed maps, and the per-point join
+    still wins over them."""
 
     cat = build(builder)
     pts = {p["id"]: p for p in cat["points"]}
@@ -301,7 +302,12 @@ def test_enum_de_index_join_ground_truth(builder):
         "heatman": "Handbetrieb Heizen",
         "coolman": "Handbetrieb Kühlen",
     }
-    assert p["enum_label_gaps"]["de"] == ["Eco", "Party", "Holiday"]
+    # Eco/Party/Holiday have no bundle evidence: the shared maps carry them
+    # in both languages now, so the point has no German gaps left.
+    assert "de" not in (p.get("enum_label_gaps") or {})
+    de_shared = cat["enum_token_labels"]["de"]
+    assert de_shared["party"] == "Partybetrieb"
+    assert de_shared["eco"] == "Eco" and de_shared["holiday"] == "Urlaub"
     # Propagation carries the maps to derived circuit instances (same
     # template, same tokens) — every circuit's operating-mode point has them.
     variants = [q for q in cat["points"] if q.get("name_de") == "Betriebswahl Heizkreis"]
@@ -359,4 +365,6 @@ def test_reference_select_de_stats(builder):
     assert rs["total"] == 39
     assert rs["with_descriptor"] == 38
     assert rs["de_mapped"] == 37
-    assert rs["de_fully_mapped"] == 33
+    # 33 map fully from bundle evidence alone; the shared reviewed
+    # translations close the remaining four (Eco/Party/Holiday etc.).
+    assert rs["de_fully_mapped"] == 37
