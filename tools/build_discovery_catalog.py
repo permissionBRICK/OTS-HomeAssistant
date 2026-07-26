@@ -6,6 +6,11 @@ Inputs (research artifacts, not shipped):
   apk_files/reports/catalog_names.json   APK-derived human labels per OA
   apk_files/ha_config/core.config_entries  reference-plant seed (names, units,
                                            enum options, write ids, bounds)
+  apk_files/live_ids.json                live reference-plant reads incl. the
+                                         member-4353 token list per enum id
+  apk_files/jadx_out/resources/res/values/strings.xml
+                                         APK string resources (the
+                                         <Type>IFType_<state> English labels)
 
 Output (shipped with the integration):
   custom_components/ochsner_local_ots/data/discovery_catalog.json
@@ -26,7 +31,8 @@ MEMBERSHIP (owner spec v4):
 NAMING (pump-first overall; the packaged name is the offline part):
   Names that can be read from the controller itself (circuit names, plant
   model/serial/software version) are applied at scan time and take priority.
-  The packaged per-point name is chosen as:
+  The packaged per-point name is language-aware. The English-priority choice
+  (shipped as name/name_source) is:
     1. APK English label                        name_source=apk_label
        (several distinct labels: the most descriptive wins — longest, then
        lexicographic, a deterministic tie-break; labels that are printf
@@ -34,6 +40,31 @@ NAMING (pump-first overall; the packaged name is the offline part):
        not names, and are ignored)
     2. reference-bundle name                    name_source=bundle
     3. APK technical symbol                     name_source=apk_symbol
+  The German-priority choice swaps 1 and 2 (bundle name first). When it
+  differs from the English choice it is shipped as name_de/name_de_source;
+  the runtime picks per the user's language (catalog.resolve_point_name).
+
+ENUM LABELS (the controller cannot localize: jsongen ignores LNG, so the
+member-4353 tokens are symbolic keys and the display labels ship here):
+  * German, per point (enum_labels_de): index join on the reference plant —
+    the bundle's options/value_map gives {german_label: numeric_value}, the
+    live token list gives the token at each list index, and list index IS
+    the numeric value. Keys are normalized tokens
+    (catalog.normalize_enum_token); the literal placeholder "label" (an
+    untranslated bundle slot) is not a usable label.
+  * English, shared (enum_token_labels.en): from the APK string resources
+    <Type>IFType_<state>. A token matches a resource suffix iff their
+    normalized spellings are equal (lowercase, strip whitespace/_/-, e.g.
+    "TiMinOff" == "ti_min_off"); a suffix whose types disagree on the label
+    is ambiguous and is not mapped — a match is never forced.
+  * There is NO shared German map: bundle evidence is point-specific, so a
+    German label is never applied to a point it was not proven on.
+  * A normalized key claimed by two different raw tokens of one state list
+    (signs preserved, so "-12" vs "12" stay distinct) is never mapped —
+    a join must never shift a label between numeric values.
+  * Tokens without a label in a language fall back to the raw token at
+    runtime (an option is never empty); per point they are recorded in
+    enum_label_gaps.{de,en} so unmapped options are visible, not silent.
 
 TECHNICAL-NAME TEST (catalog.is_technical_name): a name with no whitespace
 that has a lowercase-to-uppercase transition or a run of two or more
@@ -55,11 +86,18 @@ guessing addresses is forbidden.
 Catalog point record keys:
   id            read OA (canonical Base64)
   platform      sensor|binary_sensor|number|select|text|switch
-  name          display name
+  name          display name (English-priority choice)
   name_source   apk_label|bundle|apk_symbol (chosen source, for debugging)
+  name_de       German-priority choice, only when it differs from name
+  name_de_source  its source (bundle|apk_label|apk_symbol)
+  enum_labels_de  normalized token -> German label (reference index join)
+  enum_label_gaps {de: [tokens], en: [tokens]} tokens without a label
   sources       subset of [apk, reference, hc_template]
   write_id, unit, options, value_map, min/max/bundle_min/bundle_max/step,
   on_value/off_value, enabled_default, diagnostic, hc_tag
+
+Catalog root additionally carries enum_token_labels: {en: {...}}, the shared
+normalized-token English label map described above.
 """
 
 from __future__ import annotations
@@ -69,6 +107,7 @@ import hashlib
 import json
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -138,6 +177,110 @@ def _apk_name_sources(
     return sorted(set(labels)), sorted(set(symbols))
 
 
+# The bundle's untranslated placeholder: a slot the cloud translation table
+# had no entry for is exported as the literal string "label" — never a name.
+_BUNDLE_PLACEHOLDER = "label"
+
+normalize_enum_token = oa_catalog.normalize_enum_token
+
+
+def _live_token_lists(live: Any) -> Dict[str, List[str]]:
+    """read id -> member-4353 token list from the live reference reads."""
+    out: Dict[str, List[str]] = {}
+    for rid, rec in (live.get("live") or {}).items():
+        states = (rec or {}).get("states_text") if isinstance(rec, dict) else None
+        if isinstance(states, str) and "*" in states:
+            out[str(rid)] = [t.strip() for t in states.split("*")]
+    return out
+
+
+def _apk_state_labels(strings_xml: Path) -> Tuple[Dict[str, str], int, int]:
+    """Shared English label map from the APK <Type>IFType_<state> resources.
+
+    Returns (normalized_suffix -> label, matched_suffixes, ambiguous). A
+    suffix used by several types with DIFFERENT labels is ambiguous and not
+    mapped (a match is never forced); identical labels across types agree.
+    """
+    by_suffix: Dict[str, set] = {}
+    for el in ET.parse(strings_xml).getroot():
+        name = el.get("name") or ""
+        if "IFType_" not in name:
+            continue
+        label = (el.text or "").strip()
+        if not label or label == "#" or _PLACEHOLDER_LABEL.search(label):
+            continue
+        suffix = normalize_enum_token(name.split("IFType_", 1)[1])
+        by_suffix.setdefault(suffix, set()).add(label)
+    en_map = {s: next(iter(labels)) for s, labels in by_suffix.items() if len(labels) == 1}
+    return en_map, len(en_map), sum(1 for labels in by_suffix.values() if len(labels) > 1)
+
+
+def _value_labels_de(ref: Dict[str, Any]) -> Dict[int, str]:
+    """numeric value -> German label from a reference record's enum shape."""
+    out: Dict[int, str] = {}
+    options = ref.get("options")
+    value_map = ref.get("value_map")
+    if isinstance(options, dict):
+        for label, value in options.items():
+            try:
+                out[int(value)] = str(label)
+            except (TypeError, ValueError):
+                continue
+    elif isinstance(value_map, dict):
+        for value, label in value_map.items():
+            try:
+                out[int(float(value))] = str(label)
+            except (TypeError, ValueError):
+                continue
+    return {v: lab for v, lab in out.items() if lab and lab != _BUNDLE_PLACEHOLDER}
+
+
+def _attach_enum_labels(
+    ref: Dict[str, Any], tokens: List[str], en_map: Dict[str, str]
+) -> None:
+    """Index-join one reference enum point: token at list index N <-> value N.
+
+    Adds enum_labels_de (normalized token -> German label) and
+    enum_label_gaps to the reference record so heating-circuit propagation
+    carries them to the derived circuits (same tokens, same template).
+    """
+    v2de = _value_labels_de(ref)
+    # A normalized key claimed by two different raw tokens in ONE list would
+    # shift labels between numeric values: such keys are never mapped (the
+    # tokens stay raw and are recorded as gaps).
+    key_tokens: Dict[str, set] = {}
+    for token in tokens:
+        key = normalize_enum_token(token)
+        if key:
+            key_tokens.setdefault(key, set()).add(token.strip())
+    collisions = {k for k, toks in key_tokens.items() if len(toks) > 1}
+    de_labels: Dict[str, str] = {}
+    gaps_de: List[str] = []
+    gaps_en: List[str] = []
+    for idx, token in enumerate(tokens):
+        token = token.strip()
+        key = normalize_enum_token(token)
+        if not token or not key:
+            # Placeholder slots like "-" normalize to nothing: never a key.
+            continue
+        label = v2de.get(idx)
+        if label and key not in collisions:
+            de_labels.setdefault(key, label)
+        else:
+            gaps_de.append(token)
+        if key not in en_map or key in collisions:
+            gaps_en.append(token)
+    if de_labels:
+        ref["enum_labels_de"] = de_labels
+    gaps = {}
+    if gaps_de:
+        gaps["de"] = gaps_de
+    if gaps_en:
+        gaps["en"] = gaps_en
+    if gaps:
+        ref["enum_label_gaps"] = gaps
+
+
 def _choose_name(
     labels: List[str], bundle_name: Optional[str], symbols: List[str]
 ) -> Tuple[Optional[str], Optional[str]]:
@@ -160,6 +303,16 @@ def _choose_name(
     if symbols:
         return symbols[0], "apk_symbol"
     return None, None
+
+
+def _choose_name_de(
+    labels: List[str], bundle_name: Optional[str], symbols: List[str]
+) -> Tuple[Optional[str], Optional[str]]:
+    """The German-priority choice: the reference-bundle name (German) first,
+    then the same fallbacks as the English choice."""
+    if bundle_name:
+        return bundle_name, "bundle"
+    return _choose_name(labels, bundle_name, symbols)
 
 
 def _rewrite_hc_ordinal(name: str, target_ordinal: int) -> str:
@@ -397,14 +550,45 @@ def build_catalog(
     model_path: Path,
     names_path: Path,
     reference_path: Path,
+    live_path: Path,
+    strings_path: Path,
 ) -> Dict[str, Any]:
     model = _load_json(model_path)
     names = _load_json(names_path)
     ctrl = _reference_controller(_load_json(reference_path))
+    token_lists = _live_token_lists(_load_json(live_path))
+    en_map, en_suffixes, en_ambiguous = _apk_state_labels(strings_path)
 
     apk_records = [r for r in model["catalog"] if r.get("classification") == "ochsner_object_address"]
     names_by_id = names.get("apk_id_catalog") or {}
     ref_records = _reference_records(ctrl)
+
+    # Language-aware enum labels: index-join every enum-shaped reference
+    # point that has a live token list (list index = numeric value).
+    for read_id, ref in ref_records.items():
+        tokens = token_lists.get(read_id)
+        if not tokens:
+            continue
+        if ref.get("platform") == "select" or ref.get("options") or ref.get("value_map"):
+            _attach_enum_labels(ref, tokens, en_map)
+
+    # No shared German map: bundle evidence is point-specific (review round
+    # 1) — consistency on one reference plant does not justify relabelling
+    # another plant's point. German is per-point join or raw token.
+
+    # The explicitly requested reference-plant result, on distinct reference
+    # SELECT records: how many have live descriptors / German maps / map
+    # fully (spec: "33 of 37 ... report your actual number").
+    ref_selects = [r for r in ref_records.values() if r.get("platform") == "select"]
+    ref_selects_de = [r for r in ref_selects if r.get("enum_labels_de")]
+    ref_select_stats = {
+        "total": len(ref_selects),
+        "with_descriptor": sum(1 for r in ref_selects if token_lists.get(r["id"])),
+        "de_mapped": len(ref_selects_de),
+        "de_fully_mapped": sum(
+            1 for r in ref_selects_de if "de" not in (r.get("enum_label_gaps") or {})
+        ),
+    }
 
     excluded_schedule = 0
     excluded_descriptor = 0
@@ -472,6 +656,14 @@ def build_catalog(
             "name_source": name_source,
             "sources": entry["sources"],
         }
+        # German-priority name (bundle first); shipped only when it differs
+        # from the English-priority choice so the asset stays compact.
+        name_de, name_de_source = _choose_name_de(
+            entry["labels"], entry.get("bundle_name"), entry["symbols"]
+        )
+        if name_de and name_de != name:
+            rec["name_de"] = name_de
+            rec["name_de_source"] = name_de_source
         ref = entry.get("ref")
         if ref is not None:
             for k in (
@@ -489,6 +681,8 @@ def build_catalog(
                 "off_value",
                 "enabled_default",
                 "hc_tag",
+                "enum_labels_de",
+                "enum_label_gaps",
             ):
                 if ref.get(k) is not None:
                     rec[k] = ref[k]
@@ -521,6 +715,7 @@ def build_catalog(
 
     point_list = [points[k] for k in sorted(points)]
     body = {
+        "enum_token_labels": {"en": dict(sorted(en_map.items()))},
         "hc_tags": HC_TAGS,
         "points": point_list,
         "tags": tags,
@@ -553,6 +748,22 @@ def build_catalog(
             "excluded_schedule": excluded_schedule,
             "excluded_descriptor": excluded_descriptor,
             "excluded_unnamed": excluded_unnamed,
+            "name_de_points": sum(1 for p in point_list if p.get("name_de")),
+            "enum_points_with_de_labels": sum(1 for p in point_list if p.get("enum_labels_de")),
+            "enum_points_fully_mapped_de": sum(
+                1
+                for p in point_list
+                if p.get("enum_labels_de") and "de" not in (p.get("enum_label_gaps") or {})
+            ),
+            "enum_points_with_de_gaps": sum(
+                1 for p in point_list if "de" in (p.get("enum_label_gaps") or {})
+            ),
+            "enum_points_with_en_gaps": sum(
+                1 for p in point_list if "en" in (p.get("enum_label_gaps") or {})
+            ),
+            "reference_selects": ref_select_stats,
+            "shared_token_labels_en": len(en_map),
+            "en_suffixes_ambiguous": en_ambiguous,
         },
     }
 
@@ -562,10 +773,18 @@ def main() -> int:
     ap.add_argument("--model", type=Path, default=REPO_ROOT / "apk_files/reports/catalog_model.json")
     ap.add_argument("--names", type=Path, default=REPO_ROOT / "apk_files/reports/catalog_names.json")
     ap.add_argument("--reference", type=Path, default=REPO_ROOT / "apk_files/ha_config/core.config_entries")
+    ap.add_argument("--live", type=Path, default=REPO_ROOT / "apk_files/live_ids.json")
+    ap.add_argument("--strings", type=Path, default=REPO_ROOT / "apk_files/jadx_out/resources/res/values/strings.xml")
     ap.add_argument("--out", type=Path, default=PKG_DIR / "data" / "discovery_catalog.json")
     args = ap.parse_args()
 
-    catalog = build_catalog(model_path=args.model, names_path=args.names, reference_path=args.reference)
+    catalog = build_catalog(
+        model_path=args.model,
+        names_path=args.names,
+        reference_path=args.reference,
+        live_path=args.live,
+        strings_path=args.strings,
+    )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as fh:

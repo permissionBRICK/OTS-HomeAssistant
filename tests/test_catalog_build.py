@@ -17,9 +17,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MODEL = REPO_ROOT / "apk_files" / "reports" / "catalog_model.json"
 NAMES = REPO_ROOT / "apk_files" / "reports" / "catalog_names.json"
 REFERENCE = REPO_ROOT / "apk_files" / "ha_config" / "core.config_entries"
+LIVE = REPO_ROOT / "apk_files" / "live_ids.json"
+STRINGS = REPO_ROOT / "apk_files" / "jadx_out" / "resources" / "res" / "values" / "strings.xml"
 
 pytestmark = pytest.mark.skipif(
-    not (MODEL.exists() and NAMES.exists() and REFERENCE.exists()),
+    not (MODEL.exists() and NAMES.exists() and REFERENCE.exists() and LIVE.exists() and STRINGS.exists()),
     reason="APK research inputs not present",
 )
 
@@ -36,7 +38,13 @@ def builder(lib):
 
 
 def build(builder):
-    return builder.build_catalog(model_path=MODEL, names_path=NAMES, reference_path=REFERENCE)
+    return builder.build_catalog(
+        model_path=MODEL,
+        names_path=NAMES,
+        reference_path=REFERENCE,
+        live_path=LIVE,
+        strings_path=STRINGS,
+    )
 
 
 def test_builder_is_deterministic(builder):
@@ -250,3 +258,93 @@ def test_service_evidence_in_alternate_names_disables(builder):
         assert p.get("enabled_default") is False, p["id"]
     start = [p for p in cat["points"] if p["name"] == "Start temperature"]
     assert start and all(p.get("enabled_default") is not False for p in start)
+
+
+def test_language_aware_names_shipped(builder):
+    """German bundle names ship as name_de wherever they differ from the
+    English-priority choice; the source is recorded."""
+
+    cat = build(builder)
+    pts = {p["id"]: p for p in cat["points"]}
+    p = pts["AiIQvY58IgE="]  # Betriebswahl Heizkreis (ground-truth point)
+    assert p["name"] == "Heating circuit operating program"
+    assert p["name_source"] == "apk_label"
+    assert p["name_de"] == "Betriebswahl Heizkreis"
+    assert p["name_de_source"] == "bundle"
+    # name_de only ships when it differs (the asset stays compact).
+    assert not any(p.get("name_de") == p["name"] for p in cat["points"])
+    assert cat["stats"]["name_de_points"] >= 200
+
+
+def test_enum_de_index_join_ground_truth(builder):
+    """The verified index join: Betriebswahl Heizkreis tokens map to the
+    bundle's German labels by list index; pump-only states (Eco, Party,
+    Holiday) stay visible as gaps, never invented labels."""
+
+    cat = build(builder)
+    pts = {p["id"]: p for p in cat["points"]}
+    p = pts["AiIQvY58IgE="]
+    assert p["enum_labels_de"] == {
+        "comfort": "Komfort",
+        "off": "Aus",
+        "red": "Reduziert",
+        "norm": "Normalbetrieb",
+        "heatman": "Handbetrieb Heizen",
+        "coolman": "Handbetrieb Kühlen",
+    }
+    assert p["enum_label_gaps"]["de"] == ["Eco", "Party", "Holiday"]
+    # Propagation carries the maps to derived circuit instances (same
+    # template, same tokens) — every circuit's operating-mode point has them.
+    variants = [q for q in cat["points"] if q.get("name_de") == "Betriebswahl Heizkreis"]
+    assert len(variants) >= 3
+    assert all(q.get("enum_labels_de") == p["enum_labels_de"] for q in variants)
+
+
+def test_shared_token_label_map_en_only(builder):
+    """The shared map is English only (APK IFType suffixes, unambiguous
+    ones). Ambiguous suffixes ("off" is 'Off' for some types, 'Operating
+    program switched off' for others) are not forced, placeholder tokens
+    ('-') never become keys, and there is NO shared German map — German
+    bundle evidence is point-specific (review round 1)."""
+
+    cat = build(builder)
+    assert set(cat["enum_token_labels"]) == {"en"}
+    en = cat["enum_token_labels"]["en"]
+    assert en["auto"] == "Automatic"
+    assert en["timinoff"] == "Starting procedure"  # ti_min_off, faithful to the APK
+    assert "off" not in en
+    assert "" not in en
+    assert cat["stats"]["en_suffixes_ambiguous"] > 0
+
+
+def test_signed_numeric_tokens_never_collide(builder, catalog_mod):
+    """Regression (review round 1): the timezone list carries -12..-1 and
+    1..12; a sign-blind normalization collapsed them and shifted UTC labels
+    between numeric values. All 25 indices must keep distinct keys and map
+    to their exact reference labels."""
+
+    norm = catalog_mod.normalize_enum_token
+    assert norm("-12") != norm("12")
+    assert norm("+3") != norm("3")
+    assert norm("-") == ""
+
+    cat = build(builder)
+    p = next(p for p in cat["points"] if p["id"] == "AiNSjtVVAAE=")  # Zeitzone
+    labels = p["enum_labels_de"]
+    tokens = [str(n) for n in range(-12, 13)]  # descriptor order: -12..-1,0,1..12
+    assert len(labels) == 25
+    ref = {str(v): lab for lab, v in p["options"].items()}
+    for idx, tok in enumerate(tokens):
+        assert labels[norm(tok)] == ref[str(idx)], tok
+
+
+def test_reference_select_de_stats(builder):
+    """The reference-plant result the owner asked to see: of the distinct
+    reference select records, how many map fully to German."""
+
+    cat = build(builder)
+    rs = cat["stats"]["reference_selects"]
+    assert rs["total"] == 39
+    assert rs["with_descriptor"] == 38
+    assert rs["de_mapped"] == 37
+    assert rs["de_fully_mapped"] == 33

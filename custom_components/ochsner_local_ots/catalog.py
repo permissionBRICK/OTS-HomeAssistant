@@ -198,6 +198,100 @@ def is_technical_name(name: str) -> bool:
     return bool(_TECH_TRANSITION.search(name) or _TECH_CAP_RUN.search(name))
 
 
+# --- language-aware naming (spec: language-aware naming, empirically
+# established: the controller cannot localize — jsongen ignores LNG, so the
+# pump's enum strings are symbolic keys and localization lives here) --------
+
+LANGUAGE_DE = "de"
+LANGUAGE_EN = "en"
+
+_NORM_STRIP = re.compile(r"[\s_\-]+")
+
+
+def normalize_enum_token(token: str) -> str:
+    """Canonical join/lookup key for a pump enum token.
+
+    The pump's member-4353 tokens ("TiMinOff") and the APK's string-resource
+    suffixes ("ti_min_off") spell the same state differently; lowercasing and
+    dropping whitespace/underscores/hyphens makes the two spellings equal. A
+    LEADING sign is part of the value, not spelling: signed numeric tokens
+    ("-12" vs "12" in the timezone list) must never collapse to one key. A
+    token that normalizes to nothing (placeholder "-") has no key.
+    """
+    s = str(token or "").strip()
+    sign = s[:1] if s[:1] in "+-" else ""
+    key = _NORM_STRIP.sub("", s[len(sign):]).lower()
+    return sign + key if key else ""
+
+
+def normalize_language(value: Any) -> str:
+    """Collapse any language spelling ("DE", "de-AT", "German") to de/en.
+
+    Only German and English exist as label sources; everything else is
+    English (the documented default)."""
+    v = str(value or "").strip().lower()
+    if v.startswith("de") or v == "german":
+        return LANGUAGE_DE
+    return LANGUAGE_EN
+
+
+def resolve_point_name(rec: Dict[str, Any], language: str) -> tuple[str, str]:
+    """The display name for a catalog point in the user's language.
+
+    Returns (name, source) where source is e.g. "bundle:de" for
+    debuggability. The packaged record carries the English-priority choice in
+    ``name``/``name_source`` (APK label > bundle > symbol) and, when the
+    German bundle name differs, that name in ``name_de``/``name_de_source``;
+    German preference is simply the other priority order. Identity read from
+    the pump (circuit names, plant model) is applied by the caller on top and
+    always wins.
+    """
+    name = str(rec.get("name") or rec.get("id") or "")
+    source = str(rec.get("name_source") or "")
+    if normalize_language(language) == LANGUAGE_DE:
+        name_de = rec.get("name_de")
+        if isinstance(name_de, str) and name_de:
+            return name_de, f"{rec.get('name_de_source') or 'bundle'}:de"
+    return name, f"{source}:en"
+
+
+def resolve_enum_label(
+    rec: Dict[str, Any],
+    token: str,
+    language: str,
+    shared_labels: Optional[Dict[str, Dict[str, str]]] = None,
+) -> str:
+    """Localized display label for one pump enum token, falling back to the
+    raw token (an option is never empty).
+
+    German uses ONLY the point's own index-joined map (enum_labels_de): the
+    bundle evidence is point-specific, so a label from another point's join
+    is never applied — an unmapped token stays a raw token. English uses the
+    shared APK-resource map (catalog root ``enum_token_labels``), which is
+    justified per token by the <Type>IFType_<state> resources themselves.
+    """
+    token = str(token).strip()
+    key = normalize_enum_token(token)
+    if not key:
+        # Placeholder tokens like "-" normalize to nothing: no lookup.
+        return token
+    lang = normalize_language(language)
+    if lang == LANGUAGE_DE:
+        own = rec.get("enum_labels_de")
+        if isinstance(own, dict):
+            label = own.get(key)
+            if isinstance(label, str) and label:
+                return label
+        return token
+    if shared_labels:
+        shared = shared_labels.get(lang)
+        if isinstance(shared, dict):
+            label = shared.get(key)
+            if isinstance(label, str) and label:
+                return label
+    return token
+
+
 def apply_v4_point_flags(rec: Dict[str, Any], extra_names: Optional[List[str]] = None) -> Dict[str, Any]:
     """Apply the v4 disable/diagnostic rules to a catalog point record.
 
@@ -262,6 +356,16 @@ class DiscoveryCatalog:
                 continue
             self.points.append(rec)
             self.points_by_id[str(rec["id"])] = rec
+
+        # Shared token->label maps (normalized-token keys) for languages
+        # without per-point evidence; per-point German maps live on the
+        # point records (enum_labels_de).
+        etl = raw.get("enum_token_labels")
+        self.enum_token_labels: Dict[str, Dict[str, str]] = {}
+        if isinstance(etl, dict):
+            for lang, m in etl.items():
+                if isinstance(m, dict):
+                    self.enum_token_labels[str(lang)] = {str(k): str(v) for k, v in m.items()}
 
         tags_raw = raw.get("tags")
         self.tags: List[Dict[str, Any]] = [dict(t) for t in tags_raw if isinstance(t, dict)] if isinstance(tags_raw, list) else []
