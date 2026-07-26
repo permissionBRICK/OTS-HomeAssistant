@@ -1,6 +1,139 @@
 {
  "app_source": "com.ochsner.app v1.2.0/1785 + reference plant seed",
- "catalog_version": "fed912327870a254",
+ "catalog_version": "4e46267d32ef024a",
+ "enum_token_labels": {
+  "en": {
+   "acknowledge": "Confirm",
+   "antifreeze": "Frost protection mode",
+   "auto": "Automatic",
+   "bakeoutcooldown": "Cooling phase screed drying program",
+   "bakeoutheatup": "Heating phase screed drying program",
+   "bakeouthold": "Holding phase screed drying program",
+   "bip": "Outdoor temperature shutdown",
+   "cool": "Cooling",
+   "cooldownphase1": "Cooling phase 1",
+   "cooldownphase2": "Cooling phase 2",
+   "coolnormal": "Standard cooling",
+   "coolreduced": "Reduced cooling",
+   "defrost": "Defrost",
+   "dewpointreached": "Dew point shutdown",
+   "discharge": "Forced draw-off",
+   "ecocool": "ECO cooling",
+   "ecoheat": "ECO heating",
+   "emergency": "Emergency mode",
+   "emergencyoff": "Emergency mode switched off",
+   "end": "End",
+   "error": "Fault",
+   "even": "Even",
+   "evodec": "Temporary target reduction",
+   "evoinc": "Temporary target increase",
+   "exclusivechecked": "Exclusive with test",
+   "exclusiveunchecked": "Exclusive without test",
+   "external": "Switched on externally",
+   "fixedtemperature": "Temperature setting",
+   "flowtemperaturelimitallhcs": "Maximum flow temperature of all heating circuits",
+   "flowtemperaturelimithc1": "Maximum flow temperature, heating circuit 1",
+   "flowtemperaturelimithc2": "Maximum flow temperature, heating circuit 2",
+   "flowtemperaturelimithc3": "Maximum flow temperature, heating circuit 3",
+   "flowtemperaturelimithc4": "Maximum flow temperature, heating circuit 4",
+   "flt": "Fault",
+   "frtprt": "Frost protection mode",
+   "heat": "Heating",
+   "heatdefrost": "Defrost",
+   "heatnormal": "Standard heating",
+   "heatreduced": "Reduced heating",
+   "heatupphase1": "Heating phase 1",
+   "heatupphase2": "Heating phase 2",
+   "holdingphase": "Holding phase",
+   "holidaycool": "Cooling holiday",
+   "holidayheat": "Heating holiday",
+   "hotwater": "DHW",
+   "hotwater1": "DHW",
+   "hotwater2": "DHW",
+   "hotwaterdefrost": "Defrost",
+   "hotwaterprecedence": "DHW priority",
+   "htg": "Heating",
+   "inactive1": "Connection inactive",
+   "inactive2": "Connection inactive",
+   "inactive3": "Connection inactive",
+   "interruption": "Charging shutdown",
+   "legionella": "Anti-legionella mode",
+   "limitactive": "Off",
+   "limited": "Not enabled",
+   "locked": "OFF - Outage time",
+   "lockedbivalently": "Outdoor temperature shutdown",
+   "manualcool": "Manual cooling",
+   "manualheat": "Manual heating",
+   "manualshutdown": "Operating program switched off",
+   "maxtempshutdown": "Maximum temperature shutdown",
+   "mb19200": "19200",
+   "mb2400": "2400",
+   "mb38400": "38400",
+   "mb4800": "4800",
+   "mb9600": "9600",
+   "minpressure": "Minimum system pressure",
+   "minruntime": "Shutdown procedure",
+   "mintimeout": "Starting procedure",
+   "minus1": "(UTC -01:00)",
+   "minus10": "(UTC -10:00)",
+   "minus11": "(UTC -11:00)",
+   "minus12": "(UTC -12:00)",
+   "minus2": "(UTC -02:00)",
+   "minus3": "(UTC -03:00)",
+   "minus4": "(UTC -04:00)",
+   "minus5": "(UTC -05:00)",
+   "minus6": "(UTC -06:00)",
+   "minus7": "(UTC -07:00)",
+   "minus8": "(UTC -08:00)",
+   "minus9": "(UTC -09:00)",
+   "mode0": "Off",
+   "mode1": "Time program",
+   "none": "None",
+   "odd": "Odd",
+   "offinterval": "Time interval",
+   "offreturnflowtemperature": "DHW circulation pump return temperature",
+   "offtoocold": "OFF - Room too cold",
+   "offtoowarm": "OFF - Room too warm",
+   "on": "On",
+   "one": "One",
+   "party": "Party mode",
+   "passive": "Passive",
+   "plus1": "(UTC +01:00)",
+   "plus10": "(UTC +10:00)",
+   "plus11": "(UTC +11:00)",
+   "plus12": "(UTC +12:00)",
+   "plus2": "(UTC +02:00)",
+   "plus3": "(UTC +03:00)",
+   "plus4": "(UTC +04:00)",
+   "plus5": "(UTC +05:00)",
+   "plus6": "(UTC +06:00)",
+   "plus7": "(UTC +07:00)",
+   "plus8": "(UTC +08:00)",
+   "plus9": "(UTC +09:00)",
+   "preference": "Priority mode",
+   "ready": "Standby",
+   "service": "Pool service mode",
+   "servicecool": "Service mode cooling",
+   "serviceheat": "Service mode heating",
+   "slowdown": "Forced throttling",
+   "standardchecked": "Standard with test",
+   "standardunchecked": "Standard without test",
+   "standby": "Standby",
+   "standby1": "Standby",
+   "standby2": "Standby",
+   "summer": "Summer",
+   "target": "Standby",
+   "timinoff": "Starting procedure",
+   "timinon": "Shutdown procedure",
+   "two": "Two",
+   "twvmax": "Maximum temperature shutdown",
+   "unknown": "Unknown",
+   "unlock": "Unlock",
+   "vacation": "Holiday mode",
+   "winter": "Winter",
+   "zero": "(UTC 00:00)"
+  }
+ },
  "hc_tags": [
   31886,
   19693,
@@ -12,6 +145,8 @@
    "hc_tag": 11307,
    "id": "ACJz7SssAAE=",
    "name": "Target flow temperature, heating circuit",
+   "name_de": "Heizkreis Sollvorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -24,6 +159,8 @@
    "hc_tag": 31886,
    "id": "ACJz7Y58AAE=",
    "name": "Target flow temperature, heating circuit",
+   "name_de": "Heizkreis Sollvorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -36,6 +173,8 @@
    "hc_tag": 23756,
    "id": "ACJz7cxcAAE=",
    "name": "Target flow temperature, heating circuit",
+   "name_de": "Heizkreis Sollvorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -48,6 +187,8 @@
    "hc_tag": 19693,
    "id": "ACJz7e1MAAE=",
    "name": "Target flow temperature, heating circuit",
+   "name_de": "Heizkreis Sollvorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -246,6 +387,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Heating limit",
+   "name_de": "Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -264,6 +407,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Heating limit",
+   "name_de": "Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -282,6 +427,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Heating limit",
+   "name_de": "Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -300,6 +447,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Heating limit",
+   "name_de": "Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -370,6 +519,8 @@
    "max": 40.0,
    "min": 20.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -387,6 +538,8 @@
    "max": 40.0,
    "min": 20.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -404,6 +557,8 @@
    "max": 40.0,
    "min": 20.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -421,6 +576,8 @@
    "max": 40.0,
    "min": 20.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -462,6 +619,8 @@
    "max": 20.0,
    "min": 10.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -479,6 +638,8 @@
    "max": 20.0,
    "min": 10.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -496,6 +657,8 @@
    "max": 20.0,
    "min": 10.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -513,6 +676,8 @@
    "max": 20.0,
    "min": 10.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -588,6 +753,8 @@
    "max": 25.0,
    "min": 5.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -605,6 +772,8 @@
    "max": 25.0,
    "min": 5.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -622,6 +791,8 @@
    "max": 25.0,
    "min": 5.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -639,6 +810,8 @@
    "max": 25.0,
    "min": 5.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -656,6 +829,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -673,6 +848,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -690,6 +867,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -707,6 +886,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -724,6 +905,8 @@
    "max": 10.0,
    "min": 0.0,
    "name": "Room temperature compensation correction factor Kp",
+   "name_de": "Raumeinfluss - Korrekturfaktor Kp",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -741,6 +924,8 @@
    "max": 10.0,
    "min": 0.0,
    "name": "Room temperature compensation correction factor Kp",
+   "name_de": "Raumeinfluss - Korrekturfaktor Kp",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -758,6 +943,8 @@
    "max": 10.0,
    "min": 0.0,
    "name": "Room temperature compensation correction factor Kp",
+   "name_de": "Raumeinfluss - Korrekturfaktor Kp",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -775,6 +962,8 @@
    "max": 10.0,
    "min": 0.0,
    "name": "Room temperature compensation correction factor Kp",
+   "name_de": "Raumeinfluss - Korrekturfaktor Kp",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -810,6 +999,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Heating curve reference room temperature",
+   "name_de": "Heizkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -827,6 +1018,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Heating curve reference room temperature",
+   "name_de": "Heizkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -844,6 +1037,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Heating curve reference room temperature",
+   "name_de": "Heizkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -861,6 +1056,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Heating curve reference room temperature",
+   "name_de": "Heizkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -878,6 +1075,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Cooling curve reference room temperature",
+   "name_de": "Kühlkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -895,6 +1094,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Cooling curve reference room temperature",
+   "name_de": "Kühlkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -912,6 +1113,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Cooling curve reference room temperature",
+   "name_de": "Kühlkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -929,6 +1132,8 @@
    "max": 30.0,
    "min": 10.0,
    "name": "Cooling curve reference room temperature",
+   "name_de": "Kühlkurve Bezugsraumtemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -961,6 +1166,8 @@
    "max": 90.0,
    "min": 20.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -979,6 +1186,8 @@
    "max": 90.0,
    "min": 20.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -997,6 +1206,8 @@
    "max": 90.0,
    "min": 20.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1015,6 +1226,8 @@
    "max": 90.0,
    "min": 20.0,
    "name": "Flow temperature at standard outdoor temperature",
+   "name_de": "Vorlauftemperatur bei Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1088,6 +1301,8 @@
    "max": 5.0,
    "min": -30.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1106,6 +1321,8 @@
    "max": 5.0,
    "min": -30.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1124,6 +1341,8 @@
    "max": 5.0,
    "min": -30.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1142,6 +1361,8 @@
    "max": 5.0,
    "min": -30.0,
    "name": "Standard outdoor temperature",
+   "name_de": "Norm-Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1344,6 +1565,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Steady-state time in days",
+   "name_de": "Beharrungsdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1361,6 +1584,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Steady-state time in days",
+   "name_de": "Beharrungsdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1378,6 +1603,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Steady-state time in days",
+   "name_de": "Beharrungsdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1395,6 +1622,8 @@
    "max": 30.0,
    "min": 0.0,
    "name": "Steady-state time in days",
+   "name_de": "Beharrungsdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1412,6 +1641,8 @@
    "max": 25.0,
    "min": 15.0,
    "name": "Start temperature",
+   "name_de": "Starttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1430,6 +1661,8 @@
    "max": 25.0,
    "min": 15.0,
    "name": "Start temperature",
+   "name_de": "Starttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1448,6 +1681,8 @@
    "max": 25.0,
    "min": 15.0,
    "name": "Start temperature",
+   "name_de": "Starttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1466,6 +1701,8 @@
    "max": 25.0,
    "min": 15.0,
    "name": "Start temperature",
+   "name_de": "Starttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1484,6 +1721,8 @@
    "max": 55.0,
    "min": 15.0,
    "name": "Steady-state temperature",
+   "name_de": "Beharrungstemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1502,6 +1741,8 @@
    "max": 55.0,
    "min": 15.0,
    "name": "Steady-state temperature",
+   "name_de": "Beharrungstemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1520,6 +1761,8 @@
    "max": 55.0,
    "min": 15.0,
    "name": "Steady-state temperature",
+   "name_de": "Beharrungstemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1538,6 +1781,8 @@
    "max": 55.0,
    "min": 15.0,
    "name": "Steady-state temperature",
+   "name_de": "Beharrungstemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1573,6 +1818,8 @@
    "max": 100.0,
    "min": 15.0,
    "name": "Maximum buffer tank target temperature",
+   "name_de": "Max. Puffertemperatur- Sollwert",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1591,6 +1838,8 @@
    "max": -0.5,
    "min": -5.0,
    "name": "Switch-ON differential heating limit",
+   "name_de": "Einschalthysterese Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1609,6 +1858,8 @@
    "max": -0.5,
    "min": -5.0,
    "name": "Switch-ON differential heating limit",
+   "name_de": "Einschalthysterese Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1627,6 +1878,8 @@
    "max": -0.5,
    "min": -5.0,
    "name": "Switch-ON differential heating limit",
+   "name_de": "Einschalthysterese Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1645,6 +1898,8 @@
    "max": -0.5,
    "min": -5.0,
    "name": "Switch-ON differential heating limit",
+   "name_de": "Einschalthysterese Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1782,6 +2037,8 @@
    "max": 40.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1800,6 +2057,8 @@
    "max": 40.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1818,6 +2077,8 @@
    "max": 40.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1836,6 +2097,8 @@
    "max": 40.0,
    "min": 10.0,
    "name": "Flow temperature at base point",
+   "name_de": "Vorlauftemperatur bei Fußpunkt",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1863,6 +2126,8 @@
    "max": 40.0,
    "min": 5.0,
    "name": "Cooling limit",
+   "name_de": "Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1881,6 +2146,8 @@
    "max": 40.0,
    "min": 5.0,
    "name": "Cooling limit",
+   "name_de": "Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1899,6 +2166,8 @@
    "max": 40.0,
    "min": 5.0,
    "name": "Cooling limit",
+   "name_de": "Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1917,6 +2186,8 @@
    "max": 40.0,
    "min": 5.0,
    "name": "Cooling limit",
+   "name_de": "Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1935,6 +2206,8 @@
    "max": 5.0,
    "min": 0.5,
    "name": "Switch-ON differential cooling limit",
+   "name_de": "Einschalthysterese Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1953,6 +2226,8 @@
    "max": 5.0,
    "min": 0.5,
    "name": "Switch-ON differential cooling limit",
+   "name_de": "Einschalthysterese Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1971,6 +2246,8 @@
    "max": 5.0,
    "min": 0.5,
    "name": "Switch-ON differential cooling limit",
+   "name_de": "Einschalthysterese Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -1989,6 +2266,8 @@
    "max": 5.0,
    "min": 0.5,
    "name": "Switch-ON differential cooling limit",
+   "name_de": "Einschalthysterese Kühlgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2047,6 +2326,8 @@
    "max": 600.0,
    "min": 0.0,
    "name": "OFF - Outage time",
+   "name_de": "Sperrzeit Kühlanforderung",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2064,6 +2345,8 @@
    "max": 600.0,
    "min": 0.0,
    "name": "OFF - Outage time",
+   "name_de": "Sperrzeit Kühlanforderung",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2081,6 +2364,8 @@
    "max": 600.0,
    "min": 0.0,
    "name": "OFF - Outage time",
+   "name_de": "Sperrzeit Kühlanforderung",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2098,6 +2383,8 @@
    "max": 600.0,
    "min": 0.0,
    "name": "OFF - Outage time",
+   "name_de": "Sperrzeit Kühlanforderung",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2115,6 +2402,8 @@
    "max": 30.0,
    "min": -10.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2133,6 +2422,8 @@
    "max": 30.0,
    "min": -10.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2151,6 +2442,8 @@
    "max": 30.0,
    "min": -10.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2169,6 +2462,8 @@
    "max": 30.0,
    "min": -10.0,
    "name": "Outdoor temperature base point",
+   "name_de": "Fußpunkt Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2252,6 +2547,8 @@
    "max": 64.0,
    "min": 5.0,
    "name": "Minimum buffer tank target temperature",
+   "name_de": "Min. Puffertemperatur- Sollwert",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2414,6 +2711,18 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "OK",
+     "Fault",
+     "NULL"
+    ],
+    "en": [
+     "OK",
+     "Fault",
+     "NULL"
+    ]
+   },
    "id": "ASJtqVsWAAE=",
    "name": "Notbetrieb Warmwasser",
    "name_source": "bundle",
@@ -2643,6 +2952,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard heating",
+   "name_de": "Raumsollwert Normal Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2661,6 +2972,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard heating",
+   "name_de": "Raumsollwert Normal Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2679,6 +2992,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard heating",
+   "name_de": "Raumsollwert Normal Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2697,6 +3012,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard heating",
+   "name_de": "Raumsollwert Normal Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2733,6 +3050,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard cooling",
+   "name_de": "Raumsollwert Normal Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2751,6 +3070,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard cooling",
+   "name_de": "Raumsollwert Normal Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2769,6 +3090,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard cooling",
+   "name_de": "Raumsollwert Normal Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2787,6 +3110,8 @@
    "max": 30.0,
    "min": 15.0,
    "name": "Target room temperature standard cooling",
+   "name_de": "Raumsollwert Normal Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2900,6 +3225,8 @@
    "max": 25.0,
    "min": 10.0,
    "name": "Target room temperature reduced heating",
+   "name_de": "Raumsollwert Reduziert Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2918,6 +3245,8 @@
    "max": 25.0,
    "min": 10.0,
    "name": "Target room temperature reduced heating",
+   "name_de": "Raumsollwert Reduziert Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2936,6 +3265,8 @@
    "max": 25.0,
    "min": 10.0,
    "name": "Target room temperature reduced heating",
+   "name_de": "Raumsollwert Reduziert Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2954,6 +3285,8 @@
    "max": 25.0,
    "min": 10.0,
    "name": "Target room temperature reduced heating",
+   "name_de": "Raumsollwert Reduziert Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -2990,6 +3323,8 @@
    "max": 35.0,
    "min": 20.0,
    "name": "Target room temperature reduced cooling",
+   "name_de": "Raumsollwert Reduziert Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -3008,6 +3343,8 @@
    "max": 35.0,
    "min": 20.0,
    "name": "Target room temperature reduced cooling",
+   "name_de": "Raumsollwert Reduziert Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -3026,6 +3363,8 @@
    "max": 35.0,
    "min": 20.0,
    "name": "Target room temperature reduced cooling",
+   "name_de": "Raumsollwert Reduziert Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -3044,6 +3383,8 @@
    "max": 35.0,
    "min": 20.0,
    "name": "Target room temperature reduced cooling",
+   "name_de": "Raumsollwert Reduziert Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -3090,9 +3431,36 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "Eco",
+     "Party",
+     "Holiday"
+    ],
+    "en": [
+     "Comfort",
+     "Off",
+     "Red",
+     "Norm",
+     "HeatMan",
+     "CoolMan",
+     "Eco",
+     "Holiday"
+    ]
+   },
+   "enum_labels_de": {
+    "comfort": "Komfort",
+    "coolman": "Handbetrieb Kühlen",
+    "heatman": "Handbetrieb Heizen",
+    "norm": "Normalbetrieb",
+    "off": "Aus",
+    "red": "Reduziert"
+   },
    "hc_tag": 11307,
    "id": "AiIQvSssIgE=",
    "name": "Heating circuit operating program",
+   "name_de": "Betriebswahl Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Aus": 1,
@@ -3140,9 +3508,36 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "Eco",
+     "Party",
+     "Holiday"
+    ],
+    "en": [
+     "Comfort",
+     "Off",
+     "Red",
+     "Norm",
+     "HeatMan",
+     "CoolMan",
+     "Eco",
+     "Holiday"
+    ]
+   },
+   "enum_labels_de": {
+    "comfort": "Komfort",
+    "coolman": "Handbetrieb Kühlen",
+    "heatman": "Handbetrieb Heizen",
+    "norm": "Normalbetrieb",
+    "off": "Aus",
+    "red": "Reduziert"
+   },
    "hc_tag": 31886,
    "id": "AiIQvY58IgE=",
    "name": "Heating circuit operating program",
+   "name_de": "Betriebswahl Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Aus": 1,
@@ -3160,9 +3555,36 @@
    "write_id": "AiIQvY58IgE="
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "Eco",
+     "Party",
+     "Holiday"
+    ],
+    "en": [
+     "Comfort",
+     "Off",
+     "Red",
+     "Norm",
+     "HeatMan",
+     "CoolMan",
+     "Eco",
+     "Holiday"
+    ]
+   },
+   "enum_labels_de": {
+    "comfort": "Komfort",
+    "coolman": "Handbetrieb Kühlen",
+    "heatman": "Handbetrieb Heizen",
+    "norm": "Normalbetrieb",
+    "off": "Aus",
+    "red": "Reduziert"
+   },
    "hc_tag": 23756,
    "id": "AiIQvcxcIgE=",
    "name": "Heating circuit operating program",
+   "name_de": "Betriebswahl Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Aus": 1,
@@ -3180,9 +3602,36 @@
    "write_id": "AiIQvcxcIgE="
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "Eco",
+     "Party",
+     "Holiday"
+    ],
+    "en": [
+     "Comfort",
+     "Off",
+     "Red",
+     "Norm",
+     "HeatMan",
+     "CoolMan",
+     "Eco",
+     "Holiday"
+    ]
+   },
+   "enum_labels_de": {
+    "comfort": "Komfort",
+    "coolman": "Handbetrieb Kühlen",
+    "heatman": "Handbetrieb Heizen",
+    "norm": "Normalbetrieb",
+    "off": "Aus",
+    "red": "Reduziert"
+   },
    "hc_tag": 19693,
    "id": "AiIQve1MIgE=",
    "name": "Heating circuit operating program",
+   "name_de": "Betriebswahl Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Aus": 1,
@@ -3225,9 +3674,20 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "off": "Nein/Abbrechen",
+    "on": "Ja"
+   },
    "hc_tag": 11307,
    "id": "AiM6JSssAAE=",
    "name": "Program start",
+   "name_de": "Austrockungsprogramm starten?",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Ja": 1,
@@ -3242,9 +3702,20 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "off": "Nein/Abbrechen",
+    "on": "Ja"
+   },
    "hc_tag": 31886,
    "id": "AiM6JY58AAE=",
    "name": "Program start",
+   "name_de": "Austrockungsprogramm starten?",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Ja": 1,
@@ -3259,9 +3730,20 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "off": "Nein/Abbrechen",
+    "on": "Ja"
+   },
    "hc_tag": 23756,
    "id": "AiM6JcxcAAE=",
    "name": "Program start",
+   "name_de": "Austrockungsprogramm starten?",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Ja": 1,
@@ -3276,9 +3758,20 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "off": "Nein/Abbrechen",
+    "on": "Ja"
+   },
    "hc_tag": 19693,
    "id": "AiM6Je1MAAE=",
    "name": "Program start",
+   "name_de": "Austrockungsprogramm starten?",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Ja": 1,
@@ -3296,6 +3789,8 @@
    "hc_tag": 11307,
    "id": "AiMBPSssAAE=",
    "name": "Operating program, screed drying program",
+   "name_de": "Betriebswahl Estrich Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -3311,6 +3806,8 @@
    "hc_tag": 31886,
    "id": "AiMBPY58AAE=",
    "name": "Operating program, screed drying program",
+   "name_de": "Betriebswahl Estrich Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -3326,6 +3823,8 @@
    "hc_tag": 23756,
    "id": "AiMBPcxcAAE=",
    "name": "Operating program, screed drying program",
+   "name_de": "Betriebswahl Estrich Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -3341,6 +3840,8 @@
    "hc_tag": 19693,
    "id": "AiMBPe1MAAE=",
    "name": "Operating program, screed drying program",
+   "name_de": "Betriebswahl Estrich Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -3363,6 +3864,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Date",
+     "Pass"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Auto",
+    "date": "Date",
+    "pass": "Pass_HK",
+    "summer": "Summer_HK",
+    "winter": "Winter_HK"
+   },
    "id": "AiMN7CssAAE=",
    "name": "Summer-Winter-Switch-HK",
    "name_source": "bundle",
@@ -3384,6 +3898,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Date",
+     "Pass"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Auto",
+    "date": "Date",
+    "pass": "Pass_HK",
+    "summer": "Summer_HK",
+    "winter": "Winter_HK"
+   },
    "id": "AiMN7I58AAE=",
    "name": "Summer-Winter-Switch-HK",
    "name_source": "bundle",
@@ -3405,6 +3932,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Date",
+     "Pass"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Auto",
+    "date": "Date",
+    "pass": "Pass_HK",
+    "summer": "Summer_HK",
+    "winter": "Winter_HK"
+   },
    "id": "AiMN7MxcAAE=",
    "name": "Summer-Winter-Switch-HK",
    "name_source": "bundle",
@@ -3426,6 +3966,19 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Date",
+     "Pass"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Auto",
+    "date": "Date",
+    "pass": "Pass_HK",
+    "summer": "Summer_HK",
+    "winter": "Winter_HK"
+   },
    "id": "AiMN7O1MAAE=",
    "name": "Summer-Winter-Switch-HK",
    "name_source": "bundle",
@@ -3446,6 +3999,21 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Aus",
+     "VlvOn",
+     "Pu",
+     "VlvOff"
+    ]
+   },
+   "enum_labels_de": {
+    "aus": "Aus",
+    "auto": "Inaktiv",
+    "pu": "Heizkreispumpe",
+    "vlvoff": "Mischer zu",
+    "vlvon": "Mischer auf"
+   },
    "hc_tag": 23756,
    "id": "AiMfKiiJAAE=",
    "name": "Relaistest Heizkreis 3",
@@ -3465,8 +4033,14 @@
   },
   {
    "enabled_default": false,
+   "enum_labels_de": {
+    "one": "eins",
+    "two": "zwei"
+   },
    "id": "AiMu+yApAAE=",
    "name": "Stop bit",
+   "name_de": "Stopbit",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "eins": 0,
@@ -3480,6 +4054,19 @@
    "write_id": "AiMu+yApAAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "HeatSpd",
+     "CoolSpd",
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "coolspd": "Handbetrieb Kühlen",
+    "heatspd": "Handbetrieb Heizen",
+    "off": "Abgeschaltet"
+   },
    "id": "AiMu5MdZAAE=",
    "name": "Betriebswahl Wärmepumpe",
    "name_source": "bundle",
@@ -3516,6 +4103,21 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Aus",
+     "VlvOn",
+     "Pu",
+     "VlvOff"
+    ]
+   },
+   "enum_labels_de": {
+    "aus": "Aus",
+    "auto": "Inaktiv",
+    "pu": "Heizkreispumpe",
+    "vlvoff": "Mischer zu",
+    "vlvon": "Mischer auf"
+   },
    "hc_tag": 19693,
    "id": "AiN+kiiJAAE=",
    "name": "Relaistest Heizkreis 2",
@@ -3536,6 +4138,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Reduced",
+     "Standard"
+    ]
+   },
+   "enum_labels_de": {
+    "reduced": "Notbetrieb",
+    "standard": "Normalbetrieb"
+   },
    "id": "AiN5rlsWAAE=",
    "name": "DHWEmgyMod",
    "name_source": "bundle",
@@ -3565,8 +4177,66 @@
    "write_id": "AiN95Ir8AAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "-12",
+     "-11",
+     "-10",
+     "-9",
+     "-8",
+     "-7",
+     "-6",
+     "-5",
+     "-4",
+     "-3",
+     "-2",
+     "-1",
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12"
+    ]
+   },
+   "enum_labels_de": {
+    "-1": "(UTC -01:00)",
+    "-10": "(UTC -10:00)",
+    "-11": "(UTC -11:00)",
+    "-12": "(UTC -12:00)",
+    "-2": "(UTC -02:00)",
+    "-3": "(UTC -03:00)",
+    "-4": "(UTC -04:00)",
+    "-5": "(UTC -05:00)",
+    "-6": "(UTC -06:00)",
+    "-7": "(UTC -07:00)",
+    "-8": "(UTC -08:00)",
+    "-9": "(UTC -09:00)",
+    "0": "(UTC  00:00)",
+    "1": "(UTC +01:00)",
+    "10": "(UTC +10:00)",
+    "11": "(UTC +11:00)",
+    "12": "(UTC +12:00)",
+    "2": "(UTC +02:00)",
+    "3": "(UTC +03:00)",
+    "4": "(UTC +04:00)",
+    "5": "(UTC +05:00)",
+    "6": "(UTC +06:00)",
+    "7": "(UTC +07:00)",
+    "8": "(UTC +08:00)",
+    "9": "(UTC +09:00)"
+   },
    "id": "AiNSjtVVAAE=",
    "name": "Time zone",
+   "name_de": "Zeitzone",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "(UTC  00:00)": 12,
@@ -3603,6 +4273,15 @@
    "write_id": "AiNSjtVVAAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Abgeschaltet"
+   },
    "id": "AiNiMcdZAAE=",
    "name": "Betriebswahl Zusatzheizung",
    "name_source": "bundle",
@@ -3630,8 +4309,26 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "2400",
+     "4800",
+     "9600",
+     "19200",
+     "38400"
+    ]
+   },
+   "enum_labels_de": {
+    "19200": "19200",
+    "2400": "2400",
+    "38400": "38400",
+    "4800": "4800",
+    "9600": "9600"
+   },
    "id": "AiNosSApAAE=",
    "name": "Baud rate",
+   "name_de": "Baudrate",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "19200": 3,
@@ -3649,8 +4346,19 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "AckAllAll"
+    ]
+   },
+   "enum_labels_de": {
+    "ackallall": "Quittieren",
+    "passive": "Inaktiv"
+   },
    "id": "AiNxI4wCAAE=",
    "name": "Acknowledge error",
+   "name_de": "Error quittieren",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Inaktiv": 0,
@@ -3665,8 +4373,15 @@
   },
   {
    "enabled_default": false,
+   "enum_labels_de": {
+    "even": "even",
+    "none": "none",
+    "odd": "odd"
+   },
    "id": "AiOFwiApAAE=",
    "name": "Parity",
+   "name_de": "Parität",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "even": 2,
@@ -3683,6 +4398,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Unconfirmed",
+     "Confirmed"
+    ]
+   },
+   "enum_labels_de": {
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed"
+   },
    "id": "AiOUfbWVAAE=",
    "name": "HPMEmgyModConf",
    "name_source": "bundle",
@@ -3701,6 +4426,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Reduced",
+     "Standard"
+    ]
+   },
+   "enum_labels_de": {
+    "reduced": "Notbetrieb",
+    "standard": "Normalbetrieb"
+   },
    "id": "AiOkl7WVAAE=",
    "name": "HPMEmgyMod",
    "name_source": "bundle",
@@ -3726,8 +4461,32 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "SpMax",
+     "HC1Max",
+     "HC2Max",
+     "HC3Max",
+     "HC4Max",
+     "HC5Max",
+     "HC6Max",
+     "HCAllMax"
+    ]
+   },
+   "enum_labels_de": {
+    "hc1max": "Max. Vorlauftemperatur Heizkreis 1",
+    "hc2max": "Max. Vorlauftemperatur Heizkreis 2",
+    "hc3max": "Max. Vorlauftemperatur Heizkreis 3",
+    "hc4max": "Max. Vorlauftemperatur Heizkreis 4",
+    "hc5max": "Max. Vorlauftemperatur Heizkreis 5",
+    "hc6max": "Max. Vorlauftemperatur Heizkreis 6",
+    "hcallmax": "Max. Vorlauftemperatur aller Heizkreise",
+    "spmax": "Temperatur- Einstellung"
+   },
    "id": "AiOzgC60AAE=",
    "name": "Operating program: maximum buffer tank temperature",
+   "name_de": "Betriebswahl Max. Puffertemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Max. Vorlauftemperatur Heizkreis 1": 1,
@@ -3780,6 +4539,16 @@
    "technical": true
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off",
+     "Cal"
+    ]
+   },
+   "enum_labels_de": {
+    "cal": "Zeitprogramm",
+    "off": "Aus"
+   },
    "id": "AiP5J8dZAAE=",
    "name": "Betriebswahl Silentmode",
    "name_source": "bundle",
@@ -3796,6 +4565,21 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Aus",
+     "VlvOn",
+     "Pu",
+     "VlvOff"
+    ]
+   },
+   "enum_labels_de": {
+    "aus": "Aus",
+    "auto": "Inaktiv",
+    "pu": "Heizkreispumpe",
+    "vlvoff": "Mischer zu",
+    "vlvon": "Mischer auf"
+   },
    "hc_tag": 31886,
    "id": "AiP8SiiJAAE=",
    "name": "Relaistest Heizkreis 1",
@@ -3815,9 +4599,25 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Standard ohne Prüfung",
+    "1": "Standard mit Prüfung",
+    "2": "Exklusiv ohne Prüfung",
+    "3": "Exklusiv mit Prüfung"
+   },
    "hc_tag": 11307,
    "id": "AiP8dCssAAE=",
    "name": "Program selection",
+   "name_de": "Modus Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Exklusiv mit Prüfung": 3,
@@ -3834,9 +4634,25 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Standard ohne Prüfung",
+    "1": "Standard mit Prüfung",
+    "2": "Exklusiv ohne Prüfung",
+    "3": "Exklusiv mit Prüfung"
+   },
    "hc_tag": 31886,
    "id": "AiP8dI58AAE=",
    "name": "Program selection",
+   "name_de": "Modus Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Exklusiv mit Prüfung": 3,
@@ -3853,9 +4669,25 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Standard ohne Prüfung",
+    "1": "Standard mit Prüfung",
+    "2": "Exklusiv ohne Prüfung",
+    "3": "Exklusiv mit Prüfung"
+   },
    "hc_tag": 23756,
    "id": "AiP8dMxcAAE=",
    "name": "Program selection",
+   "name_de": "Modus Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Exklusiv mit Prüfung": 3,
@@ -3872,9 +4704,25 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Standard ohne Prüfung",
+    "1": "Standard mit Prüfung",
+    "2": "Exklusiv ohne Prüfung",
+    "3": "Exklusiv mit Prüfung"
+   },
    "hc_tag": 19693,
    "id": "AiP8dO1MAAE=",
    "name": "Program selection",
+   "name_de": "Modus Austrocknungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Exklusiv mit Prüfung": 3,
@@ -3891,8 +4739,19 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "UnlckAll"
+    ]
+   },
+   "enum_labels_de": {
+    "passive": "Inaktiv",
+    "unlckall": "Entsperren"
+   },
    "id": "AiP9j4wCAAE=",
    "name": "Unlock system",
+   "name_de": "Anlage entsperren",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Entsperren": 1,
@@ -3908,6 +4767,26 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "0",
+    "1": "Wärmepumpe 1",
+    "2": "Wärmepumpe 2",
+    "3": "Wärmepumpe 3",
+    "4": "Wärmepumpe 4",
+    "5": "Wärmepumpe 5",
+    "6": "Wärmepumpe 6"
+   },
    "id": "AiPJigAAAAE=",
    "name": "cnfDevice",
    "name_source": "bundle",
@@ -3952,6 +4831,25 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Aus",
+     "WEP",
+     "ULVWW",
+     "ZH1",
+     "ZH2",
+     "PuWrg"
+    ]
+   },
+   "enum_labels_de": {
+    "aus": "Aus",
+    "auto": "Inaktiv",
+    "puwrg": "Pumpe Wärmerückgewinnung",
+    "ulvww": "Umlenkventil Stellung Warmwasser",
+    "wep": "Wärmeerzeugerpumpe",
+    "zh1": "Zusatzheizung 1",
+    "zh2": "Zusatzheizung 2"
+   },
    "id": "AiPhhSiJAAE=",
    "name": "Relaistest Wärmepumpe",
    "name_source": "bundle",
@@ -3988,6 +4886,33 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Aus",
+     "Pu",
+     "Pu2",
+     "ZH1",
+     "ZH2",
+     "ZH3",
+     "ZH4",
+     "ULV",
+     "WEZ",
+     "WEZVlv"
+    ]
+   },
+   "enum_labels_de": {
+    "aus": "Aus",
+    "auto": "Inaktiv",
+    "pu": "Systempumpe",
+    "pu2": "Systempumpe 2",
+    "ulv": "Zonenkühlventil",
+    "wez": "Externer Wärmeerzeuger",
+    "wezvlv": "Ventil externer Wärmeerzeuger",
+    "zh1": "externe Zusatzheizung 1",
+    "zh2": "externe Zusatzheizung 2",
+    "zh3": "externe Zusatzheizung 3",
+    "zh4": "externe Zusatzheizung 4"
+   },
    "id": "AiPq0yiJAAE=",
    "name": "Relaistest",
    "name_source": "bundle",
@@ -4011,8 +4936,32 @@
    "write_id": "AiPq0yiJAAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "SpMin",
+     "HC1Min",
+     "HC2Min",
+     "HC3Min",
+     "HC4Min",
+     "HC5Min",
+     "HC6Min",
+     "HCAllMin"
+    ]
+   },
+   "enum_labels_de": {
+    "hc1min": "Min. Vorlauftemperatur Heizkreis 1",
+    "hc2min": "Min. Vorlauftemperatur Heizkreis 2",
+    "hc3min": "Min. Vorlauftemperatur Heizkreis 3",
+    "hc4min": "Min. Vorlauftemperatur Heizkreis 4",
+    "hc5min": "Min. Vorlauftemperatur Heizkreis 5",
+    "hc6min": "Min. Vorlauftemperatur Heizkreis 6",
+    "hcallmin": "Min. Vorlauftemperatur aller Heizkreise",
+    "spmin": "Temperatur- Einstellung"
+   },
    "id": "AiPtey60AAE=",
    "name": "Operating program: minimum buffer tank temperature",
+   "name_de": "Betriebswahl Min. Puffertemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Min. Vorlauftemperatur Heizkreis 1": 1,
@@ -4034,6 +4983,16 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "Unconfirmed",
+     "Confirmed"
+    ]
+   },
+   "enum_labels_de": {
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed"
+   },
    "id": "AiPuB1sWAAE=",
    "name": "DHWEmgModConf",
    "name_source": "bundle",
@@ -4333,6 +5292,8 @@
   {
    "id": "AyKWuiiJAAE=",
    "name": "Outdoor temperature",
+   "name_de": "Außentemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4380,6 +5341,8 @@
    "hc_tag": 31886,
    "id": "AyKvbyiJAAE=",
    "name": "Flow temperature heating circuit",
+   "name_de": "Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4396,6 +5359,8 @@
    "max": 5.0,
    "min": -5.0,
    "name": "Flow temperature offset heating circuit",
+   "name_de": "Offset Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -4446,6 +5411,8 @@
    "hc_tag": 23756,
    "id": "AyLIqSiJAAE=",
    "name": "Flow temperature heating circuit",
+   "name_de": "Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4462,6 +5429,8 @@
    "max": 5.0,
    "min": -5.0,
    "name": "Flow temperature offset heating circuit",
+   "name_de": "Offset Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -4485,6 +5454,8 @@
    "hc_tag": 19693,
    "id": "AyLrQiiJAAE=",
    "name": "Flow temperature heating circuit",
+   "name_de": "Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4501,6 +5472,8 @@
    "max": 5.0,
    "min": -5.0,
    "name": "Flow temperature offset heating circuit",
+   "name_de": "Offset Heizkreis Vorlauftemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -4629,6 +5602,8 @@
   {
    "id": "AyMUuSiJAAE=",
    "name": "Defrosting energy",
+   "name_de": "Abtauenergie",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4653,6 +5628,8 @@
   {
    "id": "AyMXFSiJAAE=",
    "name": "Heating energy",
+   "name_de": "Heizenergie",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4664,6 +5641,8 @@
   {
    "id": "AyMXtyiJAAE=",
    "name": "Electrical energy consumption for defrosting",
+   "name_de": "Strombedarf Abtauen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4675,6 +5654,8 @@
   {
    "id": "AyMYbiiJAAE=",
    "name": "Electrical energy consumption for cooling",
+   "name_de": "Strombedarf Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4699,6 +5680,8 @@
   {
    "id": "AyMZtSiJAAE=",
    "name": "Hours of operation",
+   "name_de": "Betriebsstunden",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4724,6 +5707,8 @@
    "max": 247.0,
    "min": 1.0,
    "name": "Heat pump address",
+   "name_de": "Adresse Wärmepumpe",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -4823,6 +5808,8 @@
   {
    "id": "AyN02SiJAAE=",
    "name": "Defrosting energy",
+   "name_de": "Abtauenergie",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -4921,6 +5908,8 @@
   {
    "id": "AyNQYSiJAAE=",
    "name": "Switching cycles today",
+   "name_de": "Schaltzyklen heute",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5084,6 +6073,8 @@
   {
    "id": "AyO9eiiJAAE=",
    "name": "Switching cycles",
+   "name_de": "Schaltzyklen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5282,6 +6273,8 @@
   {
    "id": "AyOvsSiJAAE=",
    "name": "Hours of operation",
+   "name_de": "Betriebsstunden",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5472,6 +6465,8 @@
   {
    "id": "AyPngiiJAAE=",
    "name": "Electrical energy consumption for heating",
+   "name_de": "Strombedarf Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5483,6 +6478,8 @@
   {
    "id": "AyPo+SiJAAE=",
    "name": "Cooling energy",
+   "name_de": "Kühlenergie",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5507,6 +6504,8 @@
   {
    "id": "AyPotiiJAAE=",
    "name": "Heating energy",
+   "name_de": "Heizenergie",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5594,6 +6593,8 @@
   {
    "id": "BCMhqNVVAAE=",
    "name": "Commissioning date",
+   "name_de": "Inbetriebnahmedatum",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5665,6 +6666,8 @@
    "enabled_default": false,
    "id": "BCNggtVVAAE=",
    "name": "Outdoor unit serial number",
+   "name_de": "Seriennummer 2",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5686,6 +6689,8 @@
    "enabled_default": false,
    "id": "BCOOVNVVAAE=",
    "name": "Indoor unit serial number",
+   "name_de": "Seriennummer",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5698,6 +6703,8 @@
    "enabled_default": false,
    "id": "BCORh4wCAAE=",
    "name": "Service contact company",
+   "name_de": "Firma",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5710,6 +6717,8 @@
    "enabled_default": false,
    "id": "BCOZ9dVVAAE=",
    "name": "Customer",
+   "name_de": "Kunde",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "text",
    "sources": [
@@ -5721,6 +6730,8 @@
   {
    "id": "BCP0c9VVAAE=",
    "name": "System type",
+   "name_de": "Anlagentyp",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5733,6 +6744,8 @@
    "enabled_default": false,
    "id": "BCPTp4wCAAE=",
    "name": "Service contact email",
+   "name_de": "E-Mailadresse",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5745,6 +6758,8 @@
    "enabled_default": false,
    "id": "BCPyt4wCAAE=",
    "name": "Service contact telephone number",
+   "name_de": "Telefonnummer",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5753,6 +6768,32 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Null",
+     "OK",
+     "LockOf",
+     "LockOn",
+     "ErOf",
+     "ErOn",
+     "AlmOf",
+     "AlmOn",
+     "InfOf",
+     "InfOn"
+    ]
+   },
+   "enum_labels_de": {
+    "almof": "AlmOf",
+    "almon": "AlmOn",
+    "erof": "ErOf",
+    "eron": "ErOn",
+    "infof": "InfOf",
+    "infon": "InfOn",
+    "lockof": "LockOf",
+    "lockon": "LockOn",
+    "null": "Null",
+    "ok": "OK"
+   },
    "id": "BSLZ1IwCAAE=",
    "name": "Summenstörung Wärmepumpe",
    "name_source": "bundle",
@@ -5966,6 +7007,8 @@
    "hc_tag": 19693,
    "id": "BiIAvyiJSjA=",
    "name": "Mixing valve heating circuit",
+   "name_de": "Mischer Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5978,6 +7021,8 @@
    "hc_tag": 23756,
    "id": "BiIjVCiJSjA=",
    "name": "Mixing valve heating circuit",
+   "name_de": "Mischer Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -5990,6 +7035,8 @@
    "hc_tag": 31886,
    "id": "BiJEkiiJSjA=",
    "name": "Mixing valve heating circuit",
+   "name_de": "Mischer Heizkreis",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6010,6 +7057,8 @@
   {
    "id": "ByIDxCiJAAE=",
    "name": "DHW 3-way switching module",
+   "name_de": "Umlenkventil Warmwasser",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -6021,6 +7070,16 @@
    "write_id": "ByIDxCiJHQE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 31886,
    "id": "ByIKwCiJSjA=",
    "name": "Mischer Heizkreis auf",
@@ -6037,9 +7096,21 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 31886,
    "id": "ByIPECiJAAE=",
    "name": "Heating circulation pump",
+   "name_de": "Heizkreispumpe",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6053,6 +7124,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "id": "ByIeriiJAAE=",
    "name": "Status Stufe 2",
    "name_source": "bundle",
@@ -6068,6 +7149,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 31886,
    "id": "ByImpiiJSjA=",
    "name": "Mischer Heizkreis zu",
@@ -6083,9 +7174,21 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 19693,
    "id": "ByJ62CiJAAE=",
    "name": "Heating circulation pump",
+   "name_de": "Heizkreispumpe",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6099,6 +7202,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 19693,
    "id": "ByK5oyiJSjA=",
    "name": "Mischer Heizkreis zu",
@@ -6114,6 +7227,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 19693,
    "id": "ByKVxSiJSjA=",
    "name": "Mischer Heizkreis auf",
@@ -6130,9 +7253,21 @@
    "write_id": "ByIKwCiJAAE="
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 23756,
    "id": "ByKpnyiJAAE=",
    "name": "Heating circulation pump",
+   "name_de": "Heizkreispumpe",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6164,6 +7299,16 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "id": "ByLMQCiJAAE=",
    "name": "Status Stufe 1",
    "name_source": "bundle",
@@ -6179,6 +7324,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 23756,
    "id": "ByLMoCiJSjA=",
    "name": "Mischer Heizkreis zu",
@@ -6194,6 +7349,16 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off"
+    ]
+   },
+   "enum_labels_de": {
+    "auto": "Automatik",
+    "off": "Aus",
+    "on": "Ein"
+   },
    "hc_tag": 23756,
    "id": "ByLgxiiJSjA=",
    "name": "Mischer Heizkreis auf",
@@ -6213,6 +7378,8 @@
    "hc_tag": 11307,
    "id": "CiM1ECssAAE=",
    "name": "Minimum days to end of program",
+   "name_de": "Voraussichtliche Tage bis Programmende",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6226,6 +7393,8 @@
    "hc_tag": 31886,
    "id": "CiM1EI58AAE=",
    "name": "Minimum days to end of program",
+   "name_de": "Voraussichtliche Tage bis Programmende",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6239,6 +7408,8 @@
    "hc_tag": 23756,
    "id": "CiM1EMxcAAE=",
    "name": "Minimum days to end of program",
+   "name_de": "Voraussichtliche Tage bis Programmende",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6252,6 +7423,8 @@
    "hc_tag": 19693,
    "id": "CiM1EO1MAAE=",
    "name": "Minimum days to end of program",
+   "name_de": "Voraussichtliche Tage bis Programmende",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6265,6 +7438,8 @@
    "hc_tag": 11307,
    "id": "CiM41issAAE=",
    "name": "Minimum program duration",
+   "name_de": "Minimale Programmdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6278,6 +7453,8 @@
    "hc_tag": 31886,
    "id": "CiM41o58AAE=",
    "name": "Minimum program duration",
+   "name_de": "Minimale Programmdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6291,6 +7468,8 @@
    "hc_tag": 23756,
    "id": "CiM41sxcAAE=",
    "name": "Minimum program duration",
+   "name_de": "Minimale Programmdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6304,6 +7483,8 @@
    "hc_tag": 19693,
    "id": "CiM41u1MAAE=",
    "name": "Minimum program duration",
+   "name_de": "Minimale Programmdauer in Tagen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "number",
    "sources": [
@@ -6316,6 +7497,8 @@
   {
    "id": "CiM6siiJAAE=",
    "name": "Seasonal performance factor",
+   "name_de": "JAZ-Sum1",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6350,6 +7533,8 @@
   {
    "id": "CiMUVyiJAAE=",
    "name": "Seasonal performance factor",
+   "name_de": "JAZ-SumAct",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6373,6 +7558,8 @@
    "hc_tag": 31886,
    "id": "CiMeMY58AAE=",
    "name": "Dew point temperature",
+   "name_de": "Taupunkttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6428,6 +7615,8 @@
   {
    "id": "CiN4kiiJAAE=",
    "name": "Seasonal performance factor",
+   "name_de": "JAZ-Sum3",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6474,6 +7663,8 @@
   {
    "id": "CiNZgiiJAAE=",
    "name": "Seasonal performance factor",
+   "name_de": "JAZ-Sum2",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6484,6 +7675,8 @@
   {
    "id": "CiNcy9VVAAE=",
    "name": "Firmware version",
+   "name_de": "Firmware Version",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6495,6 +7688,8 @@
    "hc_tag": 23756,
    "id": "CiNeusxcAAE=",
    "name": "Dew point temperature",
+   "name_de": "Taupunkttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6506,6 +7701,8 @@
    "hc_tag": 11307,
    "id": "CiO36issAAE=",
    "name": "Target room temperature cooling",
+   "name_de": "Sollwert Raum Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6518,6 +7715,8 @@
    "hc_tag": 31886,
    "id": "CiO36o58AAE=",
    "name": "Target room temperature cooling",
+   "name_de": "Sollwert Raum Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6530,6 +7729,8 @@
    "hc_tag": 23756,
    "id": "CiO36sxcAAE=",
    "name": "Target room temperature cooling",
+   "name_de": "Sollwert Raum Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6542,6 +7743,8 @@
    "hc_tag": 19693,
    "id": "CiO36u1MAAE=",
    "name": "Target room temperature cooling",
+   "name_de": "Sollwert Raum Kühlen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6627,6 +7830,8 @@
    "hc_tag": 19693,
    "id": "CiP+/+1MAAE=",
    "name": "Dew point temperature",
+   "name_de": "Taupunkttemperatur",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6673,6 +7878,8 @@
    "hc_tag": 19693,
    "id": "CiPcW+1MAAE=",
    "name": "Target room temperature heating",
+   "name_de": "Sollwert Raum Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6685,6 +7892,8 @@
    "hc_tag": 31886,
    "id": "CiPcW458AAE=",
    "name": "Target room temperature heating",
+   "name_de": "Sollwert Raum Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6697,6 +7906,8 @@
    "hc_tag": 23756,
    "id": "CiPcW8xcAAE=",
    "name": "Target room temperature heating",
+   "name_de": "Sollwert Raum Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6709,6 +7920,8 @@
    "hc_tag": 11307,
    "id": "CiPcWyssAAE=",
    "name": "Target room temperature heating",
+   "name_de": "Sollwert Raum Heizen",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6744,8 +7957,38 @@
    "technical": true
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off",
+     "Stby",
+     "Dhw",
+     "Frost",
+     "EVU",
+     "DHWFolg",
+     "Lock",
+     "PRt"
+    ]
+   },
+   "enum_labels_de": {
+    "bip": "Bivalent gesperrt",
+    "dhw": "Warmwasser",
+    "dhwfolg": "Warmwasser",
+    "error": "Störung",
+    "evu": "Extern gesperrt",
+    "frost": "Frostschutzbetrieb",
+    "htg": "Heizbetrieb",
+    "lock": "Manuell abgeschaltet",
+    "off": "Standby",
+    "prt": "min. Anlagendruck",
+    "stby": "Standby",
+    "timinoff": "Minimale Auszeit",
+    "timinon": "Minimale Einzeit",
+    "twvmax": "Maximaltemperaturabschaltung"
+   },
    "id": "CyM4OMdZAAE=",
    "name": "Operating status: internal auxiliary heater",
+   "name_de": "Status Zusatzheizung",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6770,8 +8013,27 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "Off",
+     "DHW",
+     "Clg",
+     "DfrH",
+     "DfrDHW"
+    ]
+   },
+   "enum_labels_de": {
+    "clg": "Kühlbetrieb",
+    "dfrdhw": "Abtaubetrieb Warmwasser",
+    "dfrh": "Abtaubetrieb Heizen",
+    "dhw": "Warmwasserbetrieb",
+    "htg": "Heizbetrieb",
+    "off": "Abgeschaltet"
+   },
    "id": "CyMOIMdZAAE=",
    "name": "System operating status",
+   "name_de": "Status Anlage",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6788,8 +8050,68 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "21",
+     "22",
+     "23",
+     "24"
+    ],
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "18",
+     "19",
+     "20",
+     "21",
+     "22",
+     "23",
+     "24"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Betriebswahl abgeschaltet",
+    "1": "Reduziert Heizbetrieb",
+    "10": "Handbetrieb Kühlen",
+    "11": "Aufheizphase Ausheizprogramm",
+    "12": "Haltephase Ausheizprogramm",
+    "13": "Auskühlphase Ausheizprogramm",
+    "14": "Partybetrieb",
+    "15": "TWVmax-Abschaltung",
+    "16": "Service-Mode Heizen",
+    "17": "Service-Mode Kühlen",
+    "18": "Taupunktunterschreitung",
+    "19": "Notbetrieb",
+    "2": "Normal Heizbetrieb",
+    "20": "Zwangsdrosselung",
+    "3": "Reduziert Kühlbetrieb",
+    "4": "Normal Kühlbetrieb",
+    "5": "Frostschutzbetrieb",
+    "6": "Abtaubetrieb",
+    "7": "Warmwasservorrang",
+    "8": "Heiz-/ Kühlgrenze aktiv",
+    "9": "Handbetrieb Heizen"
+   },
    "id": "CyMogissAAE=",
    "name": "Status heating circuit 4",
+   "name_de": "Status Heizkreis 4",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6840,8 +8162,68 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "21",
+     "22",
+     "23",
+     "24"
+    ],
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "18",
+     "19",
+     "20",
+     "21",
+     "22",
+     "23",
+     "24"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Betriebswahl abgeschaltet",
+    "1": "Reduziert Heizbetrieb",
+    "10": "Handbetrieb Kühlen",
+    "11": "Aufheizphase Ausheizprogramm",
+    "12": "Haltephase Ausheizprogramm",
+    "13": "Auskühlphase Ausheizprogramm",
+    "14": "Partybetrieb",
+    "15": "TWVmax-Abschaltung",
+    "16": "Service-Mode Heizen",
+    "17": "Service-Mode Kühlen",
+    "18": "Taupunktunterschreitung",
+    "19": "Notbetrieb",
+    "2": "Normal Heizbetrieb",
+    "20": "Zwangsdrosselung",
+    "3": "Reduziert Kühlbetrieb",
+    "4": "Normal Kühlbetrieb",
+    "5": "Frostschutzbetrieb",
+    "6": "Abtaubetrieb",
+    "7": "Warmwasservorrang",
+    "8": "Heiz-/ Kühlgrenze aktiv",
+    "9": "Handbetrieb Heizen"
+   },
    "id": "CyMogo58AAE=",
    "name": "Status heating circuit 1",
+   "name_de": "Status Heizkreis 1",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6874,8 +8256,68 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "21",
+     "22",
+     "23",
+     "24"
+    ],
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "18",
+     "19",
+     "20",
+     "21",
+     "22",
+     "23",
+     "24"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Betriebswahl abgeschaltet",
+    "1": "Reduziert Heizbetrieb",
+    "10": "Handbetrieb Kühlen",
+    "11": "Aufheizphase Ausheizprogramm",
+    "12": "Haltephase Ausheizprogramm",
+    "13": "Auskühlphase Ausheizprogramm",
+    "14": "Partybetrieb",
+    "15": "TWVmax-Abschaltung",
+    "16": "Service-Mode Heizen",
+    "17": "Service-Mode Kühlen",
+    "18": "Taupunktunterschreitung",
+    "19": "Notbetrieb",
+    "2": "Normal Heizbetrieb",
+    "20": "Zwangsdrosselung",
+    "3": "Reduziert Kühlbetrieb",
+    "4": "Normal Kühlbetrieb",
+    "5": "Frostschutzbetrieb",
+    "6": "Abtaubetrieb",
+    "7": "Warmwasservorrang",
+    "8": "Heiz-/ Kühlgrenze aktiv",
+    "9": "Handbetrieb Heizen"
+   },
    "id": "CyMogsxcAAE=",
    "name": "Status heating circuit 3",
+   "name_de": "Status Heizkreis 3",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6908,8 +8350,68 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "21",
+     "22",
+     "23",
+     "24"
+    ],
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "18",
+     "19",
+     "20",
+     "21",
+     "22",
+     "23",
+     "24"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Betriebswahl abgeschaltet",
+    "1": "Reduziert Heizbetrieb",
+    "10": "Handbetrieb Kühlen",
+    "11": "Aufheizphase Ausheizprogramm",
+    "12": "Haltephase Ausheizprogramm",
+    "13": "Auskühlphase Ausheizprogramm",
+    "14": "Partybetrieb",
+    "15": "TWVmax-Abschaltung",
+    "16": "Service-Mode Heizen",
+    "17": "Service-Mode Kühlen",
+    "18": "Taupunktunterschreitung",
+    "19": "Notbetrieb",
+    "2": "Normal Heizbetrieb",
+    "20": "Zwangsdrosselung",
+    "3": "Reduziert Kühlbetrieb",
+    "4": "Normal Kühlbetrieb",
+    "5": "Frostschutzbetrieb",
+    "6": "Abtaubetrieb",
+    "7": "Warmwasservorrang",
+    "8": "Heiz-/ Kühlgrenze aktiv",
+    "9": "Handbetrieb Heizen"
+   },
    "id": "CyMogu1MAAE=",
    "name": "Status heating circuit 2",
+   "name_de": "Status Heizkreis 2",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -6962,6 +8464,22 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "passiv",
+     "RedUnConf",
+     "RedConf",
+     "StdConf",
+     "PltFlt"
+    ]
+   },
+   "enum_labels_de": {
+    "passiv": "Passiv",
+    "pltflt": "PltFlt",
+    "redconf": "RedConf",
+    "redunconf": "RedUnConf",
+    "stdconf": "StdConf"
+   },
    "id": "CyNBRFsWAAE=",
    "name": "DHWEmgySta",
    "name_source": "bundle",
@@ -6994,6 +8512,22 @@
   {
    "diagnostic": true,
    "enabled_default": false,
+   "enum_label_gaps": {
+    "en": [
+     "passiv",
+     "RedUnConf",
+     "RedConf",
+     "StdConf",
+     "PltFlt"
+    ]
+   },
+   "enum_labels_de": {
+    "passiv": "Passiv",
+    "pltflt": "PltFlt",
+    "redconf": "RedConf",
+    "redunconf": "RedUnConf",
+    "stdconf": "StdConf"
+   },
    "id": "CyNfYLWVAAE=",
    "name": "HPMEmgySta",
    "name_source": "bundle",
@@ -7012,9 +8546,31 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Nicht aktiv",
+    "1": "Aufheizphase 1",
+    "2": "Haltephase",
+    "3": "Abkühlphase 1",
+    "4": "Aufheizphase 2",
+    "5": "Abkühlphase 2",
+    "6": "Ende"
+   },
    "hc_tag": 11307,
    "id": "CyNiTSssAAE=",
    "name": "Status of screed drying program",
+   "name_de": "Status Austrockungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7032,9 +8588,31 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Nicht aktiv",
+    "1": "Aufheizphase 1",
+    "2": "Haltephase",
+    "3": "Abkühlphase 1",
+    "4": "Aufheizphase 2",
+    "5": "Abkühlphase 2",
+    "6": "Ende"
+   },
    "hc_tag": 31886,
    "id": "CyNiTY58AAE=",
    "name": "Status of screed drying program",
+   "name_de": "Status Austrockungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7052,9 +8630,31 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Nicht aktiv",
+    "1": "Aufheizphase 1",
+    "2": "Haltephase",
+    "3": "Abkühlphase 1",
+    "4": "Aufheizphase 2",
+    "5": "Abkühlphase 2",
+    "6": "Ende"
+   },
    "hc_tag": 23756,
    "id": "CyNiTcxcAAE=",
    "name": "Status of screed drying program",
+   "name_de": "Status Austrockungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7072,9 +8672,31 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Nicht aktiv",
+    "1": "Aufheizphase 1",
+    "2": "Haltephase",
+    "3": "Abkühlphase 1",
+    "4": "Aufheizphase 2",
+    "5": "Abkühlphase 2",
+    "6": "Ende"
+   },
    "hc_tag": 19693,
    "id": "CyNiTe1MAAE=",
    "name": "Status of screed drying program",
+   "name_de": "Status Austrockungsprogramm",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7132,6 +8754,60 @@
    ]
   },
   {
+   "enum_label_gaps": {
+    "de": [
+     "21",
+     "22"
+    ],
+    "en": [
+     "0",
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11",
+     "12",
+     "13",
+     "14",
+     "15",
+     "16",
+     "17",
+     "18",
+     "19",
+     "20",
+     "21",
+     "22"
+    ]
+   },
+   "enum_labels_de": {
+    "0": "Aus",
+    "1": "Heizen",
+    "10": "Betriebsartwechsel",
+    "11": "Pumpenvorlauf",
+    "12": "Standby",
+    "13": "Pumpennachlauf",
+    "14": "Störung",
+    "15": "Strombegrenzung",
+    "16": "Warmwasser Folgeschaltung",
+    "17": "Manuell abgeschaltet",
+    "18": "Minimale Auszeit",
+    "19": "Minimale Einzeit",
+    "2": "Kühlen",
+    "20": "min. Anlagendruck",
+    "3": "Warmwasser",
+    "4": "Abtauen",
+    "5": "Extern gesperrt",
+    "6": "Handbetrieb Heizen",
+    "7": "Handbetrieb Kühlen",
+    "8": "Bivalent gesperrt",
+    "9": "Umschaltung"
+   },
    "id": "CyNmeMdZAAE=",
    "name": "Status Wärmepumpe",
    "name_source": "bundle",
@@ -7165,9 +8841,27 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "No",
+     "Su",
+     "RFrc",
+     "RLim",
+     "Day"
+    ]
+   },
+   "enum_labels_de": {
+    "day": "Heizgrenze aktiv",
+    "no": "Ein",
+    "rfrc": "Zwangsheizung",
+    "rlim": "Aus - Raum zu warm",
+    "su": "Sommer"
+   },
    "hc_tag": 11307,
    "id": "CyO9/issAAE=",
    "name": "Enable heating",
+   "name_de": "Status Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7183,9 +8877,27 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "No",
+     "Su",
+     "RFrc",
+     "RLim",
+     "Day"
+    ]
+   },
+   "enum_labels_de": {
+    "day": "Heizgrenze aktiv",
+    "no": "Ein",
+    "rfrc": "Zwangsheizung",
+    "rlim": "Aus - Raum zu warm",
+    "su": "Sommer"
+   },
    "hc_tag": 31886,
    "id": "CyO9/o58AAE=",
    "name": "Enable heating",
+   "name_de": "Status Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7201,9 +8913,27 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "No",
+     "Su",
+     "RFrc",
+     "RLim",
+     "Day"
+    ]
+   },
+   "enum_labels_de": {
+    "day": "Heizgrenze aktiv",
+    "no": "Ein",
+    "rfrc": "Zwangsheizung",
+    "rlim": "Aus - Raum zu warm",
+    "su": "Sommer"
+   },
    "hc_tag": 23756,
    "id": "CyO9/sxcAAE=",
    "name": "Enable heating",
+   "name_de": "Status Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7219,9 +8949,27 @@
    }
   },
   {
+   "enum_label_gaps": {
+    "en": [
+     "No",
+     "Su",
+     "RFrc",
+     "RLim",
+     "Day"
+    ]
+   },
+   "enum_labels_de": {
+    "day": "Heizgrenze aktiv",
+    "no": "Ein",
+    "rfrc": "Zwangsheizung",
+    "rlim": "Aus - Raum zu warm",
+    "su": "Sommer"
+   },
    "hc_tag": 19693,
    "id": "CyO9/u1MAAE=",
    "name": "Enable heating",
+   "name_de": "Status Heizgrenze",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7278,6 +9026,8 @@
   {
    "id": "DCM2oyiJAAE=",
    "name": "Electrical energy consumption",
+   "name_de": "E-EngySum1",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7289,6 +9039,8 @@
   {
    "id": "DCN0gyiJAAE=",
    "name": "Electrical energy consumption",
+   "name_de": "E-EngySum3",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7309,6 +9061,8 @@
   {
    "id": "DCNBAiiJAAE=",
    "name": "Thermal energy",
+   "name_de": "Th-EngySumAct",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7320,6 +9074,8 @@
   {
    "id": "DCNVkyiJAAE=",
    "name": "Electrical energy consumption",
+   "name_de": "E-EngySum2",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7349,6 +9105,8 @@
   {
    "id": "DCOMuiiJAAE=",
    "name": "Thermal energy",
+   "name_de": "Th-EngySum3",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7360,6 +9118,8 @@
   {
    "id": "DCOtqiiJAAE=",
    "name": "Thermal energy",
+   "name_de": "Th-EngySum2",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7371,6 +9131,8 @@
   {
    "id": "DCP7vSiJAAE=",
    "name": "Electrical energy consumption",
+   "name_de": "E-EngySumAct",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7382,6 +9144,8 @@
   {
    "id": "DCPOmiiJAAE=",
    "name": "Thermal energy",
+   "name_de": "Th-EngySum1",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7555,6 +9319,8 @@
   {
    "id": "IAABAAAAAAA=",
    "name": "Software version",
+   "name_de": "Software Version",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "sensor",
    "sources": [
@@ -7566,6 +9332,8 @@
    "enabled_default": false,
    "id": "IAABAAAAEgA=",
    "name": "Appliance reset",
+   "name_de": "Geräte-Reset",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "off_value": 0,
    "on_value": 1,
@@ -7612,6 +9380,8 @@
    "enabled_default": false,
    "id": "IgABAAAANQA=",
    "name": "IP address",
+   "name_de": "IP-Adresse",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "text",
    "sources": [
@@ -7625,6 +9395,8 @@
    "enabled_default": false,
    "id": "IgABAAAANgA=",
    "name": "Subnet mask",
+   "name_de": "Subnetzmaske",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "platform": "text",
    "sources": [
@@ -7674,8 +9446,24 @@
   },
   {
    "enabled_default": false,
+   "enum_label_gaps": {
+    "de": [
+     "Deprecated",
+     "Enabled"
+    ],
+    "en": [
+     "Disabled",
+     "Deprecated",
+     "Enabled"
+    ]
+   },
+   "enum_labels_de": {
+    "disabled": "Verbindung aktiv"
+   },
    "id": "MgABAAAAAQA=",
    "name": "Data connection to cloud",
+   "name_de": "Datenverbindung Cloud",
+   "name_de_source": "bundle",
    "name_source": "apk_label",
    "options": {
     "Verbindung aktiv": 0,
@@ -7699,7 +9487,12 @@
   },
   "disabled": 150,
   "disabled_technical": 106,
+  "en_suffixes_ambiguous": 9,
   "enabled": 431,
+  "enum_points_fully_mapped_de": 57,
+  "enum_points_with_de_gaps": 11,
+  "enum_points_with_de_labels": 67,
+  "enum_points_with_en_gaps": 66,
   "excluded_descriptor": 0,
   "excluded_schedule": 672,
   "excluded_unnamed": 149,
@@ -7707,8 +9500,16 @@
   "hc_template_enriched": 37,
   "hc_template_points": 44,
   "hc_template_propagated": 7,
+  "name_de_points": 208,
   "points_total": 581,
   "reference_points": 394,
+  "reference_selects": {
+   "de_fully_mapped": 33,
+   "de_mapped": 37,
+   "total": 39,
+   "with_descriptor": 38
+  },
+  "shared_token_labels_en": 129,
   "writable_points": 196
  },
  "tags": [
