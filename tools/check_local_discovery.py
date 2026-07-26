@@ -122,6 +122,70 @@ def scan_counts(catalog: Any, scan: Any) -> Dict[str, int]:
     }
 
 
+def bilingual_audit(catalog: Any, scan: Any, language: str) -> Dict[str, Any]:
+    """Per-language audit of the bilingual catalog target: every point name
+    and every live enum token must resolve in the requested language itself.
+
+    Classes: names — native / translated / cross_language (resolved from the
+    other language's evidence) / still_symbol (verbatim technical machine
+    names, the only permitted exceptions); enum tokens (from the live
+    member-4353 descriptors) — labelled / raw_token_numeric (undocumented
+    numeric states, identical in both languages) / raw_token_other /
+    cross_language. The gate requires zero cross_language in both classes
+    and zero raw_token_other.
+    """
+    cat_mod = sys.modules["ots_local_lib.catalog"]
+    language = cat_mod.normalize_language(language)
+
+    names = {"native": 0, "translated": 0, "still_symbol": 0}
+    name_cross: List[Dict[str, Any]] = []
+    for rec in catalog.points:
+        name, source = cat_mod.resolve_point_name(rec, language)
+        prov, _, lang_tag = source.rpartition(":")
+        if lang_tag != language:
+            name_cross.append({"id": rec["id"], "name": name, "source": source})
+            continue
+        if rec.get("technical") or prov == "apk_symbol":
+            names["still_symbol"] += 1
+        elif prov == "translated":
+            names["translated"] += 1
+        else:
+            names["native"] += 1
+
+    enums = {"labelled": 0, "raw_token_numeric": 0}
+    enum_cross: List[Dict[str, Any]] = []
+    enum_raw_other: List[Dict[str, Any]] = []
+    for rid, tokens in (scan.enum_labels or {}).items():
+        rec = catalog.points_by_id.get(str(rid))
+        if rec is None:
+            continue
+        for token in tokens:
+            token = token.strip()
+            if not token or not cat_mod.normalize_enum_token(token):
+                continue
+            label, src = cat_mod.resolve_enum_label_source(
+                rec, token, language, catalog.enum_token_labels
+            )
+            if src == language:
+                enums["labelled"] += 1
+            elif src == "token":
+                if token.lstrip("+-").isdigit():
+                    enums["raw_token_numeric"] += 1
+                else:
+                    enum_raw_other.append({"id": str(rid), "token": token})
+            else:
+                enum_cross.append({"id": str(rid), "token": token, "label": label, "from": src})
+
+    return {
+        "names": {**names, "cross_language": name_cross},
+        "enum_tokens": {
+            **enums,
+            "raw_token_other": enum_raw_other,
+            "cross_language": enum_cross,
+        },
+    }
+
+
 def build_expectations(catalog: Any, scan: Any, *, language: str = "en") -> Dict[str, Any]:
     """Per-id expectations derived from the catalog + live scan, per language.
 
@@ -498,6 +562,15 @@ async def run(
                 )
         lang_report["gate_failures"]["select_options_incomplete"] = len(incomplete)
         lang_report["diff"]["select_options_incomplete"] = incomplete
+
+        # Bilingual audit gate: names and live enum tokens must resolve in
+        # the requested language itself; raw tokens are tolerated only for
+        # the undocumented numeric states (identical in both languages).
+        audit = bilingual_audit(catalog, scan, language)
+        lang_report["bilingual_audit"] = audit
+        lang_report["gate_failures"]["name_cross_language"] = len(audit["names"]["cross_language"])
+        lang_report["gate_failures"]["enum_cross_language"] = len(audit["enum_tokens"]["cross_language"])
+        lang_report["gate_failures"]["enum_raw_token_other"] = len(audit["enum_tokens"]["raw_token_other"])
         lang_report["gate_passed"] = not any(lang_report["gate_failures"].values())
 
         report["languages"][language] = lang_report
@@ -548,6 +621,14 @@ def main() -> int:
                 f"{k}={len(v['ids']) if isinstance(v, dict) and 'ids' in v else len(v)}"
                 for k, v in d.items()
             )
+        )
+        ba = lr["bilingual_audit"]
+        n, e = ba["names"], ba["enum_tokens"]
+        print(
+            f"bilingual[{language}]: names native={n['native']} translated={n['translated']} "
+            f"symbol={n['still_symbol']} cross={len(n['cross_language'])} | enum tokens "
+            f"labelled={e['labelled']} raw_numeric={e['raw_token_numeric']} "
+            f"raw_other={len(e['raw_token_other'])} cross={len(e['cross_language'])}"
         )
     return 0 if report["gate_passed"] else 2
 

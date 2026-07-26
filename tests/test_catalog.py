@@ -149,6 +149,30 @@ def test_packaged_catalog_covers_reference_plant(catalog_mod):
     assert not missing, f"reference ids missing from catalog: {sorted(missing)}"
 
 
+def test_packaged_catalog_is_bilingual(catalog_mod):
+    """The bilingual acceptance target on the shipped asset: every point
+    resolves natively in BOTH languages (no cross-language fallback; the
+    technical symbols satisfy this verbatim), and the only enum tokens
+    without a label on either side are undocumented numeric states."""
+
+    cat = catalog_mod.load_catalog()
+    sources = {"apk_label", "bundle", "apk_symbol", "translated"}
+    for rec in cat.points:
+        for lang in ("de", "en"):
+            name, source = catalog_mod.resolve_point_name(rec, lang)
+            prov, _, lang_tag = source.rpartition(":")
+            assert name.strip(), rec["id"]
+            assert lang_tag == lang, (rec["id"], source)
+            assert prov in sources, (rec["id"], source)
+        gaps = rec.get("enum_label_gaps") or {}
+        for lang, tokens in gaps.items():
+            for t in tokens:
+                assert t.lstrip("+-").isdigit(), (rec["id"], lang, t)
+    # The shared maps cover the same tokens in both languages.
+    shared = cat.enum_token_labels
+    assert set(shared["de"]) == set(shared["en"])
+
+
 def test_language_helpers(catalog_mod):
     n = catalog_mod.normalize_language
     assert n("DE") == n("de-AT") == n("German") == "de"
@@ -175,11 +199,29 @@ def test_resolve_point_name_and_enum_label(catalog_mod):
     assert catalog_mod.resolve_point_name(rec, "de") == ("Programm", "bundle:de")
     assert catalog_mod.resolve_point_name(rec, "en") == ("Program", "apk_label:en")
     assert catalog_mod.resolve_point_name({"id": "y", "name": "N", "name_source": "bundle"}, "de") == ("N", "bundle:en")
+    # Bilingual pair: each language resolves natively, provenance + language
+    # in the source tag; a missing side falls back cross-language, visibly.
+    pair = {
+        "id": "z",
+        "name": "Betriebswahl",
+        "name_source": "bundle",
+        "name_en": "Operating program",
+        "name_en_source": "translated",
+        "name_de": "Betriebswahl",
+        "name_de_source": "bundle",
+    }
+    assert catalog_mod.resolve_point_name(pair, "en") == ("Operating program", "translated:en")
+    assert catalog_mod.resolve_point_name(pair, "de") == ("Betriebswahl", "bundle:de")
 
-    shared = {"en": {"auto": "Automatic"}}
-    # German: point-specific map only, then the raw token — never the shared map.
+    shared = {"en": {"auto": "Automatic"}, "de": {"auto": "Automatik"}}
+    # Chain per language: own map, shared map, then the other language
+    # (own, shared), then the raw token.
     assert catalog_mod.resolve_enum_label(rec, "Off", "de", shared) == "Aus"
-    assert catalog_mod.resolve_enum_label(rec, "Auto", "de", shared) == "Auto"
+    assert catalog_mod.resolve_enum_label(rec, "Auto", "de", shared) == "Automatik"
     assert catalog_mod.resolve_enum_label(rec, "Auto", "en", shared) == "Automatic"
-    assert catalog_mod.resolve_enum_label(rec, "Off", "en", shared) == "Off"
+    assert catalog_mod.resolve_enum_label_source(rec, "Auto", "de", shared) == ("Automatik", "de")
+    # Off has only the point's German label: English falls back to it,
+    # tagged as German so the audit can count the cross-language path.
+    assert catalog_mod.resolve_enum_label_source(rec, "Off", "en", shared) == ("Aus", "de")
+    assert catalog_mod.resolve_enum_label_source(rec, "Party", "en", shared) == ("Party", "token")
     assert catalog_mod.resolve_enum_label(rec, "-", "en", shared) == "-"
