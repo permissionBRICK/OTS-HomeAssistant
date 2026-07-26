@@ -19,6 +19,16 @@ binary_sensor twin of a switch — today's bundle generator emits only the
 switch) are reported separately as "covered_by_other_platform" and do not
 fail the gate. Write-only ids are reported separately and are never counted
 as discovered.
+
+Spec v4 expectations: entity NAMES are checked against the packaged
+catalog's pump-first choice (APK label > bundle name > APK symbol) and enum
+OPTIONS against the state list read live from the controller's member-4353
+descriptor; heating-circuit names against the controller's own circuit
+names. Where those deliberately differ from the old reference-bundle
+labels, the differences are reported informationally
+("renamed_from_reference", "enum_relabelled_from_reference",
+"circuit_renamed_from_reference") and do not fail the gate — a discovered
+value that matches neither is still a hard failure.
 """
 
 from __future__ import annotations
@@ -94,18 +104,86 @@ def unique_id_for(host: str, platform: str, ent: Dict[str, Any]) -> str:
     return f"{host}:{platform}:{rid}".replace("=", "")
 
 
+def scan_counts(catalog: Any, scan: Any) -> Dict[str, int]:
+    """Scan summary. ``skipped_unreadable`` counts EVERY catalog point that
+    was scanned but did not answer under "values" (readable -> entity,
+    unreadable -> skipped), regardless of module presence."""
+
+    readable = sum(1 for p in catalog.points if str(p["id"]) in scan.values)
+    return {
+        "swept_ids": scan.swept_ids,
+        "readable_ids": len(scan.values),
+        "enum_descriptors_read": len(scan.enum_labels),
+        "skipped_unreadable": len(catalog.points) - readable,
+    }
+
+
+def build_expectations(catalog: Any, scan: Any) -> Dict[str, Any]:
+    """Spec-v4 per-id expectations derived from the catalog + live scan.
+
+    - names: the catalog's pump-first choice (APK label > bundle > symbol)
+    - select options / value maps: the controller's member-4353 state list
+      (index = value; duplicate labels keep their first value in the
+      label->value orientation), falling back to catalog metadata
+    - circuit names: the controller's own circuit names, falling back to
+      "Heizkreis <ordinal>" — exactly what build_entities() produces.
+    """
+
+    hc_ordinal = {tag: i + 1 for i, tag in enumerate(catalog.hc_tags)}
+    exp: Dict[str, Any] = {"name": {}, "select_options": {}, "value_map": {}, "circuit": {}}
+    for rec in catalog.points:
+        rid = str(rec["id"])
+        exp["name"][rid] = str(rec.get("name") or rid)
+        labels = scan.enum_labels.get(rid) if scan is not None else None
+        if labels:
+            options: Dict[str, int] = {}
+            for idx, label in enumerate(labels):
+                label = label.strip()
+                if label and label not in options:
+                    options[label] = idx
+            if options:
+                exp["select_options"][rid] = options
+            vm = {str(idx): lab.strip() for idx, lab in enumerate(labels) if lab.strip()}
+            if vm:
+                exp["value_map"][rid] = vm
+        else:
+            if isinstance(rec.get("options"), dict):
+                exp["select_options"][rid] = rec["options"]
+            if isinstance(rec.get("value_map"), dict):
+                exp["value_map"][rid] = rec["value_map"]
+        hc_tag = rec.get("hc_tag")
+        if hc_tag is not None and int(hc_tag) in hc_ordinal:
+            hc_tag = int(hc_tag)
+            circuit_name = None
+            if scan is not None:
+                circuit_name = scan.circuit_names.get(hc_tag)
+            exp["circuit"][rid] = circuit_name or f"Heizkreis {hc_ordinal[hc_tag]}"
+    return exp
+
+
 def diff_report(
     ref_ctrl: Dict[str, Any],
     entities: Dict[str, List[Dict[str, Any]]],
     scan_values: Dict[str, Any],
     *,
     host: str,
+    expectations: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Compare discovered entities against every reference entity definition.
 
     Pure function so the diff logic itself is unit-testable with intentional
-    mismatches.
+    mismatches. Without ``expectations`` the reference entry itself is the
+    expectation (legacy behavior, used by the unit tests); with the
+    spec-v4 ``build_expectations`` output, names/enums/circuit names are
+    checked against the catalog + live pump data, and deliberate deviations
+    from the reference labels are reported informationally.
     """
+
+    expectations = expectations or {}
+    exp_names: Dict[str, Any] = expectations.get("name") or {}
+    exp_select: Dict[str, Any] = expectations.get("select_options") or {}
+    exp_vm: Dict[str, Any] = expectations.get("value_map") or {}
+    exp_circuit: Dict[str, Any] = expectations.get("circuit") or {}
 
     # Reference view: every entity definition, plus per-read-id def groups.
     ref_defs: List[Dict[str, Any]] = []
@@ -158,6 +236,10 @@ def diff_report(
     grouping_mismatch: List[Dict[str, Any]] = []
     value_missing: List[Dict[str, Any]] = []
     enum_value_unmapped: List[Dict[str, Any]] = []
+    # Informational (spec-v4 deliberate deviations from the reference labels).
+    renamed_from_reference: List[Dict[str, Any]] = []
+    enum_relabelled_from_reference: List[Dict[str, Any]] = []
+    circuit_renamed_from_reference: List[Dict[str, Any]] = []
     matched_defs = 0
 
     for d in ref_defs:
@@ -193,22 +275,45 @@ def diff_report(
         matched_defs += 1
         disc_ent = disc["ent"]
 
-        if str(disc_ent.get("name") or "") != str(ref_ent.get("name") or ""):
-            name_mismatch.append({"id": rid, "reference": ref_ent.get("name"), "discovered": disc_ent.get("name")})
+        # NAME: expected is the catalog's pump-first choice; the reference
+        # name only decides when no expectation is supplied (unit tests).
+        expected_name = str(exp_names.get(rid, ref_ent.get("name")) or "")
+        if str(disc_ent.get("name") or "") != expected_name:
+            name_mismatch.append(
+                {"id": rid, "expected": expected_name, "reference": ref_ent.get("name"), "discovered": disc_ent.get("name")}
+            )
+        elif expected_name != str(ref_ent.get("name") or ""):
+            renamed_from_reference.append({"id": rid, "reference": ref_ent.get("name"), "discovered": expected_name})
 
+        # ENUM: expected is the pump's member-4353 state list (falling back
+        # to catalog metadata) in the entity's own orientation.
         ref_enum = norm_map(ref_ent.get("options")) or norm_map(ref_ent.get("value_map"))
         disc_enum = norm_map(disc_ent.get("options")) or norm_map(disc_ent.get("value_map"))
-        if ref_enum is not None and disc_enum != ref_enum:
-            enum_mismatch.append({"id": rid, "reference": ref_enum, "discovered": disc_enum})
-        elif ref_enum is not None and rid in scan_values:
-            value = scan_values.get(rid)
-            keys = set(ref_enum) | set(ref_enum.values())
-            try:
-                normalized = str(int(float(value)))
-            except (TypeError, ValueError):
-                normalized = str(value)
-            if normalized not in keys and str(value) not in keys:
-                enum_value_unmapped.append({"id": rid, "value": value, "name": ref_ent.get("name")})
+        if expectations:
+            if disc_ent.get("options") is not None:
+                expected_enum = norm_map(exp_select.get(rid))
+            elif disc_ent.get("value_map") is not None:
+                expected_enum = norm_map(exp_vm.get(rid))
+            else:
+                expected_enum = None
+            if expected_enum is None and ref_enum is not None:
+                expected_enum = ref_enum
+        else:
+            expected_enum = ref_enum
+        if expected_enum is not None and disc_enum != expected_enum:
+            enum_mismatch.append({"id": rid, "expected": expected_enum, "reference": ref_enum, "discovered": disc_enum})
+        elif expected_enum is not None:
+            if ref_enum is not None and expected_enum != ref_enum:
+                enum_relabelled_from_reference.append({"id": rid, "reference": ref_enum, "discovered": expected_enum})
+            if rid in scan_values:
+                value = scan_values.get(rid)
+                keys = set(expected_enum) | set(expected_enum.values())
+                try:
+                    normalized = str(int(float(value)))
+                except (TypeError, ValueError):
+                    normalized = str(value)
+                if normalized not in keys and str(value) not in keys:
+                    enum_value_unmapped.append({"id": rid, "value": value, "name": ref_ent.get("name")})
 
         ref_unit = str(ref_ent.get("unit")) if ref_ent.get("unit") else None
         disc_unit = str(disc_ent.get("unit")) if disc_ent.get("unit") else None
@@ -217,13 +322,17 @@ def diff_report(
 
         ref_grouped = bool(ref_ent.get("heating_circuit_uid"))
         disc_grouped = bool(disc_ent.get("heating_circuit_uid"))
-        # Circuit-device identity: same membership AND the same circuit (the
-        # circuit NAME is comparable across paths — the uid encoding differs
-        # by design: bundle uuid vs "tag:<instance_tag>").
+        # Circuit-device identity: same membership AND the same circuit. The
+        # uid encoding differs by design (bundle uuid vs "tag:<instance_tag>"),
+        # so the circuit NAME carries the comparison. Expected is the pump's
+        # own circuit name (spec v4 B1) when expectations are supplied.
+        expected_circuit = exp_circuit.get(rid) if expectations else ref_ent.get("heating_circuit_name")
+        if expected_circuit is None:
+            expected_circuit = ref_ent.get("heating_circuit_name")
         if ref_grouped != disc_grouped or (
             ref_grouped
-            and ref_ent.get("heating_circuit_name")
-            and str(disc_ent.get("heating_circuit_name") or "") != str(ref_ent.get("heating_circuit_name"))
+            and expected_circuit
+            and str(disc_ent.get("heating_circuit_name") or "") != str(expected_circuit)
         ):
             grouping_mismatch.append(
                 {
@@ -231,9 +340,18 @@ def diff_report(
                     "name": ref_ent.get("name"),
                     "reference_grouped": ref_grouped,
                     "discovered_grouped": disc_grouped,
+                    "expected_circuit": expected_circuit,
                     "reference_circuit": ref_ent.get("heating_circuit_name"),
                     "discovered_circuit": disc_ent.get("heating_circuit_name"),
                 }
+            )
+        elif (
+            ref_grouped
+            and ref_ent.get("heating_circuit_name")
+            and str(expected_circuit or "") != str(ref_ent.get("heating_circuit_name"))
+        ):
+            circuit_renamed_from_reference.append(
+                {"id": rid, "reference": ref_ent.get("heating_circuit_name"), "discovered": expected_circuit}
             )
 
     found_but_unknown = sorted(rid for rid in disc_by_rid if rid not in ref_primary_ids)
@@ -278,6 +396,9 @@ def diff_report(
             "grouping_mismatch": grouping_mismatch,
             "value_missing": value_missing,
             "enum_value_unmapped": enum_value_unmapped,
+            "renamed_from_reference": renamed_from_reference,
+            "enum_relabelled_from_reference": enum_relabelled_from_reference,
+            "circuit_renamed_from_reference": circuit_renamed_from_reference,
             "unique_id_collisions": unique_id_collisions,
             "unique_id_rule_violations": unique_id_rule_violations,
             "found_but_unknown": {"count": len(found_but_unknown), "ids": found_but_unknown},
@@ -307,17 +428,26 @@ async def run(host: str, port: int, username: str, password: str, pin: str) -> D
         scan = await disc_mod.async_scan(api, catalog)
 
     entities = de_mod.build_entities(catalog=catalog, scan=scan)
-    report = diff_report(ref, entities, scan.values, host=host)
+    expectations = build_expectations(catalog, scan)
+    report = diff_report(ref, entities, scan.values, host=host, expectations=expectations)
 
     report["host"] = f"{host}:{port}"
     report["catalog_version"] = catalog.catalog_version
     report["present_tags"] = scan.present_tags
     report["circuit_names"] = {str(k): v for k, v in scan.circuit_names.items()}
-    report["scan"] = {
-        "probed_ids": scan.probed_ids,
-        "swept_ids": scan.swept_ids,
-        "readable_ids": len(scan.values),
+    report["plant"] = {
+        "model": scan.plant_model,
+        "serial": scan.plant_serial,
+        "sw_version": scan.plant_sw_version,
     }
+    report["catalog"] = {
+        "points_total": len(catalog.points),
+        "enabled": sum(1 for p in catalog.points if p.get("enabled_default") is not False),
+        "disabled": sum(1 for p in catalog.points if p.get("enabled_default") is False),
+        "disabled_technical": sum(1 for p in catalog.points if p.get("technical")),
+        "writable": sum(1 for p in catalog.points if p.get("write_id")),
+    }
+    report["scan"] = scan_counts(catalog, scan)
     report["entities"] = {key: len(entities.get(key, [])) for key in de_mod.PLATFORMS}
     return report
 
@@ -344,6 +474,8 @@ def main() -> int:
         "catalog_version",
         "present_tags",
         "circuit_names",
+        "plant",
+        "catalog",
         "scan",
         "reference",
         "coverage",

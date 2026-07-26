@@ -90,5 +90,18 @@
       "no_bundle_key": "No stored bundle key found for this controller.",
       "no_ots_ids": "The OTS config/site id is missing for this controller."
     }
+  },
+  "entity": {
+    "sensor": {
+      "flash_writes": {
+        "name": "Flash writes"
+      },
+      "read_requests": {
+        "name": "Read requests"
+      },
+      "read_rate_5m": {
+        "name": "Read rate (5m)"
+      }
+    }
   }
 }

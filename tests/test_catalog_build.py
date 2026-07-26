@@ -48,19 +48,131 @@ def test_builder_is_deterministic(builder):
 def test_builder_counts_and_provenance(builder):
     cat = build(builder)
     stats = cat["stats"]
-    # All 1,217 validated APK OAs, no false positives.
-    assert stats["apk_points"] == 1217
     ids = {p["id"] for p in cat["points"]}
     for fp in ("intEncoding=", "getExitAnim=", "surfaceTint=", "stopTimeout=", "onSecondary="):
         assert fp not in ids
-    # 672 schedule points are marked (and excluded from the default sweep).
-    assert stats["schedule_points"] >= 672
-    # Reference seed: 387 primary/read ids.
-    assert stats["reference_points"] == 387
+    # v4 membership on the current inputs: 672 schedule points and 150
+    # nameless points are excluded entirely; what remains is named.
+    assert stats["excluded_schedule"] == 672
+    assert stats["excluded_unnamed"] == 149
+    assert stats["points_total"] == stats["enabled"] + stats["disabled"]
+    assert 500 <= stats["points_total"] <= 700
+    # Reference seed: all 387 primary/read ids survive membership (backward
+    # compatibility depends on it), plus confirmed-circuit propagation.
+    assert stats["reference_points"] >= 387
     # Writability only ever comes from reference/bundle evidence, never APK-only.
     for p in cat["points"]:
         if p.get("write_id"):
             assert "reference" in p["sources"] or "hc_template" in p["sources"]
+
+
+def test_technical_names_disabled_but_included(builder):
+    cat = build(builder)
+    fn = builder.is_technical_name
+    # The documented test: no whitespace AND (case transition OR 2+ capitals).
+    for name in ("CprOprHrs1", "HPMEmgyModConf", "Th-EngySumAct", "DHCP"):
+        assert fn(name), name
+    for name in ("Betriebswahl Heizkreis", "Aussentemperatur", "Sollwert", "Anlagentyp"):
+        assert not fn(name), name
+    tech = [p for p in cat["points"] if p.get("technical")]
+    assert tech, "expected technical-named points to be included"
+    for p in tech:
+        assert p["enabled_default"] is False, p["name"]
+
+
+def test_single_circuit_points_are_not_propagated(builder):
+    """"Sollwert Handbetrieb" uses a different point_index per circuit
+    (30743/51672/42653): its addresses cannot be derived, so it must exist
+    exactly where the reference proves it — never on a guessed 4th address."""
+
+    cat = build(builder)
+    hits = [p for p in cat["points"] if p["name"] == "Sollwert Handbetrieb"]
+    assert len(hits) == 3
+    for p in hits:
+        assert "hc_template" not in p["sources"]
+
+
+def test_confirmed_circuit_points_exist_on_all_four_tags(builder, catalog_mod):
+    cat = build(builder)
+    hc_tags = cat["hc_tags"]
+    ids = {p["id"] for p in cat["points"]}
+    propagated = [p for p in cat["points"] if "hc_template" in p["sources"]]
+    assert propagated, "expected confirmed circuit triples to be completed"
+    for p in propagated:
+        oa = catalog_mod.decode_oa(p["id"])
+        # The full quad must exist after propagation.
+        for tag in hc_tags:
+            assert catalog_mod.encode_oa(oa.object_type, tag, oa.point_index, oa.member_id) in ids
+
+
+def test_naming_priority_and_source_recorded(builder):
+    cat = build(builder)
+    for p in cat["points"]:
+        assert p.get("name_source") in {"apk_label", "bundle", "apk_symbol"}
+    by_source = cat["stats"]["by_name_source"]
+    # Pump-first spec v4: the APK label outranks the bundle name, so a large
+    # share of reference-known points is APK-named now.
+    assert by_source["apk_label"] > by_source["bundle"] > by_source["apk_symbol"]
+    # Spot check: the reference-known "Kunde" point is APK-labelled "Customer".
+    names = {p["name"] for p in cat["points"]}
+    assert "Customer" in names and "Kunde" not in names
+
+
+def test_ambiguous_apk_labels_still_beat_bundle_name(builder):
+    """Every usable APK label tier precedes the old bundle name; several
+    distinct labels resolve deterministically to the most descriptive one
+    (longest, then lexicographic)."""
+
+    cat = build(builder)
+    p = next(p for p in cat["points"] if p["id"] == "ASMhEo58AAE=")
+    # APK labels "Standard heating" / "Target room temperature standard
+    # heating"; the bundle name "Raumsollwert Normal Heizen" must lose.
+    assert p["name"] == "Target room temperature standard heating"
+    assert p["name_source"] == "apk_label"
+
+
+def test_placeholder_labels_are_not_names(builder):
+    """Printf-template APK labels ("Name of heating circuit %1$s") are
+    ignored; the point falls back to its bundle name."""
+
+    cat = build(builder)
+    assert not any("%" in p["name"] for p in cat["points"])
+    hc_names = sorted(p["name"] for p in cat["points"] if p["platform"] == "text" and p["name"].startswith("Name Heizkreis"))
+    assert hc_names == ["Name Heizkreis 1", "Name Heizkreis 2", "Name Heizkreis 3", "Name Heizkreis 4"]
+    # The HC4 instance is APK-known and enriched from the confirmed circuit
+    # template: it carries the donor's writable text shaping.
+    p4 = next(p for p in cat["points"] if p["name"] == "Name Heizkreis 4")
+    assert p4["platform"] == "text" and p4.get("write_id")
+    assert "hc_template" in p4["sources"]
+
+
+def test_service_and_one_shot_controls_writable_but_disabled(builder):
+    """One-shot/service/commissioning controls (screed drying, program
+    start, manual defrost, error acknowledge, comms parameters, cloud
+    connection) stay writable entities but enabled_default=False."""
+
+    cat = build(builder)
+    expected = (
+        "Program start",
+        "Operating program, screed drying program",
+        "Handabtauung",
+        "Acknowledge error",
+        "Unlock system",
+        "Stop bit",
+        "Baud rate",
+        "Parity",
+        "Heat pump address",
+        "Data connection to cloud",
+    )
+    by_name: dict = {}
+    for p in cat["points"]:
+        by_name.setdefault(p["name"], []).append(p)
+    for name in expected:
+        assert name in by_name, f"expected service control {name} in catalog"
+        for p in by_name[name]:
+            assert p.get("write_id"), name
+            assert p["platform"] in {"number", "select", "switch"}, name
+            assert p.get("enabled_default") is False, name
 
 
 def test_shipped_catalog_matches_builder_output(builder, catalog_mod):
@@ -76,7 +188,7 @@ def test_destructive_points_created_writable_but_disabled(builder):
     entities, just disabled by default — never dropped, never read-only."""
 
     cat = build(builder)
-    hits = [p for p in cat["points"] if "relaistest" in p["name"].lower() or p["name"] == "Geräte-Reset"]
+    hits = [p for p in cat["points"] if "relaistest" in p["name"].lower() or p["name"] in ("Geräte-Reset", "Appliance reset")]
     assert hits
     for p in hits:
         if p.get("write_id"):
@@ -89,8 +201,52 @@ def test_privacy_points_are_disabled_diagnostics(builder):
     by_name = {}
     for p in cat["points"]:
         by_name.setdefault(p["name"], p)
-    for name in ("Kunde", "IP-Adresse", "Gateway", "MAC"):
+    # v4 names are APK-first, so the privacy points carry their English labels.
+    for name in (
+        "Customer",
+        "IP address",
+        "Gateway",
+        "MAC",
+        "Service contact telephone number",
+        "Service contact email",
+        "Signature part 1",
+        "Signature part 2",
+        "Signature part 3",
+    ):
         p = by_name.get(name)
         assert p is not None, f"expected privacy point {name} in catalog"
         assert p.get("diagnostic") is True
         assert p.get("enabled_default") is False
+
+
+def test_shared_write_bindings_are_never_retagged(builder):
+    """Regression (review round 3): for the confirmed read triples
+    (8970,54840,256) and (8970,4149,256) all proven circuits write through
+    the SAME binding ACPkn458AAE= — the derived HC4 instances must preserve
+    that common binding, never an invented retag (ACPknyssAAE=)."""
+
+    cat = build(builder)
+    pts = {p["id"]: p for p in cat["points"]}
+    for hc4_id in ("CiM41issAAE=", "CiM1ECssAAE="):
+        p = pts[hc4_id]
+        assert p.get("write_id") == "ACPkn458AAE=", p
+        assert "hc_template" in p["sources"]
+    assert not any(p.get("write_id") == "ACPknyssAAE=" for p in cat["points"])
+
+
+def test_service_evidence_in_alternate_names_disables(builder):
+    """Regression (review round 3): the APK-first display name "Program
+    selection" must not mask the service evidence in its bundle name "Modus
+    Austrocknungsprogramm" — all four instances (incl. the enriched HC4 one)
+    stay writable but enabled_default=False. Ordinary screed-drying
+    PARAMETERS ("Start temperature") stay enabled."""
+
+    cat = build(builder)
+    sel = [p for p in cat["points"] if p["name"] == "Program selection"]
+    assert len(sel) == 4
+    for p in sel:
+        assert p.get("write_id"), p["id"]
+        assert p["platform"] in {"select", "number", "switch"}, p["id"]
+        assert p.get("enabled_default") is False, p["id"]
+    start = [p for p in cat["points"] if p["name"] == "Start temperature"]
+    assert start and all(p.get("enabled_default") is not False for p in start)

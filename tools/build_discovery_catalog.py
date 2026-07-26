@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the packaged local-discovery catalog for ochsner_local_ots.
+"""Build the packaged local-discovery catalog for ochsner_local_ots (spec v4).
 
 Inputs (research artifacts, not shipped):
   apk_files/reports/catalog_model.json   validated APK OA catalog + instance tags
@@ -13,15 +13,53 @@ Output (shipped with the integration):
 The output is deterministic: same inputs -> byte-identical file (the version
 field is a content hash, not a timestamp).
 
+MEMBERSHIP (owner spec v4):
+  * A point is included iff it has at least one name source: an APK English
+    label, a reference-bundle name, or an APK technical symbol. Nameless
+    points are excluded.
+  * Schedules/time programs are excluded entirely: object_type 8717 and any
+    member_id in 514..525. The integration does not expose them.
+  * Enum descriptor members (member_id 4353) are excluded as points: the
+    descriptor of an enum point is derived at scan time (same object address,
+    member 4353) and read live from the controller.
+
+NAMING (pump-first overall; the packaged name is the offline part):
+  Names that can be read from the controller itself (circuit names, plant
+  model/serial/software version) are applied at scan time and take priority.
+  The packaged per-point name is chosen as:
+    1. APK English label                        name_source=apk_label
+       (several distinct labels: the most descriptive wins — longest, then
+       lexicographic, a deterministic tie-break; labels that are printf
+       templates like "Name of heating circuit %1$s" are template strings,
+       not names, and are ignored)
+    2. reference-bundle name                    name_source=bundle
+    3. APK technical symbol                     name_source=apk_symbol
+
+TECHNICAL-NAME TEST (catalog.is_technical_name): a name with no whitespace
+that has a lowercase-to-uppercase transition or a run of two or more
+consecutive uppercase letters (e.g. "CprOprHrs1", "HPMEmgyModConf",
+"Th-EngySumAct", "DHCP") is a machine symbol, not a user-facing label. Such
+points are still included but entity_registry_enabled_default=False (and
+diagnostic).
+
+HEATING-CIRCUIT PROPAGATION: the circuit module is one template instantiated
+per circuit, so a triple (object_type, point_index, member_id) CONFIRMED on
+>=2 circuit instance tags is generated for all four circuit tags; an
+APK-known instance of a confirmed triple that lacks reference metadata is
+enriched with the donor circuit's shaping (platform, write binding, bounds)
+— same triple, no guessed addresses. A triple seen on only one circuit is
+never propagated: its addresses on the other circuits cannot be derived
+(e.g. "Sollwert Handbetrieb" uses a different point_index per circuit), and
+guessing addresses is forbidden.
+
 Catalog point record keys:
   id            read OA (canonical Base64)
   platform      sensor|binary_sensor|number|select|text|switch
   name          display name
-  name_confidence  reference|apk_label|apk_symbol|address
+  name_source   apk_label|bundle|apk_symbol (chosen source, for debugging)
   sources       subset of [apk, reference, hc_template]
   write_id, unit, options, value_map, min/max/bundle_min/bundle_max/step,
-  on_value/off_value, enabled_default, diagnostic, hc_group, schedule,
-  descriptor    (member 4353 metadata point; never an entity)
+  on_value/off_value, enabled_default, diagnostic, hc_tag
 """
 
 from __future__ import annotations
@@ -42,22 +80,14 @@ import catalog as oa_catalog  # noqa: E402  (loaded as a plain module, no HA nee
 
 HC_TAGS = list(oa_catalog.HC_INSTANCE_TAGS)
 
-# Entities whose value is the owner's personal data or the network config.
-# They are still created (feature parity with the bundle path), but only as
-# disabled-by-default diagnostic entities.
-PRIVACY_PATTERNS = re.compile(
-    r"(?i)\b(kunde|kundenname|customer|owner|betreiber|besitzer|telefon|phone|"
-    r"e-?mail|mac|ip-?adresse|ip address|subnetz\w*|subnet\w*|gateway|dns)\b"
-)
+# The v4 classification rules (privacy, service/one-shot, technical-name
+# test) live in the shipped catalog module: the runtime bundle-overlay path
+# applies the same rules, so a stored bundle can never undo them.
+is_technical_name = oa_catalog.is_technical_name
 
-# Destructive / one-shot / service-and-commissioning style writable points.
-# Per the project owner's decision these are STILL CREATED as writable
-# entities, but entity_registry_enabled_default=False so nothing fires by
-# accident (the same approach as DISABLE_BY_DEFAULT_SWITCH_KEYWORDS).
-DESTRUCTIVE_PATTERNS = re.compile(
-    r"(?i)(reset|neustart|restart|reboot|werkseinstellung|factory|format|"
-    r"relais[ -]?test|relay[ -]?test|inbetriebnahme|commissioning)"
-)
+# APK labels that are printf templates ("Name of heating circuit %1$s") are
+# template strings, not usable names.
+_PLACEHOLDER_LABEL = re.compile(r"%\d+\$[sd]|%[sd]\b")
 
 # Circuit ordinal fragments that must be rewritten when a heating-circuit
 # point is propagated from one circuit instance to another.
@@ -84,8 +114,10 @@ def _reference_controller(config_entries: Any) -> Dict[str, Any]:
     return controllers[0]
 
 
-def _apk_label(names_rec: Optional[Dict[str, Any]], model_rec: Dict[str, Any]) -> Tuple[str, str]:
-    """Return (name, confidence) from APK evidence."""
+def _apk_name_sources(
+    names_rec: Optional[Dict[str, Any]], model_rec: Optional[Dict[str, Any]]
+) -> Tuple[List[str], List[str]]:
+    """Return (labels, symbols): the APK's name evidence for one address."""
 
     labels: List[str] = []
     if isinstance(names_rec, dict):
@@ -93,27 +125,41 @@ def _apk_label(names_rec: Optional[Dict[str, Any]], model_rec: Dict[str, Any]) -
             lab = n.get("label_en")
             if isinstance(lab, str) and lab.strip():
                 labels.append(lab.strip())
-    for rl in model_rec.get("resource_labels") or []:
+    for rl in (model_rec or {}).get("resource_labels") or []:
         lab = rl.get("label")
         if isinstance(lab, str) and lab.strip():
             labels.append(lab.strip())
 
-    distinct = sorted(set(labels))
-    if len(distinct) == 1:
-        return distinct[0], "apk_label"
-
     symbols: List[str] = []
     if isinstance(names_rec, dict):
         symbols += [s for s in names_rec.get("symbols") or [] if isinstance(s, str) and s.strip()]
-    symbols += [s for s in model_rec.get("names") or [] if isinstance(s, str) and s.strip()]
-    if symbols:
-        return sorted(set(symbols))[0], "apk_symbol"
+    symbols += [s for s in (model_rec or {}).get("names") or [] if isinstance(s, str) and s.strip()]
 
-    oa = oa_catalog.decode_oa(model_rec["id"])
-    return (
-        f"OT{oa.object_type} T{oa.instance_tag} P{oa.point_index} M{oa.member_id}",
-        "address",
+    return sorted(set(labels)), sorted(set(symbols))
+
+
+def _choose_name(
+    labels: List[str], bundle_name: Optional[str], symbols: List[str]
+) -> Tuple[Optional[str], Optional[str]]:
+    """Apply the documented naming priority; (None, None) = no name source.
+
+    Every usable APK label outranks the bundle name (spec v4 B2). With
+    several distinct labels the most descriptive wins: longest first, then
+    lexicographic — a deterministic tie-break. Printf-template labels are
+    not usable names and fall through to the next source.
+    """
+
+    usable = sorted(
+        (lab for lab in labels if not _PLACEHOLDER_LABEL.search(lab)),
+        key=lambda lab: (-len(lab), lab),
     )
+    if usable:
+        return usable[0], "apk_label"
+    if bundle_name:
+        return bundle_name, "bundle"
+    if symbols:
+        return symbols[0], "apk_symbol"
+    return None, None
 
 
 def _rewrite_hc_ordinal(name: str, target_ordinal: int) -> str:
@@ -146,7 +192,7 @@ def _hc_uid_to_tag(ctrl: Dict[str, Any]) -> Dict[str, int]:
 
 
 def _reference_records(ctrl: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-    """One catalog record per read OA from the reference plant entity lists.
+    """One metadata record per read OA from the reference plant entity lists.
 
     When a read id backs several entity kinds (the reference entry predates
     the generator's dedupe), the writable/most specific platform wins — the
@@ -158,15 +204,16 @@ def _reference_records(ctrl: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
 
     def visit(kind: str, ent: Dict[str, Any]) -> None:
         read_id = str(ent.get("id") or ent.get("read_id") or "").strip()
-        if not read_id or oa_catalog.try_decode_oa(read_id) is None:
+        if not read_id:
+            return
+        oa = oa_catalog.try_decode_oa(read_id)
+        if oa is None or oa_catalog.is_excluded_point(oa):
             return
 
         rec: Dict[str, Any] = {
             "id": read_id,
             "platform": kind,
             "name": str(ent.get("name") or read_id),
-            "name_confidence": "reference",
-            "sources": ["reference"],
         }
         write_id = ent.get("write_id")
         if isinstance(write_id, str) and write_id and kind in {"number", "select", "text", "switch"}:
@@ -183,18 +230,10 @@ def _reference_records(ctrl: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         hc_uid = str(ent.get("heating_circuit_uid") or "").strip()
         if hc_uid:
             hc_tag = hc_uid_to_tag.get(hc_uid)
-            if hc_tag is None:
-                oa = oa_catalog.try_decode_oa(read_id)
-                if oa is not None and oa.instance_tag in HC_TAGS:
-                    hc_tag = oa.instance_tag
+            if hc_tag is None and oa.instance_tag in HC_TAGS:
+                hc_tag = oa.instance_tag
             if hc_tag is not None:
                 rec["hc_tag"] = hc_tag
-
-        if PRIVACY_PATTERNS.search(rec["name"]):
-            rec["diagnostic"] = True
-            rec["enabled_default"] = False
-        if rec.get("write_id") and DESTRUCTIVE_PATTERNS.search(rec["name"]):
-            rec["enabled_default"] = False
 
         existing = by_id.get(read_id)
         if existing is None or PLATFORM_PRIORITY.index(kind) < PLATFORM_PRIORITY.index(existing["platform"]):
@@ -222,104 +261,135 @@ def _reference_records(ctrl: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return by_id
 
 
-def _propagate_hc_templates(points: Dict[str, Dict[str, Any]]) -> int:
-    """Instantiate reference heating-circuit metadata on the other HC tags.
+def _propagate_hc_confirmed(
+    universe: Dict[str, Dict[str, Any]],
+) -> Tuple[int, int, int]:
+    """Instantiate CONFIRMED heating-circuit triples on all four circuit tags.
 
-    The circuit module is one template instantiated per circuit (proven:
-    146/148 shared triples across the four circuit tags), so a point known on
-    HC1 exists at the same (object_type, point_index, member_id) on any other
-    fitted circuit. Only fills gaps; never overwrites reference records.
+    A triple (object_type, point_index, member_id) observed on >=2 circuit
+    instance tags (via APK evidence and/or the reference bundle) is proven to
+    be part of the per-circuit template and is generated for every circuit
+    tag; an already-known instance (usually APK-only) that lacks reference
+    metadata is enriched with the donor circuit's shaping — same triple, no
+    guessed addresses. Single-tag triples are left untouched (addresses on
+    the other circuits are not derivable).
+    Returns (confirmed_triples, added_points, enriched_points).
     """
 
-    added = 0
     hc_ordinal = {tag: i + 1 for i, tag in enumerate(HC_TAGS)}
 
-    ref_hc = [
-        rec
-        for rec in points.values()
-        if "reference" in rec["sources"] and oa_catalog.decode_oa(rec["id"]).instance_tag in hc_ordinal
-    ]
+    by_triple: Dict[Tuple[int, int, int], Dict[int, Dict[str, Any]]] = {}
+    for rec in universe.values():
+        oa = rec["oa"]
+        if oa.instance_tag in hc_ordinal:
+            by_triple.setdefault(
+                (oa.object_type, oa.point_index, oa.member_id), {}
+            )[oa.instance_tag] = rec
 
-    for rec in ref_hc:
-        src_oa = oa_catalog.decode_oa(rec["id"])
-        src_tag = src_oa.instance_tag
-        write_id = rec.get("write_id")
-        write_oa = oa_catalog.try_decode_oa(write_id) if write_id else None
+    confirmed = {t: recs for t, recs in by_triple.items() if len(recs) >= 2}
+
+    added = 0
+    enriched = 0
+    for (object_type, point_index, member_id), recs in confirmed.items():
+        # Metadata donor: prefer an instance the reference plant proves
+        # (platform shaping, write binding, options, bounds), deterministic
+        # tie-break by tag order.
+        donor_tag = min(
+            recs,
+            key=lambda t: (0 if recs[t].get("ref") else 1, HC_TAGS.index(t)),
+        )
+        donor = recs[donor_tag]
+        donor_ref = donor.get("ref")
+
+        # Write-binding evidence across ALL proven instances of the triple.
+        ref_writes: Dict[int, str] = {}
+        for t, r in recs.items():
+            t_ref = r.get("ref")
+            if t_ref and t_ref.get("write_id"):
+                ref_writes[t] = str(t_ref["write_id"])
+
+        def _derived_write(target_tag: int, target_id: str) -> Optional[str]:
+            """A write binding for another circuit only when the evidence
+            proves it — a write OA is never invented (spec v4 A6):
+
+            - all proven instances (>=2) share ONE identical binding -> that
+              common binding is preserved verbatim;
+            - every instance writes through its own read address -> the
+              target's read address;
+            - every instance writes its own per-circuit OA of one common
+              write triple, confirmed on >=2 circuits -> that triple retagged;
+            - anything else (single-instance non-self binding, mixed or
+              cross-module patterns) -> None.
+            """
+            distinct = set(ref_writes.values())
+            if len(distinct) == 1 and len(ref_writes) >= 2:
+                return next(iter(distinct))
+            if all(
+                w == oa_catalog.encode_oa(object_type, t, point_index, member_id)
+                for t, w in ref_writes.items()
+            ):
+                return target_id
+            write_triples = set()
+            for t, w in ref_writes.items():
+                wo = oa_catalog.try_decode_oa(w)
+                if wo is None or wo.instance_tag != t:
+                    return None
+                write_triples.add((wo.object_type, wo.point_index, wo.member_id))
+            if len(write_triples) == 1 and len(ref_writes) >= 2:
+                wot, wpi, wmid = next(iter(write_triples))
+                return oa_catalog.encode_oa(wot, target_tag, wpi, wmid)
+            return None
+
+        def _derived_ref(target_tag: int, target_id: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+            """The donor's reference metadata re-addressed to another circuit."""
+            if donor_ref is None:
+                return None, None
+            ref = {k: v for k, v in donor_ref.items() if k not in {"id", "write_id", "name", "hc_tag"}}
+            ref["id"] = target_id
+            bundle_name = _rewrite_hc_ordinal(
+                str(donor_ref.get("name") or ""), hc_ordinal[target_tag]
+            ) or None
+            if donor_ref.get("hc_tag") is not None:
+                ref["hc_tag"] = target_tag
+            if ref_writes:
+                write_id = _derived_write(target_tag, target_id)
+                if write_id is not None:
+                    ref["write_id"] = write_id
+                else:
+                    # Write evidence exists but cannot be transferred without
+                    # guessing an address: the derived point is read-only.
+                    ref["platform"] = "sensor"
+            return ref, bundle_name
 
         for target_tag in HC_TAGS:
-            if target_tag == src_tag:
+            target_id = oa_catalog.encode_oa(object_type, target_tag, point_index, member_id)
+            existing = universe.get(target_id)
+            if existing is not None:
+                if existing.get("ref") is None and donor_ref is not None:
+                    ref, bundle_name = _derived_ref(target_tag, target_id)
+                    existing["ref"] = ref
+                    if not existing.get("bundle_name"):
+                        existing["bundle_name"] = bundle_name
+                    existing["sources"] = sorted(set(existing["sources"]) | {"hc_template"})
+                    enriched += 1
                 continue
-            target_id = oa_catalog.retag(rec["id"], target_tag)
-            target = points.get(target_id)
-            if target is not None and "reference" in target.get("sources", []):
-                continue
 
-            new = {k: v for k, v in rec.items() if k not in {"id", "write_id", "sources", "name", "name_confidence", "hc_tag"}}
-            new["id"] = target_id
-            new["name"] = _rewrite_hc_ordinal(rec["name"], hc_ordinal[target_tag])
-            new["name_confidence"] = "reference"
-            new["sources"] = sorted(set((target.get("sources") if target else []) or []) | {"hc_template"})
-            if rec.get("hc_tag") is not None:
-                new["hc_tag"] = target_tag
-            if write_oa is not None:
-                if write_oa.instance_tag == src_tag:
-                    new["write_id"] = oa_catalog.retag(write_id, target_tag)
-                elif write_id == rec["id"]:
-                    new["write_id"] = target_id
-                else:
-                    # Cross-module write binding: cannot be retagged safely,
-                    # so the propagated point falls back to read-only.
-                    new["platform"] = "sensor"
-
-            if target is not None:
-                # Reference-grade metadata replaces the weak-name APK
-                # defaults; the source record's own flags (if any) are in new.
-                target.pop("diagnostic", None)
-                target.pop("enabled_default", None)
-                target.update(new)
-            else:
-                points[target_id] = new
-                added += 1
-    return added
-
-
-def _expand_apk_hc_union(points: Dict[str, Dict[str, Any]], apk_records: List[Dict[str, Any]]) -> int:
-    """Add the APK circuit-template union to every circuit tag (24 synthetics)."""
-
-    triples_by_tag: Dict[int, set] = {t: set() for t in HC_TAGS}
-    rec_by_triple: Dict[Tuple[int, int, int], Dict[str, Any]] = {}
-    for r in apk_records:
-        tag = int(r["instance_tag"])
-        if tag not in triples_by_tag:
-            continue
-        triple = (int(r["object_type"]), int(r["point_index"]), int(r["member_id"]))
-        triples_by_tag[tag].add(triple)
-        rec_by_triple.setdefault(triple, r)
-
-    union = set().union(*triples_by_tag.values()) if triples_by_tag else set()
-    added = 0
-    for tag in HC_TAGS:
-        for triple in union - triples_by_tag[tag]:
-            ot, pi, mid = triple
-            new_id = oa_catalog.encode_oa(ot, tag, pi, mid)
-            if new_id in points:
-                continue
-            src = rec_by_triple[triple]
-            name, confidence = _apk_label(None, src)
-            points[new_id] = {
-                "id": new_id,
-                "platform": "sensor",
-                "name": name,
-                "name_confidence": confidence,
-                "sources": ["hc_template"],
-                "diagnostic": True,
-                "enabled_default": False,
-                "schedule": oa_catalog.is_schedule_member(mid) or None,
-                "descriptor": (mid == 4353) or None,
+            ref, bundle_name = _derived_ref(target_tag, target_id)
+            universe[target_id] = {
+                "oa": oa_catalog.decode_oa(target_id),
+                # Labels need the ordinal rewrite ("Heizkreis 1" -> "Heizkreis 2").
+                "labels": [
+                    _rewrite_hc_ordinal(lab, hc_ordinal[target_tag])
+                    for lab in donor.get("labels") or []
+                ],
+                "symbols": list(donor.get("symbols") or []),
+                "sources": sorted(set(donor.get("sources") or []) | {"hc_template"}),
+                "ref": ref,
+                "bundle_name": bundle_name,
             }
-            points[new_id] = {k: v for k, v in points[new_id].items() if v is not None}
             added += 1
-    return added
+
+    return len(confirmed), added, enriched
 
 
 def build_catalog(
@@ -334,62 +404,116 @@ def build_catalog(
 
     apk_records = [r for r in model["catalog"] if r.get("classification") == "ochsner_object_address"]
     names_by_id = names.get("apk_id_catalog") or {}
+    ref_records = _reference_records(ctrl)
 
-    points: Dict[str, Dict[str, Any]] = {}
+    excluded_schedule = 0
+    excluded_descriptor = 0
 
-    # 1) APK-derived candidates (read-only; nothing in the APK proves
-    #    writability, so writable shaping comes from reference/bundle data).
+    # Universe: every APK address plus every reference read id, with all name
+    # evidence attached. Membership/naming decisions happen after HC
+    # propagation so a propagated point sees the full evidence too.
+    universe: Dict[str, Dict[str, Any]] = {}
+
     for r in apk_records:
         oa_id = str(r["id"])
         # Trust our codec, not the report: re-encode and require equality.
         oa = oa_catalog.decode_oa(oa_id)
         assert oa_catalog.encode_oa(*oa) == oa_id
+        if oa.object_type == oa_catalog.SCHEDULE_OBJECT_TYPE or oa_catalog.is_schedule_member(oa.member_id):
+            excluded_schedule += 1
+            continue
+        if oa.member_id == oa_catalog.DESCRIPTOR_MEMBER_ID:
+            excluded_descriptor += 1
+            continue
+        labels, symbols = _apk_name_sources(names_by_id.get(oa_id), r)
+        universe[oa_id] = {
+            "oa": oa,
+            "labels": labels,
+            "symbols": symbols,
+            "sources": ["apk"],
+            "ref": None,
+            "bundle_name": None,
+        }
 
-        name, confidence = _apk_label(names_by_id.get(oa_id), r)
+    for read_id, ref in ref_records.items():
+        entry = universe.get(read_id)
+        if entry is None:
+            entry = {
+                "oa": oa_catalog.decode_oa(read_id),
+                "labels": [],
+                "symbols": [],
+                "sources": [],
+                "ref": None,
+                "bundle_name": None,
+            }
+            universe[read_id] = entry
+        entry["sources"] = sorted(set(entry["sources"]) | {"reference"})
+        entry["ref"] = ref
+        entry["bundle_name"] = str(ref.get("name") or "") or None
+
+    confirmed_triples, propagated, enriched = _propagate_hc_confirmed(universe)
+
+    # Final membership + naming + flags.
+    points: Dict[str, Dict[str, Any]] = {}
+    excluded_unnamed = 0
+    for oa_id in sorted(universe):
+        entry = universe[oa_id]
+        name, name_source = _choose_name(
+            entry["labels"], entry.get("bundle_name"), entry["symbols"]
+        )
+        if name is None:
+            excluded_unnamed += 1
+            continue
+
         rec: Dict[str, Any] = {
             "id": oa_id,
             "platform": "sensor",
             "name": name,
-            "name_confidence": confidence,
-            "sources": ["apk"],
+            "name_source": name_source,
+            "sources": entry["sources"],
         }
-        if oa_catalog.is_schedule_member(oa.member_id):
-            rec["schedule"] = True
-        if oa.member_id == 4353:
-            rec["descriptor"] = True
-        # Unknown/weakly named points become disabled diagnostic sensors;
-        # unambiguous APK labels are good enough for a normal named sensor.
-        if confidence != "apk_label":
-            rec["diagnostic"] = True
-            rec["enabled_default"] = False
-        points[oa_id] = rec
+        ref = entry.get("ref")
+        if ref is not None:
+            for k in (
+                "platform",
+                "write_id",
+                "unit",
+                "options",
+                "value_map",
+                "min",
+                "max",
+                "bundle_min",
+                "bundle_max",
+                "step",
+                "on_value",
+                "off_value",
+                "enabled_default",
+                "hc_tag",
+            ):
+                if ref.get(k) is not None:
+                    rec[k] = ref[k]
+        elif entry["oa"].instance_tag in HC_TAGS:
+            # A circuit's own point groups under that circuit's device even
+            # without reference metadata: the OA tag identifies the circuit.
+            rec["hc_tag"] = entry["oa"].instance_tag
 
-    # 2) Reference-plant seed overrides: real names, units, enum options and
-    #    the exact writable shaping the bundle path uses today.
-    for read_id, ref in _reference_records(ctrl).items():
-        existing = points.get(read_id)
-        if existing is not None:
-            merged = dict(existing)
-            # The reference name/shape wins; the weak-name diagnostic/disabled
-            # defaults from the APK pass no longer apply to a well-known point.
-            merged.pop("diagnostic", None)
-            merged.pop("enabled_default", None)
-            merged.update(ref)
-            merged["sources"] = sorted(set(existing["sources"]) | {"reference"})
-            points[read_id] = merged
-        else:
-            points[read_id] = ref
+        # Privacy/service classification sees all HUMAN name evidence, not
+        # only the chosen display name (an APK-first "Program selection" must
+        # not mask the service evidence in its bundle name "Modus
+        # Austrocknungsprogramm"). Technical symbols are code identifiers and
+        # are excluded: substring-matching prose patterns against camel case
+        # produces false positives ("n8bDryingTemperatureStart" ~ "restart").
+        evidence = list(entry["labels"])
+        if entry.get("bundle_name"):
+            evidence.append(str(entry["bundle_name"]))
+        points[oa_id] = oa_catalog.apply_v4_point_flags(rec, extra_names=evidence)
 
-    # 3) Heating-circuit template instantiation.
-    propagated = _propagate_hc_templates(points)
-    expanded = _expand_apk_hc_union(points, apk_records)
-
-    # 4) Instance tag table (drives the phase-A module probe).
+    # Instance tag table (drives the phase-A module probe).
     module_by_tag: Dict[int, str] = {}
     for t in model.get("instance_tags") or []:
         if t.get("classification") == "ochsner_instance_tag":
             module_by_tag[int(t["instance_tag"])] = str(t.get("module") or "")
-    all_tags = sorted({oa_catalog.decode_oa(p["id"]).instance_tag for p in points.values()})
+    all_tags = sorted({universe[oid]["oa"].instance_tag for oid in points})
     tags = [
         {"tag": tag, "module": module_by_tag.get(tag, "reference_only")}
         for tag in all_tags
@@ -412,13 +536,23 @@ def build_catalog(
         **body,
         "stats": {
             "points_total": len(point_list),
+            "enabled": sum(1 for p in point_list if p.get("enabled_default") is not False),
+            "disabled": sum(1 for p in point_list if p.get("enabled_default") is False),
+            "disabled_technical": sum(1 for p in point_list if p.get("technical")),
+            "writable_points": sum(1 for p in point_list if p.get("write_id")),
+            "by_name_source": {
+                src: sum(1 for p in point_list if p["name_source"] == src)
+                for src in ("apk_label", "bundle", "apk_symbol")
+            },
             "apk_points": sum(1 for p in point_list if "apk" in p["sources"]),
             "reference_points": sum(1 for p in point_list if "reference" in p["sources"]),
             "hc_template_points": sum(1 for p in point_list if "hc_template" in p["sources"]),
+            "hc_confirmed_triples": confirmed_triples,
             "hc_template_propagated": propagated,
-            "hc_template_expanded": expanded,
-            "schedule_points": sum(1 for p in point_list if p.get("schedule")),
-            "writable_points": sum(1 for p in point_list if p.get("write_id")),
+            "hc_template_enriched": enriched,
+            "excluded_schedule": excluded_schedule,
+            "excluded_descriptor": excluded_descriptor,
+            "excluded_unnamed": excluded_unnamed,
         },
     }
 

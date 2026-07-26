@@ -101,28 +101,31 @@ def test_packaged_catalog_loads_and_is_canonical(catalog_mod):
     cat = catalog_mod.load_catalog()
     assert cat.catalog_version
     assert list(cat.hc_tags) == [31886, 19693, 23756, 11307]
-    assert len(cat.points) > 1200
+    # v4 membership: only named, non-schedule, non-descriptor points remain.
+    assert 500 <= len(cat.points) <= 700
     declared_tags = {t["tag"] for t in cat.tags}
     for rec in cat.points:
         oa = catalog_mod.decode_oa(rec["id"])  # raises on non-canonical
         assert catalog_mod.encode_oa(*oa) == rec["id"]
         assert oa.instance_tag in declared_tags
+        # Schedules (object_type 8717 / members 514..525) and enum
+        # descriptors (member 4353) are excluded from the catalog entirely.
+        assert oa.object_type != 8717
+        assert not catalog_mod.is_schedule_member(oa.member_id)
+        assert oa.member_id != catalog_mod.DESCRIPTOR_MEMBER_ID
+        # Every point has a name and its recorded source.
+        assert str(rec.get("name") or "").strip()
+        assert rec.get("name_source") in {"apk_label", "bundle", "apk_symbol"}
     # The five APK false positives must not be in the catalog.
     for fp in ("intEncoding=", "getExitAnim=", "surfaceTint=", "stopTimeout=", "onSecondary="):
         assert fp not in cat.points_by_id
 
 
-def test_packaged_catalog_probe_and_sweep_shape(catalog_mod):
+def test_packaged_catalog_sweep_shape(catalog_mod):
     cat = catalog_mod.load_catalog()
-    probe = cat.probe_ids_by_tag(per_tag=8)
-    assert set(probe) == {t["tag"] for t in cat.tags}
-    for ids in probe.values():
-        assert 1 <= len(ids) <= 8
     sweep = cat.scan_ids_for_tags({t["tag"] for t in cat.tags})
-    # Schedules and duplicates are excluded from the default sweep.
-    assert len(sweep) == len(set(sweep))
-    for oid in sweep:
-        assert not cat.points_by_id[oid].get("schedule")
+    # The full sweep covers every catalog point exactly once (spec v4 D).
+    assert len(sweep) == len(set(sweep)) == len(cat.points)
 
 
 @pytest.mark.skipif(not REFERENCE.exists(), reason="reference plant data not present")

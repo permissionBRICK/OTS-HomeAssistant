@@ -90,5 +90,18 @@
       "no_selection": "Bitte eine Entität auswählen.",
       "invalid_range": "Maximum muss größer als Minimum sein."
     }
+  },
+  "entity": {
+    "sensor": {
+      "flash_writes": {
+        "name": "Flash-Schreibvorgänge"
+      },
+      "read_requests": {
+        "name": "Leseanfragen"
+      },
+      "read_rate_5m": {
+        "name": "Leserate (5 min)"
+      }
+    }
   }
 }

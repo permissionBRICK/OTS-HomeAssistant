@@ -72,8 +72,12 @@ CONF_DIAGNOSTIC = "diagnostic"
 # Localization (used during onboarding entity generation)
 CONF_LANGUAGE = "language"
 
-# Per-controller device metadata
+# Per-controller device metadata. Model ("Anlagentyp"), serial number and
+# software version are read from the controller during a local scan; the
+# serial identifies the device but is never exposed as a visible entity.
 CONF_DEVICE_MODEL = "device_model"
+CONF_SERIAL_NUMBER = "serial_number"
+CONF_SW_VERSION = "sw_version"
 
 CONF_NAME = "name"
 CONF_UUID = "uuid"

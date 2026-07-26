@@ -206,3 +206,32 @@ def test_reference_merge_has_no_identity_collisions(checker, catalog_mod, discov
         merged_list = merged.get(key, []) or []
         for orig in originals:
             assert orig in merged_list, f"legacy twin lost: {orig.get('name')} ({key})"
+
+
+def test_scan_counts_skipped_unreadable_covers_absent_modules(checker, catalog_mod, discovery_mod):
+    """skipped_unreadable = every catalog point scanned but not readable,
+    including points of fully absent modules."""
+
+    enc = catalog_mod.encode_oa
+    a, b, c = enc(8960, 100, 1, 256), enc(8960, 100, 2, 256), enc(8960, 200, 1, 256)
+    cat = catalog_mod.DiscoveryCatalog(
+        {
+            "schema_version": 1,
+            "catalog_version": "t",
+            "hc_tags": [],
+            "points": [
+                {"id": a, "platform": "sensor", "name": "A", "sources": ["apk"]},
+                {"id": b, "platform": "sensor", "name": "B", "sources": ["apk"]},
+                # Point on a fully absent module tag: must still be counted.
+                {"id": c, "platform": "sensor", "name": "C", "sources": ["apk"]},
+            ],
+            "tags": [{"tag": 100}, {"tag": 200}],
+        }
+    )
+    scan = discovery_mod.DiscoveryScanResult(catalog_version="t")
+    scan.values[a] = 1.0
+    scan.swept_ids = 3
+    counts = checker.scan_counts(cat, scan)
+    assert counts["skipped_unreadable"] == 2
+    assert counts["readable_ids"] == 1
+    assert counts["swept_ids"] == 3
