@@ -146,6 +146,53 @@ class ClimatixGenericApi:
 
         return {"values": merged_values}
 
+    async def read_raw(
+        self,
+        ids: Iterable[str],
+        *,
+        on_http_request: Callable[[], None] | None = None,
+    ) -> Dict[str, Any]:
+        """Read OA ids and keep BOTH response maps.
+
+        Unlike read(), this preserves the "states" map, which local discovery
+        needs: an id under "values" exists and is readable, an id that only
+        appears under "states" as a bare scalar is absent-or-permission-denied.
+        """
+
+        oa_list = [x for x in ids if x]
+        if not oa_list:
+            return {"values": {}, "states": {}}
+
+        merged_values: Dict[str, Any] = {}
+        merged_states: Dict[str, Any] = {}
+        for i in range(0, len(oa_list), self._max_ids_per_read_request):
+            chunk = oa_list[i : i + self._max_ids_per_read_request]
+            params: List[Tuple[str, str]] = [("FN", "Read")]
+            for one in chunk:
+                params.append(("OA", one))
+            if self._conn.pin:
+                params.append(("PIN", self._conn.pin))
+            params.append(("LNG", "-1"))
+            params.append(("US", "1"))
+
+            payload = await self._get_json(params, on_http_request=on_http_request)
+            if not isinstance(payload, dict):
+                raise RuntimeError(f"Unexpected controller response: {payload!r}")
+
+            values = payload.get("values")
+            states = payload.get("states")
+            if not isinstance(values, dict) and not isinstance(states, dict):
+                if payload.get("Error") not in (0, None):
+                    raise RuntimeError(f"Controller error during read: {payload}")
+            if isinstance(values, dict):
+                for k, v in values.items():
+                    merged_values[str(k)] = v
+            if isinstance(states, dict):
+                for k, v in states.items():
+                    merged_states[str(k)] = v
+
+        return {"values": merged_values, "states": merged_states}
+
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
         if not generic_id:
             raise ValueError("generic_id is required")
@@ -187,6 +234,14 @@ class ClimatixGenericApiWriteHook:
         on_http_request: Callable[[], None] | None = None,
     ) -> Dict[str, Any]:
         return await self._inner.read(ids, on_http_request=on_http_request)
+
+    async def read_raw(
+        self,
+        ids: Iterable[str],
+        *,
+        on_http_request: Callable[[], None] | None = None,
+    ) -> Dict[str, Any]:
+        return await self._inner.read_raw(ids, on_http_request=on_http_request)
 
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
         resp = await self._inner.write(generic_id, value)

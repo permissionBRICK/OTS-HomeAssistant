@@ -14,6 +14,8 @@ from homeassistant.config_entries import ConfigEntry
 
 from .api import extract_first_numeric_value, extract_first_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_ID,
@@ -130,6 +132,8 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
         self._base_url = base_url
         self._parent_device_name = str(cfg.get("device_name") or f"Climatix ({host})")
         self._device_model = str(cfg.get("device_model") or "Climatix")
+        self._device_serial = cfg.get("device_serial") or None
+        self._device_sw_version = cfg.get("device_sw_version") or None
         self._hc_uid = str(cfg.get(CONF_HEATING_CIRCUIT_UID) or "").strip()
         self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
         self._id = str(cfg[CONF_ID])
@@ -142,6 +146,13 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
                 self._attr_entity_registry_enabled_default = False
         except Exception:
             pass
+
+        # Local discovery flags: weakly-named / privacy-sensitive points are
+        # still created but start disabled and/or diagnostic.
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self._attr_native_unit_of_measurement = cfg.get(CONF_UNIT)
         self._value_map: Dict[str, str] = {str(k): str(v) for k, v in (cfg.get(CONF_VALUE_MAP) or {}).items()}
@@ -231,6 +242,8 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
             name=self._parent_device_name,
             manufacturer="Ochsner",
             model=self._device_model,
+            serial_number=self._device_serial,
+            sw_version=self._device_sw_version,
             configuration_url=self._base_url,
         )
 
@@ -340,6 +353,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         base_url: str = ctrl.get("base_url", f"http://{host}")
         device_name: str = ctrl.get("device_name", f"Climatix ({host})")
         device_model: str = ctrl.get("device_model", "Climatix")
+        device_serial = ctrl.get("device_serial")
+        device_sw_version = ctrl.get("device_sw_version")
         sensors = ctrl.get("sensors", [])
         for s in sensors:
             entities.append(
@@ -347,13 +362,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     coordinator,
                     host=host,
                     base_url=base_url,
-                    cfg=dict(s, device_name=device_name, device_model=device_model),
+                    cfg=dict(s, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version),
                     entity_overrides=entity_overrides,
                 )
             )
 
         # Always add a write-counter sensor per controller.
-        entities.append(ClimatixGenericWriteCounterSensor(entry_id=entry.entry_id, host=host, base_url=base_url, device_name=device_name, device_model=device_model))
+        entities.append(ClimatixGenericWriteCounterSensor(entry_id=entry.entry_id, host=host, base_url=base_url, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version))
 
         # Diagnostics: read counters/rates per controller.
         entities.append(
@@ -381,13 +396,26 @@ class ClimatixGenericWriteCounterSensor(SensorEntity, RestoreEntity):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, *, entry_id: str, host: str, base_url: str, device_name: str, device_model: str) -> None:
+    def __init__(
+        self,
+        *,
+        entry_id: str,
+        host: str,
+        base_url: str,
+        device_name: str,
+        device_model: str,
+        device_serial: Optional[str] = None,
+        device_sw_version: Optional[str] = None,
+    ) -> None:
         self._entry_id = entry_id
         self._host = host
         self._base_url = base_url
         self._device_name = device_name
         self._device_model = device_model
-        self._attr_name = "Flash writes"
+        self._device_serial = device_serial or None
+        self._device_sw_version = device_sw_version or None
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "flash_writes"
         self._attr_unique_id = f"{host}:flash_writes".replace("=", "")
         self._count: int = 0
 
@@ -398,6 +426,8 @@ class ClimatixGenericWriteCounterSensor(SensorEntity, RestoreEntity):
             name=self._device_name,
             manufacturer="Ochsner",
             model=self._device_model,
+            serial_number=self._device_serial,
+            sw_version=self._device_sw_version,
             configuration_url=self._base_url,
         )
 
@@ -487,7 +517,8 @@ class ClimatixGenericReadRequestsSensor(CoordinatorEntity[ClimatixCoordinator], 
         self._base_url = base_url
         self._device_name = device_name
         self._device_model = device_model
-        self._attr_name = "Read requests"
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "read_requests"
         self._attr_unique_id = f"{host}:read_requests".replace("=", "")
 
     @property
@@ -533,7 +564,8 @@ class ClimatixGenericReadRateSensor(CoordinatorEntity[ClimatixCoordinator], Sens
         self._base_url = base_url
         self._device_name = device_name
         self._device_model = device_model
-        self._attr_name = "Read rate (5m)"
+        self._attr_has_entity_name = True
+        self._attr_translation_key = "read_rate_5m"
         self._attr_unique_id = f"{host}:read_rate_5m".replace("=", "")
 
     @property

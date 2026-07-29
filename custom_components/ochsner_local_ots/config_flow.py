@@ -8,35 +8,34 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.helpers import entity_registry as er, selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.storage import Store
-
-from aiohttp import BasicAuth
 
 from .const import (
     CONF_BINARY_SENSORS,
     CONF_BUNDLE_STORAGE_KEY,
-    CONF_CONFIG_ID,
+    CONF_CATALOG_VERSION,
     CONF_CONTROLLERS,
+    DISCOVERY_SOURCE_LOCAL,
     CONF_BUNDLE_MAX,
     CONF_BUNDLE_MIN,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_DEVICE_CLASS,
     CONF_DEVICE_MODEL,
+    CONF_DISCOVERY_SOURCE,
     CONF_ENTITY_OVERRIDES,
     CONF_ID,
     CONF_LANGUAGE,
+    CONF_LOCAL_SCAN_NOW,
     CONF_MAX,
     CONF_MIN,
     CONF_NUMBERS,
     CONF_PIN,
-    CONF_PLANT_KEY,
     CONF_PLANT_NAME,
-    CONF_SITE_ID,
     CONF_SCAN_INTERVAL,
     CONF_POLLING_THRESHOLD,
     CONF_MAX_IDS_PER_READ_REQUEST,
     CONF_SELECTS,
+    CONF_SERIAL_NUMBER,
+    CONF_SW_VERSION,
     CONF_SWITCHES,
     CONF_SENSORS,
     CONF_STEP,
@@ -64,17 +63,19 @@ from .const import (
 )
 
 from .bundle_refresh import async_redownload_bundles_and_merge
-
-from .bundle_generator import generate_entities_from_bundle
-from .ots_client import decode_ots_bundle_content, ots_getconfig, ots_login
+from .catalog import explicit_language
 
 _LOGGER = logging.getLogger(__name__)
 
 
+# Only used by the options-flow bundle re-download (legacy path).
 CONF_OTS_USER = "ots_user"
 CONF_OTS_PASS = "ots_pass"
-CONF_PLANTS = "plants"
 CONF_LOCAL_IP = "local_ip"
+
+# Options-flow language choices: follow Home Assistant, Deutsch, English.
+LANGUAGE_AUTO = "auto"
+LANGUAGE_OPTIONS = (LANGUAGE_AUTO, "de", "en")
 
 
 class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -85,313 +86,200 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return ClimatixGenericOptionsFlowHandler(config_entry)
 
     def __init__(self) -> None:
-        self._ots_user: Optional[str] = None
-        self._ots_pass: Optional[str] = None
-        self._language: str = "AUTO"
-        self._plants: List[Dict[str, Any]] = []
-        self._selected_keys: List[str] = []
-        self._host_by_key: Dict[str, str] = {}
-        # User-provided label used as device name (and config entry title) in HA.
-        self._name_by_key: Dict[str, str] = {}
-        self._host_index: int = 0
+        # Onboarding is IP-only: default Climatix credentials/PIN are used
+        # automatically; the advanced step only exists for non-default plants.
+        self._offer_advanced: bool = False
+        self._last_host: str = ""
+        self._scanned_entities: Optional[Dict[str, List[Dict[str, Any]]]] = None
+        self._scan_summary: Dict[str, Any] = {}
+        self._catalog_version: str = ""
+        self._conn: Dict[str, Any] = {}
+        # Plant identity read from the controller during the scan (pump-first
+        # naming): model type names the device, serial identifies it.
+        self._plant_model: Optional[str] = None
+        self._plant_serial: Optional[str] = None
+        self._plant_sw_version: Optional[str] = None
 
-    def _default_language(self) -> str:
-        # Prefer HA UI language if known; fall back to AUTO.
-        try:
-            lang = str(getattr(self.hass.config, "language", "") or "").strip().lower()
-        except Exception:  # noqa: BLE001
-            lang = ""
-        if not lang:
-            return "AUTO"
-        # Map common HA language tags to bundle translation codes.
-        if lang.startswith("de"):
-            return "DE"
-        if lang.startswith("en"):
-            return "EN"
-        if lang.startswith("fr"):
-            return "FR"
-        if lang.startswith("it"):
-            return "IT"
-        if lang.startswith("es"):
-            return "ES"
-        if lang.startswith("nl"):
-            return "NL"
-        if lang.startswith("pl"):
-            return "PL"
-        if lang.startswith("cs"):
-            return "CS"
-        return "AUTO"
-
-    async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
-        errors: Dict[str, str] = {}
-        if user_input is not None:
-            self._ots_user = str(user_input.get(CONF_OTS_USER) or "").strip()
-            self._ots_pass = str(user_input.get(CONF_OTS_PASS) or "")
-            self._language = str(user_input.get(CONF_LANGUAGE) or "AUTO").strip().upper() or "AUTO"
-            try:
-                plant_infos = await ots_login(self.hass, username=self._ots_user, password=self._ots_pass)
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("OTS login failed: %s", err)
-                errors["base"] = "auth"
-            else:
-                # Normalize plants into lightweight dicts for later steps.
-                self._plants = [
-                    {
-                        CONF_CONFIG_ID: p.config_id,
-                        CONF_SITE_ID: p.site_id,
-                        CONF_PLANT_NAME: p.name,
-                        CONF_PLANT_KEY: f"{p.config_id}:{p.site_id}",
-                    }
-                    for p in plant_infos
-                ]
-                return await self.async_step_select_plants()
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_OTS_USER): selector.TextSelector(),
-                vol.Required(CONF_OTS_PASS): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-                ),
-                vol.Optional(CONF_LANGUAGE, default=self._default_language()): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value="AUTO", label="Auto"),
-                            selector.SelectOptionDict(value="DE", label="Deutsch"),
-                            selector.SelectOptionDict(value="EN", label="English"),
-                            selector.SelectOptionDict(value="FR", label="Français"),
-                            selector.SelectOptionDict(value="IT", label="Italiano"),
-                            selector.SelectOptionDict(value="ES", label="Español"),
-                            selector.SelectOptionDict(value="NL", label="Nederlands"),
-                            selector.SelectOptionDict(value="PL", label="Polski"),
-                            selector.SelectOptionDict(value="CS", label="Čeština"),
-                        ],
-                        multiple=False,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-        return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={"note": "Credentials are not stored in Home Assistant."},
-        )
-
-    async def async_step_select_plants(self, user_input: Optional[Dict[str, Any]] = None):
-        errors: Dict[str, str] = {}
-        if not self._plants:
-            return await self.async_step_user()
-
-        options_map = {str(p[CONF_PLANT_KEY]): str(p[CONF_PLANT_NAME]) for p in self._plants}
-        options = [selector.SelectOptionDict(value=k, label=v) for k, v in options_map.items()]
-        default_sel = options[0]["value"] if options else ""
-
-        if user_input is not None:
-            selected = user_input.get(CONF_PLANTS)
-            if isinstance(selected, str) and selected in options_map:
-                self._selected_keys = [selected]
-
-            if not self._selected_keys:
-                errors["base"] = "no_selection"
-            else:
-                self._host_by_key = {}
-                self._host_index = 0
-                return await self.async_step_hosts()
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_PLANTS, default=default_sel): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=options,
-                        multiple=False,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                )
-            }
-        )
-        return self.async_show_form(step_id="select_plants", data_schema=schema, errors=errors)
-
-    async def async_step_hosts(self, user_input: Optional[Dict[str, Any]] = None):
-        errors: Dict[str, str] = {}
-        if not self._selected_keys:
-            return await self.async_step_select_plants()
-
-        current_key = self._selected_keys[self._host_index]
-        plant = next((p for p in self._plants if p.get(CONF_PLANT_KEY) == current_key), None)
-        plant_name = str((plant or {}).get(CONF_PLANT_NAME) or current_key)
-
-        default_name = self._name_by_key.get(current_key) or plant_name
-
-        if user_input is not None:
-            host = str(user_input.get(CONF_LOCAL_IP) or "").strip()
-            hp_name = str(user_input.get(CONF_NAME) or "").strip() or plant_name
-            if not host:
-                errors["base"] = "invalid_host"
-            else:
-                ok = await self._async_check_local_supported(host)
-                if not ok:
-                    errors["base"] = "not_supported"
-                else:
-                    self._host_by_key[current_key] = host
-                    self._name_by_key[current_key] = hp_name
-                    self._host_index += 1
-                    if self._host_index < len(self._selected_keys):
-                        return await self.async_step_hosts()
-                    return await self.async_step_finish()
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_LOCAL_IP): str,
-                vol.Required(CONF_NAME, default=default_name): str,
-            }
-        )
-        return self.async_show_form(
-            step_id="hosts",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={"plant": plant_name},
-        )
-
-    async def _async_check_local_supported(self, host: str) -> bool:
-        session = async_get_clientsession(self.hass)
-        auth = BasicAuth(DEFAULT_USERNAME, DEFAULT_PASSWORD)
-        urls = [
-            f"http://{host}:{DEFAULT_PORT}/jsongen.html",
-            f"http://{host}:{DEFAULT_PORT}/JSONgen.html",
-        ]
-        for url in urls:
-            try:
-                async with session.get(url, auth=auth, timeout=10) as resp:
-                    if resp.status != 200:
-                        continue
-                    data = await resp.json(content_type=None)
-                    if isinstance(data, dict) and data.get("Error") == 7:
-                        return True
-            except Exception:  # noqa: BLE001
-                continue
+    def _host_already_configured(self, host: str) -> bool:
+        host = host.strip()
+        for entry in self._async_current_entries():
+            data = entry.data or {}
+            hosts = set()
+            if isinstance(data.get(CONF_CONTROLLERS), list):
+                for c in data[CONF_CONTROLLERS]:
+                    if isinstance(c, dict) and c.get(CONF_HOST):
+                        hosts.add(str(c[CONF_HOST]).strip())
+            if data.get(CONF_HOST):
+                hosts.add(str(data[CONF_HOST]).strip())
+            if host in hosts:
+                return True
         return False
 
-    async def async_step_finish(self, user_input: Optional[Dict[str, Any]] = None):
-        # No form; perform imports and create the config entry.
-        if not self._ots_user or self._ots_pass is None:
-            return await self.async_step_user()
+    async def _async_validate_and_scan(
+        self,
+        *,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        pin: str,
+    ) -> Optional[str]:
+        """Run the read-only local catalog scan; return an error key or None."""
 
-        controllers: List[Dict[str, Any]] = []
-        store = Store(self.hass, 1, f"{DOMAIN}_bundles")
-        stored = await store.async_load() or {}
-        if not isinstance(stored, dict):
-            stored = {}
+        from aiohttp import ClientResponseError
 
-        for key in self._selected_keys:
-            plant = next((p for p in self._plants if p.get(CONF_PLANT_KEY) == key), None)
-            if not plant:
-                continue
-            host = self._host_by_key.get(key)
+        from .local_scan import async_scan_controller
+
+        try:
+            entities, scan, catalog = await async_scan_controller(
+                self.hass,
+                host=host,
+                port=port,
+                username=username,
+                password=password,
+                pin=pin,
+            )
+        except ClientResponseError as err:
+            # Never log the exception itself: aiohttp errors embed the full
+            # request URL, which includes the PIN query parameter.
+            _LOGGER.debug("Local scan HTTP error for %s: status=%s", host, err.status)
+            return "auth_failed" if err.status in (401, 403) else "cannot_connect"
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Local scan failed for %s: %s", host, type(err).__name__)
+            return "cannot_connect"
+
+        if not scan.values:
+            # Endpoint answered but no catalog point was readable: usually a
+            # non-default PIN or credentials -> point the user at the advanced
+            # settings.
+            return "probe_failed"
+
+        self._scanned_entities = entities
+        self._catalog_version = catalog.catalog_version
+        self._plant_model = scan.plant_model
+        self._plant_serial = scan.plant_serial
+        self._plant_sw_version = scan.plant_sw_version
+        self._conn = {
+            CONF_HOST: host,
+            CONF_PORT: port,
+            CONF_USERNAME: username,
+            CONF_PASSWORD: password,
+            CONF_PIN: pin,
+        }
+        self._scan_summary = {
+            key: len(entities.get(key, [])) for key in ("sensors", "binary_sensors", "numbers", "selects", "texts", "switches")
+        }
+        _LOGGER.info(
+            "Local discovery for %s found %d readable datapoints (%s), circuits=%s",
+            host,
+            len(scan.values),
+            self._scan_summary,
+            scan.circuit_names,
+        )
+        return None
+
+    def _create_local_entry(self):
+        host = str(self._conn.get(CONF_HOST) or "")
+        # Pump-first naming: the plant/model type read from the controller
+        # ("Anlagentyp", e.g. "AIRHAWK518C11A") names the HA device.
+        title = f"{self._plant_model} ({host})" if self._plant_model else f"Ochsner ({host})"
+        entities = self._scanned_entities or {}
+        controller: Dict[str, Any] = {
+            CONF_PLANT_NAME: title,
+            CONF_DEVICE_MODEL: self._plant_model or "Climatix",
+            CONF_SERIAL_NUMBER: self._plant_serial,
+            CONF_SW_VERSION: self._plant_sw_version,
+            CONF_DISCOVERY_SOURCE: DISCOVERY_SOURCE_LOCAL,
+            CONF_CATALOG_VERSION: self._catalog_version,
+            **self._conn,
+            CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL_SEC,
+            CONF_SENSORS: entities.get("sensors", []),
+            CONF_BINARY_SENSORS: entities.get("binary_sensors", []),
+            CONF_NUMBERS: entities.get("numbers", []),
+            CONF_SELECTS: entities.get("selects", []),
+            CONF_TEXTS: entities.get("texts", []),
+            CONF_SWITCHES: entities.get("switches", []),
+        }
+        return self.async_create_entry(title=title, data={CONF_CONTROLLERS: [controller]})
+
+    async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
+        """IP-only onboarding: local catalog scan, no cloud account, no bundle."""
+
+        errors: Dict[str, str] = {}
+        if user_input is not None:
+            if bool(user_input.get("advanced")):
+                self._last_host = str(user_input.get(CONF_LOCAL_IP) or "").strip()
+                return await self.async_step_advanced()
+
+            host = str(user_input.get(CONF_LOCAL_IP) or "").strip()
+            self._last_host = host
             if not host:
-                continue
-
-            # Use the user-provided label as the HA device name / config entry title.
-            # Use the OTS plant name as the HA device model (this matches the previous onboarding default).
-            user_name = str(self._name_by_key.get(key) or "").strip()
-            ots_plant_name = str(plant.get(CONF_PLANT_NAME) or "").strip() or f"Climatix ({host})"
-            plant_name = user_name or ots_plant_name
-
-            cfg = await ots_getconfig(self.hass, config_id=str(plant[CONF_CONFIG_ID]), site_id=str(plant[CONF_SITE_ID]), stamp=0)
-            if not cfg.get("success"):
-                raise RuntimeError(f"GetConfig failed for {key}: {cfg.get('message')}")
-            content = cfg.get("content")
-            if not isinstance(content, str) or not content:
-                raise RuntimeError(f"GetConfig returned no content for {key}")
-
-            bundle = decode_ots_bundle_content(content)
-
-            # Persist bundle locally (but do not persist OTS credentials).
-            bundle_storage_key = f"{DOMAIN}:{key}".replace(" ", "_")
-            stored[bundle_storage_key] = bundle
-            await store.async_save(stored)
-
-            # Generate entities using the same heuristics as the CLI (with probing).
-            session = async_get_clientsession(self.hass)
-            from .api import ClimatixGenericApi, ClimatixGenericConnection
-
-            api = ClimatixGenericApi(
-                session,
-                ClimatixGenericConnection(
+                errors["base"] = "invalid_host"
+            elif self._host_already_configured(host):
+                return self.async_abort(reason="already_configured")
+            else:
+                await self.async_set_unique_id(f"{DOMAIN}:local:{host}"[:255])
+                self._abort_if_unique_id_configured()
+                error = await self._async_validate_and_scan(
                     host=host,
                     port=DEFAULT_PORT,
                     username=DEFAULT_USERNAME,
                     password=DEFAULT_PASSWORD,
                     pin=DEFAULT_PIN,
-                ),
-            )
-
-            ents = await generate_entities_from_bundle(bundle=bundle, api=api, language=self._language, probe=True)
-            # Some OTS plant names are like "AIRHAWK518C11A - 523203292" (model + serial).
-            # Store only the model part as the HA device model.
-            device_model = ots_plant_name
-            if " - " in device_model:
-                device_model = device_model.split(" - ", 1)[0].strip() or ots_plant_name
-            _LOGGER.debug(
-                "Discovered entities for %s (%s): sensors=%d binary_sensors=%d numbers=%d selects=%d texts=%d switches=%d",
-                plant_name,
-                host,
-                len(ents.get("sensors", [])),
-                len(ents.get("binary_sensors", [])),
-                len(ents.get("numbers", [])),
-                len(ents.get("selects", [])),
-                len(ents.get("texts", [])),
-                len(ents.get("switches", [])),
-            )
-
-            if not any(len(ents.get(k, [])) for k in ("sensors", "binary_sensors", "numbers", "selects", "texts", "switches")):
-                raise RuntimeError(
-                    f"Probing succeeded but discovered 0 usable values for {plant_name} ({host}). "
-                    "This usually means the controller rejected reads (auth/PIN/endpoint) or none of the bundle IDs exist on the device."
                 )
+                if error is None:
+                    return self._create_local_entry()
+                errors["base"] = error
+                # Offer the advanced (credentials/PIN) settings after a failure.
+                self._offer_advanced = True
 
-            controllers.append(
-                {
-                    CONF_PLANT_KEY: key,
-                    CONF_PLANT_NAME: plant_name,
-                    CONF_CONFIG_ID: str(plant.get(CONF_CONFIG_ID) or ""),
-                    CONF_SITE_ID: str(plant.get(CONF_SITE_ID) or ""),
-                    CONF_LANGUAGE: self._language,
-                    CONF_DEVICE_MODEL: device_model,
-                    CONF_HOST: host,
-                    CONF_PORT: DEFAULT_PORT,
-                    CONF_USERNAME: DEFAULT_USERNAME,
-                    CONF_PASSWORD: DEFAULT_PASSWORD,
-                    CONF_PIN: DEFAULT_PIN,
-                    CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL_SEC,
-                    CONF_SENSORS: ents.get("sensors", []),
-                    CONF_BINARY_SENSORS: ents.get("binary_sensors", []),
-                    CONF_NUMBERS: ents.get("numbers", []),
-                    CONF_SELECTS: ents.get("selects", []),
-                    CONF_TEXTS: ents.get("texts", []),
-                    CONF_SWITCHES: ents.get("switches", []),
-                    CONF_BUNDLE_STORAGE_KEY: bundle_storage_key,
-                }
-            )
+        schema_dict: Dict[Any, Any] = {
+            vol.Required(CONF_LOCAL_IP, default=self._last_host): str,
+        }
+        if self._offer_advanced:
+            schema_dict[vol.Optional("advanced", default=False)] = selector.BooleanSelector()
 
-        # Clear credentials from memory as soon as possible.
-        self._ots_user = None
-        self._ots_pass = None
-
-        # Unique per plant (one controller per entry).
-        uniq = str(controllers[0].get(CONF_PLANT_KEY) or "") if controllers else ""
-        if uniq:
-            await self.async_set_unique_id(f"{DOMAIN}:{uniq}"[:255])
-            self._abort_if_unique_id_configured()
-
-        title = str(controllers[0].get(CONF_PLANT_NAME) or "").strip() if controllers else ""
-        if not title:
-            title = "Climatix (Ochsner)"
-
-        return self.async_create_entry(
-            title=title,
-            data={CONF_CONTROLLERS: controllers},
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(schema_dict),
+            errors=errors,
         )
+
+    async def async_step_advanced(self, user_input: Optional[Dict[str, Any]] = None):
+        """Optional overrides for the rare plant without default credentials."""
+
+        errors: Dict[str, str] = {}
+        if user_input is not None:
+            host = str(user_input.get(CONF_LOCAL_IP) or "").strip()
+            self._last_host = host
+            if not host:
+                errors["base"] = "invalid_host"
+            elif self._host_already_configured(host):
+                return self.async_abort(reason="already_configured")
+            else:
+                await self.async_set_unique_id(f"{DOMAIN}:local:{host}"[:255])
+                self._abort_if_unique_id_configured()
+                error = await self._async_validate_and_scan(
+                    host=host,
+                    port=int(user_input.get(CONF_PORT) or DEFAULT_PORT),
+                    username=str(user_input.get(CONF_USERNAME) or DEFAULT_USERNAME),
+                    password=str(user_input.get(CONF_PASSWORD) or DEFAULT_PASSWORD),
+                    pin=str(user_input.get(CONF_PIN) or DEFAULT_PIN),
+                )
+                if error is None:
+                    return self._create_local_entry()
+                errors["base"] = error
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_LOCAL_IP, default=self._last_host): str,
+                vol.Optional(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
+                vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): str,
+                vol.Optional(CONF_PASSWORD, default=DEFAULT_PASSWORD): str,
+                vol.Optional(CONF_PIN, default=DEFAULT_PIN): str,
+            }
+        )
+        return self.async_show_form(step_id="advanced", data_schema=schema, errors=errors)
 
     async def async_step_import(self, user_input: Dict[str, Any]):
         # Import from YAML so the integration becomes a config entry.
@@ -465,6 +353,13 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         errors: Dict[str, str] = {}
 
         existing_options = dict(self.config_entry.options or {})
+        # The displayed language must MATCH the effective behavior: without
+        # a stored option the legacy per-controller CONF_LANGUAGE applies,
+        # so that is what the form shows (never "follow HA" while the
+        # runtime would resolve the controller language).
+        language_cur = str(existing_options.get(CONF_LANGUAGE) or "")
+        if language_cur not in LANGUAGE_OPTIONS:
+            language_cur = self._effective_language_default()
         current = int(existing_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SEC))
         poll_threshold_cur = int(existing_options.get(CONF_POLLING_THRESHOLD, DEFAULT_POLLING_THRESHOLD))
         max_ids_cur = int(existing_options.get(CONF_MAX_IDS_PER_READ_REQUEST, DEFAULT_MAX_IDS_PER_READ_REQUEST))
@@ -513,6 +408,18 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                             out[CONF_MAX_IDS_PER_READ_REQUEST] = max_ids
                             out[CONF_RESCAN_ON_START] = bool(user_input.get(CONF_RESCAN_ON_START, rescan_on_start))
 
+                            # Language of entity names / enum labels: every
+                            # SUBMITTED value is stored explicitly ("auto"
+                            # included, so it really follows HA) — what the
+                            # form showed is what the runtime does. Only a
+                            # never-submitted form keeps no key (legacy
+                            # per-controller CONF_LANGUAGE fallback, which
+                            # is also the displayed default then).
+                            language_sel = str(user_input.get(CONF_LANGUAGE) or language_cur)
+                            if language_sel not in LANGUAGE_OPTIONS:
+                                language_sel = language_cur
+                            out[CONF_LANGUAGE] = language_sel
+
                             # Ensure entity overrides always survive option updates.
                             if CONF_ENTITY_OVERRIDES not in out:
                                 out[CONF_ENTITY_OVERRIDES] = {}
@@ -520,6 +427,11 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                             # One-shot flag: if enabled, setup will rescan then clear it.
                             if bool(user_input.get(CONF_RESCAN_NOW, False)):
                                 out[CONF_RESCAN_NOW] = True
+
+                            # One-shot flag: run the accountless local catalog
+                            # scan on next setup and merge missing entities.
+                            if bool(user_input.get(CONF_LOCAL_SCAN_NOW, False)):
+                                out[CONF_LOCAL_SCAN_NOW] = True
 
                             if bool(user_input.get(CONF_REDOWNLOAD_BUNDLE, False)):
                                 self._pending_options = out
@@ -533,6 +445,16 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
+                vol.Optional(
+                    CONF_LANGUAGE,
+                    default=language_cur,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(LANGUAGE_OPTIONS),
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="language",
+                    )
+                ),
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
                     default=current,
@@ -569,12 +491,36 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(CONF_RESCAN_ON_START, default=rescan_on_start): selector.BooleanSelector(),
                 vol.Optional(CONF_RESCAN_NOW, default=rescan_now_default): selector.BooleanSelector(),
-                vol.Optional(CONF_REDOWNLOAD_BUNDLE, default=redownload_default): selector.BooleanSelector(),
-                vol.Optional("configure_entities", default=edit_entities_default): selector.BooleanSelector(),
+                vol.Optional(CONF_LOCAL_SCAN_NOW, default=False): selector.BooleanSelector(),
             }
         )
+        # The bundle re-download only makes sense for entries created from a
+        # cloud bundle; local-scan entries never had one.
+        if self._has_bundle_controllers():
+            schema = schema.extend({vol.Optional(CONF_REDOWNLOAD_BUNDLE, default=redownload_default): selector.BooleanSelector()})
+        schema = schema.extend({vol.Optional("configure_entities", default=edit_entities_default): selector.BooleanSelector()})
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    def _effective_language_default(self) -> str:
+        """What the runtime resolves WITHOUT a stored option: the first
+        controller's explicit CONF_LANGUAGE (legacy bundle entries store
+        e.g. "DE"), else follow-HA."""
+        controllers = self.config_entry.data.get(CONF_CONTROLLERS)
+        if isinstance(controllers, list):
+            for ctrl in controllers:
+                if isinstance(ctrl, dict):
+                    lang = explicit_language(ctrl.get(CONF_LANGUAGE))
+                    if lang:
+                        return lang
+        return LANGUAGE_AUTO
+
+    def _has_bundle_controllers(self) -> bool:
+        raw = self.config_entry.data.get(CONF_CONTROLLERS)
+        if not isinstance(raw, list):
+            # Legacy single-controller (YAML import) entries have no bundles.
+            return False
+        return any(isinstance(c, dict) and c.get(CONF_BUNDLE_STORAGE_KEY) for c in raw)
 
     def _iter_controllers(self) -> List[Dict[str, Any]]:
         raw = self.config_entry.data.get(CONF_CONTROLLERS)
