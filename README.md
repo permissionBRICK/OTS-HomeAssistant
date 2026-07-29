@@ -14,19 +14,17 @@ It's a way to locally read and control Ochsner heat pump settings via Home Assis
 
 
 ## 1) Installation
-### 1a) One-click install via HACS - recommended
+### One-click install via HACS - recommended
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=permissionBRICK&repository=OTS-HomeAssistant&category=integration)
 
-### 1b) Alternative: Manual install path via HACS
-Steps:
+#### Alternative: Manual install path via HACS
 1) In Home Assistant, go to **HACS** -> **Integrations**.
 2) Open the menu (top right) **Custom repositories**.
 3) Add this GitHub repo URL and set category to **Integration**.
 4) Search for **Ochsner Local OTS - Climatix Generic** in HACS and install.
 5) Restart Home Assistant.
 
-### 1c) Alternative: Manuall offline install path
-
+#### Offline alternative: Manual folder install path
 Copy this folder into your HA config directory:
 
 - `custom_components/ochsner_local_ots/`
