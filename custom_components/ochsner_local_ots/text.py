@@ -11,6 +11,8 @@ from homeassistant.config_entries import ConfigEntry
 
 from .api import ClimatixGenericApi, extract_first_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_ID,
@@ -63,6 +65,8 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
         self._base_url = base_url
         self._parent_device_name = str(cfg.get("device_name") or f"Climatix ({host})")
         self._device_model = str(cfg.get("device_model") or "Climatix")
+        self._device_serial = cfg.get("device_serial") or None
+        self._device_sw_version = cfg.get("device_sw_version") or None
         self._hc_uid = str(cfg.get(CONF_HEATING_CIRCUIT_UID) or "").strip()
         self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
 
@@ -82,6 +86,12 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
             else f"{host}:text:{self._read_id}".replace("=", "")
         )
 
+        # Local discovery flags (bundle entities never set these).
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
     @property
     def device_info(self) -> DeviceInfo:
         if self._hc_uid:
@@ -98,6 +108,8 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
             name=self._parent_device_name,
             manufacturer="Ochsner",
             model=self._device_model,
+            serial_number=self._device_serial,
+            sw_version=self._device_sw_version,
             configuration_url=self._base_url,
         )
 
@@ -138,6 +150,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         base_url: str = ctrl.get("base_url", f"http://{host}")
         device_name: str = ctrl.get("device_name", f"Climatix ({host})")
         device_model: str = ctrl.get("device_model", "Climatix")
+        device_serial = ctrl.get("device_serial")
+        device_sw_version = ctrl.get("device_sw_version")
         texts = ctrl.get("texts", [])
         for t in texts:
             entities.append(
@@ -146,7 +160,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     api=api,
                     host=host,
                     base_url=base_url,
-                    cfg=dict(t, device_name=device_name, device_model=device_model),
+                    cfg=dict(t, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version),
                 )
             )
     async_add_entities(entities)

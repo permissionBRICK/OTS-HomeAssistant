@@ -45,11 +45,16 @@ from .const import (
     CONF_CONTROLLERS,
     CONF_DEVICE_MODEL,
     CONF_PLANT_NAME,
+    CONF_SERIAL_NUMBER,
+    CONF_SW_VERSION,
     CONF_BUNDLE_STORAGE_KEY,
     CONF_LANGUAGE,
     CONF_RESCAN_NOW,
     CONF_RESCAN_ON_START,
     CONF_ENTITY_OVERRIDES,
+    CONF_DISCOVERY_SOURCE,
+    CONF_LOCAL_SCAN_NOW,
+    DISCOVERY_SOURCE_LOCAL,
     CONF_POLLING_MODE,
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
@@ -68,6 +73,7 @@ from .coordinator import ClimatixCoordinator
 
 from .bundle_generator import generate_entities_from_bundle
 from .flash_warnings import async_maybe_create_flash_wear_notifications
+from .local_scan import async_local_scan_merge, async_relocalize_controllers
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -562,6 +568,67 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 added_by_platform["switches"],
             )
 
+    # Accountless local catalog scan:
+    # - controllers created by the local discovery flow honor the same rescan
+    #   flags as bundle controllers (which skip them: no bundle_storage_key);
+    # - the one-shot "local_scan_now" option additionally enriches
+    #   bundle-based controllers from the local catalog (the migration path
+    #   for existing users: additions only, existing entities keep their
+    #   unique_ids and devices).
+    local_scan_now = bool(entry.options.get(CONF_LOCAL_SCAN_NOW, False))
+    has_local = any(c.get(CONF_DISCOVERY_SOURCE) == DISCOVERY_SOURCE_LOCAL for c in controllers)
+    if controllers and (local_scan_now or ((rescan_on_start or rescan_now) and has_local)):
+        try:
+            updated_controllers, local_added = await async_local_scan_merge(
+                hass,
+                controllers=controllers,
+                only_local_entries=not local_scan_now,
+                option_language=entry.options.get(CONF_LANGUAGE),
+            )
+        except Exception as err:  # noqa: BLE001
+            # Type only: aiohttp errors can embed the PIN-bearing request URL.
+            _LOGGER.warning("Local catalog scan failed: %s", type(err).__name__)
+        else:
+            metadata_changed = updated_controllers != controllers
+            controllers = updated_controllers
+            if any(local_added.values()) or metadata_changed:
+                try:
+                    hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: controllers})
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Failed to persist local-scan entities: %s", err)
+                _LOGGER.info("Local catalog scan added entities: %s", local_added)
+
+        if local_scan_now:
+            try:
+                hass.data.setdefault(DOMAIN, {}).setdefault("_skip_reload_once", set()).add(entry.entry_id)
+                new_opts = dict(entry.options)
+                new_opts.pop(CONF_LOCAL_SCAN_NOW, None)
+                hass.config_entries.async_update_entry(entry, options=new_opts)
+            except Exception:  # noqa: BLE001
+                pass
+
+    # Language-aware naming: re-resolve discovery display names and enum
+    # labels offline for the current language (options setting, per-
+    # controller CONF_LANGUAGE, or the HA language). Runs on every setup so
+    # a language change applies on reload without a rescan; unique_ids,
+    # entity_ids and devices never change, so this can never churn entities.
+    if isinstance(controllers_raw, list) and controllers:
+        try:
+            relocalized_controllers, relocalized = await async_relocalize_controllers(
+                hass,
+                controllers=controllers,
+                option_language=entry.options.get(CONF_LANGUAGE),
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Name relocalization skipped: %s", type(err).__name__)
+        else:
+            controllers = relocalized_controllers
+            if relocalized:
+                try:
+                    hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: controllers})
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Failed to persist relocalized names: %s", err)
+
     runtime_controllers: List[Dict[str, Any]] = []
     write_counts: Dict[str, int] = {}
     write_count_entities: Dict[str, Any] = {}
@@ -765,6 +832,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "base_url": base_url,
                 "device_name": str(ctrl.get(CONF_PLANT_NAME) or f"Climatix ({host})"),
                 "device_model": str(ctrl.get(CONF_DEVICE_MODEL) or "Climatix"),
+                "device_serial": str(ctrl.get(CONF_SERIAL_NUMBER) or "") or None,
+                "device_sw_version": str(ctrl.get(CONF_SW_VERSION) or "") or None,
                 "sensors": sensors,
                 "binary_sensors": binary_sensors,
                 "numbers": numbers,

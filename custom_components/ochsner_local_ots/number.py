@@ -5,12 +5,14 @@ from typing import Any, Dict, Optional
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
 from .api import ClimatixGenericApi, extract_first_numeric_value
 from .const import (
+    CONF_DIAGNOSTIC,
+    CONF_ENABLED_DEFAULT,
     CONF_HEATING_CIRCUIT_NAME,
     CONF_HEATING_CIRCUIT_UID,
     CONF_BUNDLE_MAX,
@@ -90,6 +92,8 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         self._base_url = base_url
         self._parent_device_name = str(cfg.get("device_name") or f"Climatix ({host})")
         self._device_model = str(cfg.get("device_model") or "Climatix")
+        self._device_serial = cfg.get("device_serial") or None
+        self._device_sw_version = cfg.get("device_sw_version") or None
         self._hc_uid = str(cfg.get(CONF_HEATING_CIRCUIT_UID) or "").strip()
         self._hc_name = str(cfg.get(CONF_HEATING_CIRCUIT_NAME) or "").strip()
         base_id = cfg.get(CONF_ID)
@@ -110,6 +114,12 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
 
         # Stable override key: do not depend on whether a bundle provides a UUID.
         override_key = f"{host}:number:{self._read_id}".replace("=", "")
+
+        # Local discovery flags (bundle entities never set these).
+        if cfg.get(CONF_ENABLED_DEFAULT) is False:
+            self._attr_entity_registry_enabled_default = False
+        if cfg.get(CONF_DIAGNOSTIC):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         # Apply UI overrides (options flow). These are keyed by unique_id.
         bundle_min = cfg.get(CONF_BUNDLE_MIN)
@@ -235,6 +245,8 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
             name=self._parent_device_name,
             manufacturer="Ochsner",
             model=self._device_model,
+            serial_number=self._device_serial,
+            sw_version=self._device_sw_version,
             configuration_url=self._base_url,
         )
 
@@ -275,6 +287,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         base_url: str = ctrl.get("base_url", f"http://{host}")
         device_name: str = ctrl.get("device_name", f"Climatix ({host})")
         device_model: str = ctrl.get("device_model", "Climatix")
+        device_serial = ctrl.get("device_serial")
+        device_sw_version = ctrl.get("device_sw_version")
         numbers = ctrl.get("numbers", [])
         for n in numbers:
             entities.append(
@@ -283,7 +297,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     api=api,
                     host=host,
                     base_url=base_url,
-                    cfg=dict(n, device_name=device_name, device_model=device_model),
+                    cfg=dict(n, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version),
                     entity_overrides=entity_overrides,
                 )
             )
