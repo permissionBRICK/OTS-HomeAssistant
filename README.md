@@ -14,12 +14,10 @@ It's a way to locally read and control Ochsner heat pump settings via Home Assis
 
 
 ## 1) Installation
-### 1a) Install via HACS - recommended
+### 1a) One-click install via HACS - recommended
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=permissionBRICK&repository=OTS-HomeAssistant&category=integration)
 
-Prereqs:
-- HACS is installed in Home Assistant.
-
+### 1b) Alternative: Manual install path via HACS
 Steps:
 1) In Home Assistant, go to **HACS** -> **Integrations**.
 2) Open the menu (top right) **Custom repositories**.
@@ -27,7 +25,7 @@ Steps:
 4) Search for **Ochsner Local OTS - Climatix Generic** in HACS and install.
 5) Restart Home Assistant.
 
-### 1b) Alternative - install the custom integration manually
+### 1c) Alternative: Manuall offline install path
 
 Copy this folder into your HA config directory:
 
@@ -35,13 +33,13 @@ Copy this folder into your HA config directory:
 
 After that restart Home Assistant.
 
-### 2) Add the integration into Home Assistant (accountless, IP-only)
+### 2) Add the integration into Home Assistant
 
 Steps:
 1) Add a new integration via the HA UI
 2) Search for Ochsner Local OTS
-3) Enter your local Heatpump IP Address - that's it. No cloud account, no OTS login. (The IP is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
-4) The integration scans the controller with its built-in datapoint catalog and creates all readable entities automatically. This takes a few seconds.
+3) Enter your local Heatpump IP Address (The IP is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
+4) The integration automatically scans the heat pump for any available sensors or controllable settings, and adds them to HA, this takes up to a minute.
 5) Done!
 
 ---
