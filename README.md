@@ -44,8 +44,6 @@ Steps:
 4) The integration scans the controller with its built-in datapoint catalog and creates all readable entities automatically. This takes a few seconds.
 5) Done!
 
-The standard Climatix credentials and PIN are used automatically. In the rare case your controller was reconfigured, the flow offers advanced settings (port / username / password / PIN) after a failed connection attempt.
-
 ---
 
 ## How does this work?
