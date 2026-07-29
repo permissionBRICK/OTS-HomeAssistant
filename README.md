@@ -46,27 +46,6 @@ Steps:
 
 The standard Climatix credentials and PIN are used automatically. In the rare case your controller was reconfigured, the flow offers advanced settings (port / username / password / PIN) after a failed connection attempt.
 
-#### What the local catalog scan can and cannot find (honest coverage)
-
-The accountless scan is a **best-effort local catalog scan**, not a promise of full parity with a cloud bundle:
-
-- The catalog ships the addresses extracted from the OCHSNER app **plus** everything known from a real reference plant (names, units, enum options, safe ranges, write bindings). On that reference plant the scan reproduces the bundle-based setup — **by construction**, because its datapoints seed the catalog: all 387 readable datapoint ids are found (392 distinct ids counting the five write-only ones), with identical units, platforms and device grouping. Display text depends on the chosen language: in **German** the names match the bundle exactly and only 10 enum option sets intentionally differ (the controller advertises states the bundle never knew — those show as raw controller tokens rather than invented labels); in **English** names and enum labels intentionally differ from the German bundle because they come from the app's English resources. Other plants benefit from every seeded datapoint they share with it, but this is not a universal 100% guarantee.
-- From the app alone (i.e. for datapoints the reference plant does not have), the measured ceiling is **53.3% of addresses** and **40.8% with a good human label**. Unknown or weakly-named points are still created, but as **disabled-by-default diagnostic entities** so they never clutter your setup.
-- Writable datapoints (setpoints, mode selectors, curve parameters, DHW boost, ...) are exposed as writable number/select/switch/text entities with exactly the same rules the bundle path uses. Destructive one-shot points (reset/factory/...) are created disabled-by-default.
-- Owner/customer name and network configuration datapoints are only created as disabled-by-default diagnostic entities.
-- Heating circuits are discovered generically (any number of circuits) and named with the names configured on your controller.
-
-Existing installations are fully preserved: entity identity — unique IDs, entity IDs, devices — never changes and upgrading never duplicates anything; only friendly display names may update to your language. Existing bundle-based entries can additionally run **"Local catalog scan now"** from the integration options to add any datapoints the local catalog knows on top of their bundle (additions only). The cloud-bundle re-download remains available for entries that were created with a bundle.
-
-#### Entity names and labels in your language (Deutsch / English)
-
-The controller itself cannot localize: its enum states are internal tokens (`Comfort*Off*Red*Norm*...`), so the integration ships a label catalog and resolves display text itself:
-
-- **German** names and enum labels come from the reference cloud bundle (the exact texts the OTS app shows German users), **English** ones from the OCHSNER app's own string resources. Names configured on your controller (heating-circuit names, plant model) always win regardless of language.
-- **New (local-scan) entries follow the Home Assistant language.** A legacy entry created from a cloud bundle keeps the language stored with that bundle until you choose otherwise. The integration's **options** offer Deutsch / English / follow Home Assistant; a saved choice applies on reload — offline, no rescan — and identity never changes.
-- Names re-resolve for all catalog datapoints, including bundle-created entities. Enum **labels** re-resolve where the raw controller tokens are known (all local-discovery enums); legacy bundle enums keep their original bundle labels — those are already proper display text, and guessing would be worse.
-- A state the label catalog does not know keeps its raw controller token (never an empty or invented label), and every selectable numeric value stays selectable.
-
 ---
 
 ## How does this work?
