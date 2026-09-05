@@ -33,12 +33,40 @@ After that restart Home Assistant.
 
 ### 2) Add the integration into Home Assistant
 
-Steps:
-1) Add a new integration via the HA UI
-2) Search for Ochsner Local OTS
-3) Enter your local Heatpump IP Address (The IP is displayed inside your Heatpump settings. Make sure to assign it a fixed IP address in your internet router.)
-4) The integration automatically scans the heat pump for any available sensors or controllable settings, and adds them to HA, this takes up to a minute.
-5) Done!
+After restarting Home Assistant, check **Settings → Devices & services** for a
+discovered Ochsner heat pump and click **Add**. The integration verifies the
+model and serial number before offering it, then scans its available sensors
+and controls when you adopt it.
+
+If no discovery card appears:
+
+1) Choose **Add integration → Ochsner Local OTS → Scan network**.
+2) Select the heat pump by its model and serial number, then confirm.
+3) Alternatively, choose **Enter address manually**. Advanced credentials/PIN
+   settings are offered after a failed connection attempt.
+
+Automatic cards use Home Assistant's DHCP/network discovery. Siemens Climatix
+MAC/hostname patterns are candidate hints, **not Ochsner identification and not
+guaranteed across all models**. The explicit network scan does not require
+these hints. Home Assistant must be able to reach the heat pump's LAN; check
+**Settings → System → Network** if the scan finds nothing. Initial discovery
+uses the standard local API credentials and port.
+
+Once the serial number is known, a fixed IP is optional. The integration keeps
+the last address and searches again if that address becomes unavailable or
+answers with a different serial. It switches only after verifying the saved
+serial at the new address. Existing entities, history, device associations,
+and entity overrides retain their identifiers. Older installations learn the
+serial from their working address on the next restart.
+
+Scans cover enabled private IPv4 subnets of up to /20, with at most 4096
+candidates, eight concurrent probes and a two-second timeout per candidate.
+A /24 scan can take about a minute; larger networks take longer. Recovery also
+tries the saved address's /24 when it is outside Home Assistant's selected
+subnets, which helps with routed/container setups. Unsuccessful recovery scans
+wait five minutes before trying again. Scanning is IPv4-only. For initial
+setup on a remote/VLAN network without a selected interface, enter a reachable
+controller address manually.
 
 ---
 

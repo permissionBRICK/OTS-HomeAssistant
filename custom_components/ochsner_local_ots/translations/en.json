@@ -2,11 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ochsner heat pump (local)",
-        "description": "Enter the local IP address of your heat pump. No cloud account is needed: the integration scans the controller with its built-in datapoint catalog (best effort; coverage varies by model, firmware and fitted options). Ensure this IP is static/reserved in your router.",
-        "data": {
-          "local_ip": "Local IP address",
-          "advanced": "Show advanced connection settings"
+        "title": "Ochsner heat pump",
+        "menu_options": {
+          "scan": "Scan network",
+          "manual": "Enter address manually"
         }
       },
       "advanced": {
@@ -19,17 +18,45 @@
           "password": "Password",
           "pin": "PIN"
         }
+      },
+      "manual": {
+        "title": "Ochsner heat pump (local)",
+        "description": "Enter your heat pump IP address or hostname. Once identified by serial number, address changes are recovered automatically.",
+        "data": {
+          "local_ip": "Local IP address",
+          "advanced": "Show advanced connection settings"
+        }
+      },
+      "scan": {
+        "title": "Find heat pumps"
+      },
+      "select_device": {
+        "title": "Choose a heat pump",
+        "data": {
+          "host": "Heat pump"
+        }
+      },
+      "discovery_confirm": {
+        "title": "{model}",
+        "description": "Found **{model}** at **{host}** (serial **{serial}**). Confirm to add this heat pump."
       }
     },
     "error": {
       "invalid_host": "Please enter a valid IP/hostname.",
       "cannot_connect": "Could not reach a Climatix controller at this IP (check the address and that the device is on your network).",
       "auth_failed": "The controller rejected the standard credentials. Use the advanced settings to enter your controller's username/password.",
-      "probe_failed": "Connected, but no catalog datapoint was readable. This usually means a non-default PIN — use the advanced settings to enter it."
+      "probe_failed": "Connected, but no catalog datapoint was readable. This usually means a non-default PIN — use the advanced settings to enter it.",
+      "identity_changed": "A different controller now responds at this address. Run discovery again."
     },
     "abort": {
-      "already_configured": "This controller is already configured."
-    }
+      "already_configured": "This controller is already configured.",
+      "not_ochsner": "No supported Ochsner controller identified.",
+      "no_devices_found": "No heat pumps found. Check Home Assistant’s network selection or enter the address manually."
+    },
+    "progress": {
+      "scan_network": "Searching the local network for heat pumps. This can take a few minutes."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {

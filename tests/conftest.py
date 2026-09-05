@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 PKG_DIR = REPO_ROOT / "custom_components" / "ochsner_local_ots"
 
 _PKG_NAME = "ots_local_lib"
@@ -23,7 +24,7 @@ def _load_lib() -> types.ModuleType:
         pkg.__path__ = [str(PKG_DIR)]  # type: ignore[attr-defined]
         sys.modules[_PKG_NAME] = pkg
 
-    for name in ("const", "catalog", "api", "discovery", "discovery_entities"):
+    for name in ("const", "catalog", "api", "network_discovery", "connection", "discovery", "discovery_entities"):
         full = f"{_PKG_NAME}.{name}"
         if full in sys.modules:
             continue

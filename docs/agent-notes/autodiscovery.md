@@ -1,0 +1,127 @@
+# Autodiscovery and dynamic addresses
+
+Issue: https://github.com/permissionBRICK/OTS-HomeAssistant/issues/16
+Branch: `feat/autodiscovery-dynamic-ip` (based independently on main).
+The DHW setpoint fix is separate: `feat/dhw-setpoint-controls`, PR #17.
+
+## Discovery contract and evidence
+
+- Home Assistant loads custom integration DHCP matchers after installation and
+  restart. The manifest uses `pol*`, `ochsner*`, `00A003*`, and registered device
+  MACs as hints. A discovery flow reads Ochsner model + serial registers before
+  offering a confirm-only card; a Siemens web server/banner alone is insufficient.
+- `pol*` and `00A003*` are not Ochsner-specific or universal. Siemens's
+  [Climatix IC getting-started guide](https://www.climatixic.com/documentation-html/pol/GettingStarted_EN/en-US/resources/012_ClimatixIC_GettingStarted_A6V101065428_en.pdf)
+  shows POL648_EB4A89 with 00-A0-03-EB-4A-89. The live AIRHAWK controller uses
+  POL688 and the same prefix. This corroborates a Climatix convention, not
+  coverage of all Ochsner controllers. `ochsner*` is a hostname heuristic.
+- Home Assistant cannot execute this integration's arbitrary subnet scan merely
+  because HACS downloaded it, before HA loads a flow/entry. For unfamiliar
+  DHCP hints, Add integration → Scan network starts the scan without IP input.
+  See [HA network discovery](https://developers.home-assistant.io/docs/network_discovery/)
+  and [DHCP manifests](https://developers.home-assistant.io/docs/creating_integration_manifest/#dhcp).
+- Identification reads model `BCP0c9VVAAE=`, serial `BCOOVNVVAAE=`, and optional
+  MAC `IgABAAAAAAA=`. Model and serial must contain actual non-placeholder
+  values. Successful HTTP status or protocol state codes do not qualify.
+- Automatic discovery uses default credentials/port; rediscovery uses stored
+  credentials when the address or registered MAC matches. Recovery always uses
+  the saved credentials/port. Manual setup remains available for overrides.
+
+## Persistence and recovery
+
+`host` is mutable connection data. `identity_key` is immutable:
+
+- New controllers: `serial:<serial>`.
+- Existing controllers: freeze their original host namespace so all existing
+  unique IDs, device associations, option keys and write-counter storage survive.
+  The parent device also gets the serial identifier and MAC connection.
+- Existing saved serials are never replaced by a different device's identity.
+  Entries without a serial learn it from their current working address; until
+  then they retain their previous fixed-address behavior.
+
+`SerialVerifiedApi` verifies identity before every read/write. A failed read or
+identity check can trigger a bounded scan. Recovery requires a single matching
+serial among the results, followed by another identity read at that address,
+then persists the host without reloading entities. A shared lock serializes
+scans across entries. Per-controller scan cooldown survives setup retries; it
+runs for five minutes after scan completion/cancellation. The wrapper never
+replays a failed write (the existing API's alternate endpoint casing behavior
+is unchanged). A read/write lock prevents concurrent recovery from changing a
+write's destination. This is device association checking, not cryptographic
+authentication of the unencrypted local controller API.
+
+Network scans use enabled RFC1918 IPv4 interfaces with prefixes /20 or smaller
+subnets. Budget: 4096 hosts, eight workers, two-second wall timeout per probe.
+An off-interface saved private IP gets a /24 fallback, prioritized over other
+subnets. This helps a NAT VM reach a known routed LAN but cannot infer an
+unknown LAN before initial setup. /24 takes at most roughly 64 seconds plus
+scheduling; a full /20 can take roughly 17 minutes. Cancellation stops workers.
+IPv6 discovery and unbounded scans of large/private routed networks are excluded.
+
+Device registry configuration URLs are updated when the address changes.
+DHCP rediscovery can update an existing entry and trigger reload immediately;
+polling recovery swaps its connection in place. Internal address persistence
+counts pending listener notifications so it cannot swallow the next options
+change or create a reload loop. Local catalog rescans reject a changed serial.
+
+## Verification (2026-09-05)
+
+- Python 3.14.7, Home Assistant 2026.9.1: 88 passed, 21 skipped, including real HA config
+  entries/device registry, discovery confirmation/progress, and HTTP simulation.
+- The HTTP simulation starts an old entry without a serial, learns identity,
+  then puts another pump at its old IP. Coordinator polling finds the original
+  serial at another IP; no value read goes to the replacement pump. Entity
+  factories retain all unique IDs after unload/setup; the device is not duplicated.
+- Negative tests cover missing/wrong/ambiguous serials, address reassignment
+  between scan and adoption, no write replay, scan cancellation/concurrency,
+  recovery throttling across setup retries, and options reload after recovery.
+- Live read-only scan of Christoph's 192.168.178.0/24 found one AIRHAWK518C11A at
+  192.168.178.80 in 60.2 seconds. A deliberately unreachable starting connection
+  recovered to that verified serial and read heating/cooling setpoints of
+  22.5, 17, 24 and 26 °C. No hardware settings or DHCP lease were changed.
+  Hardware has no DHW circuit. Serial/MAC values are omitted from these notes.
+- Actual router DHCP reassignment and discovery in Christoph's running HA UI
+  still need user acceptance testing. Tests exercise these behaviors with
+  simulated identities and real HA classes; they are not a running frontend test.
+
+Reproduce HA tests with Python supported by that HA release:
+
+```sh
+uv venv --python 3.14 .venv
+uv pip install --python .venv/bin/python homeassistant==2026.9.1 pytest pytest-asyncio aiodhcpwatcher==1.2.7 aiodiscover==3.3.2 cached-ipaddress==1.1.2
+.venv/bin/python -m pytest -q
+```
+
+The baseline test suite also contains tests skipped when old APK/bundle research
+inputs are absent; those inputs are not required by the integration.
+
+## HACS branch testing
+
+HACS's ordinary version dropdown lists releases/default branch, not arbitrary
+feature branches. HACS 2.0.5's update entity accepts an explicit `version` via
+`update.install`, and passes it to its repository downloader as a branch ref.
+Sources: [update entity](https://github.com/hacs/integration/blob/2.0.5/custom_components/hacs/update.py),
+[repository downloader](https://github.com/hacs/integration/blob/2.0.5/custom_components/hacs/repositories/base.py).
+
+1. Install this repository in HACS normally if it is not installed.
+2. In Developer Tools → Actions, select **Update: Install** (`update.install`).
+3. Select HACS's **Ochsner Local OTS** update entity as the target.
+4. Enable the optional **Version** field and enter `feat/autodiscovery-dynamic-ip`.
+5. Perform the action, then restart Home Assistant.
+6. Check discovery cards, or Add integration → Ochsner Local OTS → Scan network.
+   Existing configurations should retain their entities; no deletion/re-add is needed.
+7. To test a DHCP move, record a few existing entity IDs, change the controller's
+   reservation using the router's normal procedure, and let it obtain the new
+   address. Allow the recovery scan to finish. Verify the same device/entities
+   become available and the device's configuration link uses the new address.
+
+For the independent DHW fix, use `feat/dhw-setpoint-controls` in step 4 and run
+**Configure → Local catalog scan now** after restarting. Testing one branch
+replaces the other branch's code; the two changes are independent PRs.
+
+Return to a stable release with HACS → integration → Redownload, select the
+release and restart HA. Older code does not understand `identity_key`: reverting
+after creating serial-based entities or changing the address can create new
+entity/device IDs. Take an HA backup before those tests and restore it for a
+complete rollback. A code-only rollback retains the latest stored address but
+does not retain this branch's dynamic recovery or identity handling.
