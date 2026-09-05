@@ -74,7 +74,7 @@ from .const import (
 from .coordinator import ClimatixCoordinator
 from .connection import SerialVerifiedApi
 from .autodiscovery import (
-    async_find_controllers, async_register_controller, async_store_controllers,
+    async_find_cached_controller, async_find_controllers, async_register_controller, async_store_controllers,
     async_update_address, connection_from_controller,
 )
 from .network_discovery import async_probe, identity_key
@@ -824,6 +824,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             async def _discover(conn):
                 return await async_find_controllers(hass, conn)
 
+            async def _quick_discover(conn, current_ctrl=ctrl):
+                return await async_find_cached_controller(
+                    hass, conn, current_ctrl.get(CONF_MAC_ADDRESS)
+                )
+
             async def _on_address(found, key=stable_key, current_ctrl=ctrl):
                 if not async_update_address(hass, entry, key, found, reload=False):
                     raise RuntimeError("Controller configuration changed during recovery")
@@ -835,6 +840,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             inner_api = SerialVerifiedApi(
                 saved_conn, ctrl[CONF_SERIAL_NUMBER], _factory, _discover, _on_address,
                 recovery_state=recovery_state,
+                quick_discover=_quick_discover,
             )
 
         async def _on_write(host_key: str = stable_key) -> None:

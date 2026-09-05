@@ -63,18 +63,43 @@ async def async_find_controllers(
     async with lock:
         adapters = await network.async_get_adapters(hass)
         hosts = scan_hosts(adapters, conn.host)
-        # DHCP's cache is a fast path, not a required hostname/vendor filter.
-        get_cached = getattr(dhcp, "async_discovered_service_info", None)
-        if get_cached:
-            allowed_hosts = set(hosts)
-            cached = [info.ip for info in get_cached(hass) if info.ip in allowed_hosts]
-            hosts = list(dict.fromkeys(cached + hosts))
         session = async_get_clientsession(hass)
 
         async def probe(host):
             return await async_probe(session, replace(conn, host=host))
 
         return await async_discover(hosts, probe)
+
+
+async def async_find_cached_controller(
+    hass, conn: ClimatixGenericConnection, mac: str | None
+) -> list[ControllerIdentity]:
+    """Probe only the saved MAC's DHCP address, without enumerating the subnet.
+
+    The MAC locates a candidate; the connection still verifies the saved serial
+    before adopting it. No assumptions about vendor prefixes or hostnames apply.
+    """
+    get_cached = getattr(dhcp, "async_discovered_service_info", None)
+    if not mac or get_cached is None:
+        return []
+    try:
+        cached = get_cached(hass)
+    except KeyError:  # DHCP may not have finished setting up yet.
+        return []
+    expected = dr.format_mac(mac)
+    hosts = list(
+        dict.fromkeys(
+            info.ip
+            for info in cached
+            if dr.format_mac(info.macaddress) == expected and info.ip != conn.host
+        )
+    )
+    session = async_get_clientsession(hass)
+
+    async def probe(host):
+        return await async_probe(session, replace(conn, host=host))
+
+    return await async_discover(hosts, probe)
 
 
 def async_store_controllers(

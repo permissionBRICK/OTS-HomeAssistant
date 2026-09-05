@@ -39,8 +39,19 @@ The DHW setpoint fix is separate: `feat/dhw-setpoint-controls`, PR #17.
   Entries without a serial learn it from their current working address; until
   then they retain their previous fixed-address behavior.
 
-`SerialVerifiedApi` verifies identity before every read/write. A failed read or
-identity check can trigger a bounded scan. Recovery requires a single matching
+Full subnet scans are explicitly restricted (Christoph, 2026-09-05): only the
+user's **Scan network** menu action, or recovery after a configured pump becomes
+unavailable and quick discovery cannot find it. No periodic/background sweep
+runs merely because the integration is installed or polling a healthy pump.
+
+`SerialVerifiedApi` verifies identity before every read/write. After a failed
+datapoint read it rechecks the current controller; if that identity still
+responds, it retries the read without discovery. A failed identity check first
+tries HA's cached DHCP address matching the controller's saved MAC, independent
+of hostname/vendor prefix. This probes only that candidate, without enumerating
+adapters/subnets. Missing MAC/cache, an unreachable candidate or a wrong serial
+falls back to the bounded full scan. Quick recovery remains available during
+the full-scan cooldown. Recovery requires a single matching
 serial among the results, followed by another identity read at that address,
 then persists the host without reloading entities. A shared lock serializes
 scans across entries. Per-controller scan cooldown survives setup retries; it
@@ -66,7 +77,7 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
 
 ## Verification (2026-09-05)
 
-- Python 3.14.7, Home Assistant 2026.9.1: 93 passed, 21 skipped, including real HA config
+- Python 3.14.7, Home Assistant 2026.9.1: **103 passed, 21 skipped**, including real HA config
   entries/device registry, discovery confirmation/progress, and HTTP simulation.
 - The HTTP simulation starts an old entry without a serial, learns identity,
   then puts another pump at its old IP. Coordinator polling finds the original
@@ -75,6 +86,11 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
 - Negative tests cover missing/wrong/ambiguous serials, address reassignment
   between scan and adoption, no write replay, scan cancellation/concurrency,
   recovery throttling across setup retries, and options reload after recovery.
+- Quick recovery tests cover exact saved-MAC matching with a non-Siemens prefix,
+  no subnet enumeration, stale/missing/wrong-serial DHCP candidates, recovery
+  during the full-scan cooldown, and no discovery for healthy controllers or
+  isolated datapoint errors. The real HTTP/coordinator test covers both quick
+  recovery and the full-scan fallback while preserving entities.
 - Live read-only scan of Christoph's 192.168.178.0/24 found one AIRHAWK518C11A at
   192.168.178.80 in 60.2 seconds. A deliberately unreachable starting connection
   recovered to that verified serial and read heating/cooling setpoints of
@@ -162,7 +178,8 @@ Keep the existing entry. Record a few entity IDs and the parent device's URL.
 Let the controller obtain a different address through the router's normal DHCP
 procedure; do not change its address in the HA integration. Check that the same
 entities recover and the parent device URL changes. DHCP events can update the
-address immediately; otherwise the polling failure triggers the subnet sweep.
+address immediately; otherwise polling failure tries the cached DHCP address
+for the saved MAC first. Only a failed quick lookup triggers the subnet sweep.
 A /24 sweep can take about a minute, followed by up to five minutes between
 failed attempts. Restoring the original DHCP reservation can exercise recovery
 in the opposite direction. This changes network availability temporarily, but

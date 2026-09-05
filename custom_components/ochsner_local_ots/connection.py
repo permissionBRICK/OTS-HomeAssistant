@@ -36,12 +36,18 @@ class SerialVerifiedApi:
         ],
         on_address: Callable[[ControllerIdentity], Awaitable[None]],
         recovery_state: dict | None = None,
+        *,
+        quick_discover: Callable[
+            [ClimatixGenericConnection], Awaitable[list[ControllerIdentity]]
+        ]
+        | None = None,
     ) -> None:
         self.conn = conn
         self.serial = serial
         self._factory = factory
         self._api = factory(conn)
         self._discover = discover
+        self._quick_discover = quick_discover
         self._on_address = on_address
         self._recovery_state = recovery_state if recovery_state is not None else {}
         self._lock = asyncio.Lock()
@@ -60,6 +66,11 @@ class SerialVerifiedApi:
         return found
 
     async def _recover(self) -> None:
+        # Cached DHCP addresses remain usable during the full-scan cooldown.
+        if self._quick_discover is not None:
+            candidates = await self._quick_discover(self.conn)
+            if await self._connect(candidates):
+                return
         if time.monotonic() < self._recovery_state.get("next_scan", 0.0):
             raise ControllerUnavailable(
                 "Controller unavailable; waiting before another subnet scan"
@@ -71,8 +82,16 @@ class SerialVerifiedApi:
             # Leave a quiet interval even when a large subnet scan takes longer
             # than RECOVERY_INTERVAL, or setup is cancelled partway through.
             self._recovery_state["next_scan"] = time.monotonic() + RECOVERY_INTERVAL
+        if not await self._connect(candidates):
+            raise ControllerUnavailable(
+                "No verified controller with the saved serial number found"
+            )
+
+    async def _connect(self, candidates: list[ControllerIdentity]) -> bool:
         matches = [item for item in candidates if item.serial == self.serial]
         by_host = {item.host: item for item in matches}
+        if not by_host:
+            return False
         if len(by_host) != 1:
             raise ControllerUnavailable(
                 "No unambiguous controller with the saved serial number found"
@@ -80,9 +99,13 @@ class SerialVerifiedApi:
         found = next(iter(by_host.values()))
         conn = replace(self.conn, host=found.host)
         api = self._factory(conn)
-        await self._verify(api, conn.host)
+        try:
+            await self._verify(api, conn.host)
+        except Exception:  # noqa: BLE001 -- a stale quick-discovery result needs the full fallback
+            return False
         await self._on_address(found)
         self.conn, self._api = conn, api
+        return True
 
     async def _ensure_identity(self, on_http_request=None) -> None:
         try:
@@ -98,7 +121,9 @@ class SerialVerifiedApi:
                     ids, on_http_request=on_http_request
                 )
             except Exception:  # noqa: BLE001 -- retry reads only, after verifying the recovered identity
-                await self._recover()
+                # A failed datapoint read alone does not justify a subnet scan.
+                # Confirm that the controller itself is gone before recovery.
+                await self._ensure_identity(on_http_request)
                 return await getattr(self._api, method)(
                     ids, on_http_request=on_http_request
                 )

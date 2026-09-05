@@ -231,8 +231,9 @@ async def test_manual_scan_ignores_hostname_and_vendor_prefix(hass, monkeypatch)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("quick_hit", [False, True])
 async def test_setup_poll_recovery_and_reload_keep_entities(
-    hass, monkeypatch, unused_tcp_port
+    hass, monkeypatch, unused_tcp_port, quick_hit
 ):
     """Real HTTP API + real coordinator + entity factories across an IP change."""
     from aiohttp import ClientSession, web
@@ -294,6 +295,16 @@ async def test_setup_poll_recovery_and_reload_keep_entities(
     monkeypatch.setattr(integration, "async_find_controllers", find)
     session = ClientSession()
     monkeypatch.setattr(integration, "async_get_clientsession", lambda _: session)
+    monkeypatch.setattr(ad, "async_get_clientsession", lambda _: session)
+    monkeypatch.setattr(
+        ad.dhcp,
+        "async_discovered_service_info",
+        lambda _: (
+            [SimpleNamespace(ip=found.host, macaddress="00A003112233")]
+            if quick_hit
+            else []
+        ),
+    )
     context_token = current_entry.set(entry)
     entry._async_set_state(hass, ConfigEntryState.SETUP_IN_PROGRESS, None)
     try:
@@ -301,6 +312,7 @@ async def test_setup_poll_recovery_and_reload_keep_entities(
         entry._async_set_state(hass, ConfigEntryState.LOADED, None)
         await hass.async_block_till_done()
         reload.assert_not_awaited()
+        find.assert_not_awaited()
         saved = entry.data[CONF_CONTROLLERS][0]
         assert saved[CONF_SERIAL_NUMBER] == "123"
         assert saved[CONF_IDENTITY_KEY] == "127.0.0.1"
@@ -342,7 +354,7 @@ async def test_setup_poll_recovery_and_reload_keep_entities(
             len(dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id))
             == 1
         )
-        find.assert_awaited_once()
+        assert find.await_count == (0 if quick_hit else 1)
     finally:
         current_entry.reset(context_token)
         await integration.async_unload_entry(hass, entry)
@@ -425,3 +437,57 @@ async def test_user_scan_can_test_existing_pump_without_recreating_entry(
         )
     ] == [device_id]
     reload.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_quick_lookup_only_probes_saved_mac_without_subnet_scan(
+    hass, monkeypatch
+):
+    found = ControllerIdentity("192.168.1.3", "123", "AIRHAWK", "aa:bb:cc:11:22:33")
+    monkeypatch.setattr(
+        ad.dhcp,
+        "async_discovered_service_info",
+        lambda _: [
+            SimpleNamespace(ip="192.168.1.4", macaddress="00a003112233"),
+            SimpleNamespace(ip=found.host, macaddress="AABBCC112233"),
+            SimpleNamespace(ip=found.host, macaddress="aa-bb-cc-11-22-33"),
+            SimpleNamespace(ip="192.168.1.2", macaddress="AABBCC112233"),
+        ],
+    )
+    adapters = AsyncMock()
+    monkeypatch.setattr(ad.network, "async_get_adapters", adapters)
+    monkeypatch.setattr(ad, "async_get_clientsession", lambda _: None)
+    probe = AsyncMock(return_value=found)
+    monkeypatch.setattr(ad, "async_probe", probe)
+    conn = ad.connection_from_controller({CONF_HOST: "192.168.1.2"})
+    assert await ad.async_find_cached_controller(hass, conn, found.mac) == [found]
+    probe.assert_awaited_once()
+    assert probe.await_args.args[1].host == found.host
+    adapters.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cache_state", ["no_mac", "empty", "not_ready"])
+async def test_missing_quick_candidates_do_not_start_a_scan(
+    hass, monkeypatch, cache_state
+):
+    def cached(_):
+        if cache_state == "not_ready":
+            raise KeyError("dhcp")
+        return []
+
+    monkeypatch.setattr(ad.dhcp, "async_discovered_service_info", cached)
+    adapters, probe = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(ad.network, "async_get_adapters", adapters)
+    monkeypatch.setattr(ad, "async_probe", probe)
+    monkeypatch.setattr(ad, "async_get_clientsession", lambda _: None)
+    assert (
+        await ad.async_find_cached_controller(
+            hass,
+            ad.connection_from_controller({}),
+            None if cache_state == "no_mac" else "aa:bb:cc:11:22:33",
+        )
+        == []
+    )
+    adapters.assert_not_awaited()
+    probe.assert_not_awaited()
