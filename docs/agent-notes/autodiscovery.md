@@ -104,6 +104,12 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
   live flow/backend; it is not a browser-rendering test or an actual DHCP move.
 - Actual router DHCP reassignment and the first-install automatic discovery
   card on an empty HA instance still need user acceptance testing.
+- After testing, restored the production HA instance through HACS to `main`
+  (`f43d5b8`) and restarted, as requested. All 25 installed integration files
+  match that commit. All 441 entity registry records match the original
+  snapshot across every field; all 293 enabled entities are present and none
+  are unavailable. The existing entry is loaded. No backup restore or entry
+  removal was necessary. Leave production on main after further tests too.
 
 Reproduce HA tests with Python supported by that HA release:
 
