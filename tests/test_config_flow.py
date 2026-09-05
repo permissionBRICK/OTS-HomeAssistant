@@ -134,7 +134,8 @@ def make_options_flow(options=None, data=None):
 
     entry = SimpleNamespace(options=dict(options or {}), data=dict(data or {}))
     flow = cf.ClimatixGenericOptionsFlowHandler(entry)
-    flow.hass = None
+    flow.handler = "test-entry"
+    flow.hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_known_entry=lambda _: entry))
     return flow
 
 
