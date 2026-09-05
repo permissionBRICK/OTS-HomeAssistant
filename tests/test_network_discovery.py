@@ -236,3 +236,80 @@ def test_failed_write_is_not_replayed(connection, net, catalog_mod):
         discover.assert_not_awaited()
 
     asyncio.run(scenario())
+
+
+def test_quick_recovery_works_during_full_scan_cooldown(connection, net, catalog_mod):
+    async def scenario():
+        found = net.ControllerIdentity("192.168.1.3", "123", "AIRHAWK")
+        api, _, full_scan, saved = make_connection(
+            connection,
+            net,
+            catalog_mod,
+            {found.host: "123"},
+            [],
+            {"next_scan": float("inf")},
+        )
+        quick = AsyncMock(return_value=[found])
+        api._quick_discover = quick
+        assert await api.read(["x"]) == {"values": {"x": 22.5}}
+        quick.assert_awaited_once()
+        full_scan.assert_not_awaited()
+        saved.assert_awaited_once_with(found)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("quick_result", ["missing", "wrong_serial", "stale"])
+def test_full_scan_only_after_quick_lookup_fails(
+    connection, net, catalog_mod, quick_result
+):
+    async def scenario():
+        found = net.ControllerIdentity("192.168.1.3", "123", "AIRHAWK")
+        api, _, full_scan, saved = make_connection(
+            connection, net, catalog_mod, {found.host: "123"}, [found]
+        )
+        order = []
+
+        async def quick(_):
+            order.append("quick")
+            if quick_result == "missing":
+                return []
+            return [
+                net.ControllerIdentity(
+                    "192.168.1.4",
+                    "OTHER" if quick_result == "wrong_serial" else "123",
+                    "AIRHAWK",
+                )
+            ]
+
+        async def full(_):
+            order.append("full")
+            return [found]
+
+        api._quick_discover = quick
+        full_scan.side_effect = full
+        await api.read(["x"])
+        assert order == ["quick", "full"]
+        saved.assert_awaited_once_with(found)
+
+    asyncio.run(scenario())
+
+
+def test_healthy_controller_and_datapoint_error_do_not_discover(
+    connection, net, catalog_mod
+):
+    async def scenario():
+        api, _, full_scan, saved = make_connection(
+            connection, net, catalog_mod, {"192.168.1.2": "123"}, []
+        )
+        quick = AsyncMock()
+        api._quick_discover = quick
+        await api.read(["x"])
+        api._api.read = AsyncMock(side_effect=ValueError("Invalid datapoint"))
+        with pytest.raises(ValueError, match="Invalid datapoint"):
+            await api.read(["bad_id"])
+        quick.assert_not_awaited()
+        full_scan.assert_not_awaited()
+        saved.assert_not_awaited()
+
+    asyncio.run(scenario())

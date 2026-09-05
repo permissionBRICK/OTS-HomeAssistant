@@ -53,18 +53,25 @@ these hints. Home Assistant must be able to reach the heat pump's LAN; check
 uses the standard local API credentials and port.
 
 Once the serial number is known, a fixed IP is optional. The integration keeps
-the last address and searches again if that address becomes unavailable or
-answers with a different serial. It switches only after verifying the saved
+the last address and first checks Home Assistant's cached DHCP address for the
+saved MAC if that address becomes unavailable or answers with a different serial.
+It switches only after verifying the saved
 serial at the new address. Existing entities, history, device associations,
 and entity overrides retain their identifiers. Older installations learn the
 serial from their working address on the next restart.
 
-Scans cover enabled private IPv4 subnets of up to /20, with at most 4096
+**Full subnet scans run only when you choose Scan network, or when a configured
+pump is unavailable and quick discovery cannot find it.** Installation, healthy
+polling and ordinary DHCP discovery events do not start a full scan. Quick
+recovery does not require a particular hostname or MAC vendor prefix.
+
+Full scans cover enabled private IPv4 subnets of up to /20, with at most 4096
 candidates, eight concurrent probes and a two-second timeout per candidate.
 A /24 scan can take about a minute; larger networks take longer. Recovery also
 tries the saved address's /24 when it is outside Home Assistant's selected
 subnets, which helps with routed/container setups. Unsuccessful recovery scans
-wait five minutes before trying again. Scanning is IPv4-only. For initial
+wait five minutes before trying again; cached DHCP recovery remains available
+during that wait. Scanning is IPv4-only. For initial
 setup on a remote/VLAN network without a selected interface, enter a reachable
 controller address manually.
 
