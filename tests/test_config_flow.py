@@ -1,6 +1,5 @@
-"""IP-only onboarding: the user step asks for the IP address and nothing
-else; advanced credential overrides only appear after a failure; no cloud or
-bundle step is reachable during onboarding.
+"""Local onboarding: network scan or manual address, with advanced credential
+overrides only after a failure; no cloud or bundle step during onboarding.
 
 These tests import the real config flow and therefore need Home Assistant
 (they run in the project venv); they are skipped when HA is unavailable.
@@ -44,10 +43,13 @@ def schema_keys(result):
     return [str(k.schema) for k in result["data_schema"].schema]
 
 
-def test_user_step_asks_only_for_ip():
+def test_user_step_offers_scan_and_manual_address():
     flow = make_flow()
     result = run(flow.async_step_user(None))
-    assert result["type"] == "form" and result["step_id"] == "user"
+    assert result["type"] == "menu"
+    assert result["menu_options"] == ["scan", "manual"]
+    result = run(flow.async_step_manual(None))
+    assert result["type"] == "form" and result["step_id"] == "manual"
     assert schema_keys(result) == ["local_ip"]
 
 
@@ -134,7 +136,8 @@ def make_options_flow(options=None, data=None):
 
     entry = SimpleNamespace(options=dict(options or {}), data=dict(data or {}))
     flow = cf.ClimatixGenericOptionsFlowHandler(entry)
-    flow.hass = None
+    flow.handler = "test-entry"
+    flow.hass = SimpleNamespace(config_entries=SimpleNamespace(async_get_known_entry=lambda _: entry))
     return flow
 
 
@@ -192,6 +195,6 @@ def test_options_flow_language_setting():
 
 def test_onboarding_user_step_has_no_language_field():
     flow = make_flow()
-    res = run(flow.async_step_user(None))
+    res = run(flow.async_step_manual(None))
     schema_keys = [str(k) for k in res["data_schema"].schema]
     assert schema_keys == ["local_ip"]

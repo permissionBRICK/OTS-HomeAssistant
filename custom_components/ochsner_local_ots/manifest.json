@@ -9,6 +9,13 @@
     "@permissionBRICK"
   ],
   "config_flow": true,
+  "dependencies": ["network", "dhcp"],
+  "dhcp": [
+    {"hostname": "pol*"},
+    {"hostname": "ochsner*"},
+    {"macaddress": "00A003*"},
+    {"registered_devices": true}
+  ],
   "iot_class": "local_polling",
   "integration_type": "device"
 }

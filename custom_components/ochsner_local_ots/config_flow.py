@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -23,6 +24,8 @@ from .const import (
     CONF_DISCOVERY_SOURCE,
     CONF_ENTITY_OVERRIDES,
     CONF_ID,
+    CONF_IDENTITY_KEY,
+    CONF_MAC_ADDRESS,
     CONF_LANGUAGE,
     CONF_LOCAL_SCAN_NOW,
     CONF_MAX,
@@ -64,6 +67,12 @@ from .const import (
 
 from .bundle_refresh import async_redownload_bundles_and_merge
 from .catalog import explicit_language
+from .autodiscovery import (
+    async_find_controllers, async_update_address, connection_from_controller,
+    controllers_from_entry,
+)
+from .network_discovery import ControllerIdentity, async_probe, identity_key, serial_key
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,6 +108,9 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._plant_model: Optional[str] = None
         self._plant_serial: Optional[str] = None
         self._plant_sw_version: Optional[str] = None
+        self._discovered: ControllerIdentity | None = None
+        self._network_task: asyncio.Task | None = None
+        self._network_results: list[ControllerIdentity] = []
 
     def _host_already_configured(self, host: str) -> bool:
         host = host.strip()
@@ -154,6 +166,9 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # settings.
             return "probe_failed"
 
+        if self._discovered and scan.plant_serial != self._discovered.serial:
+            return "identity_changed"
+
         self._scanned_entities = entities
         self._catalog_version = catalog.catalog_version
         self._plant_model = scan.plant_model
@@ -182,9 +197,11 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         host = str(self._conn.get(CONF_HOST) or "")
         # Pump-first naming: the plant/model type read from the controller
         # ("Anlagentyp", e.g. "AIRHAWK518C11A") names the HA device.
-        title = f"{self._plant_model} ({host})" if self._plant_model else f"Ochsner ({host})"
+        label = self._plant_serial or host
+        title = f"{self._plant_model or 'Ochsner'} ({label})"
         entities = self._scanned_entities or {}
         controller: Dict[str, Any] = {
+            CONF_IDENTITY_KEY: serial_key(self._plant_serial) if self._plant_serial else host,
             CONF_PLANT_NAME: title,
             CONF_DEVICE_MODEL: self._plant_model or "Climatix",
             CONF_SERIAL_NUMBER: self._plant_serial,
@@ -200,9 +217,117 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_TEXTS: entities.get("texts", []),
             CONF_SWITCHES: entities.get("switches", []),
         }
+        if self._discovered and self._discovered.mac:
+            controller[CONF_MAC_ADDRESS] = self._discovered.mac
         return self.async_create_entry(title=title, data={CONF_CONTROLLERS: [controller]})
 
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
+        if user_input is not None:
+            return await self.async_step_manual(user_input)
+        return self.async_show_menu(step_id="user", menu_options=["scan", "manual"])
+
+    async def async_step_scan(self, user_input=None):
+        if self._network_task is None:
+            self._network_task = self.hass.async_create_task(
+                async_find_controllers(self.hass, connection_from_controller({})),
+                "Ochsner network discovery",
+            )
+        if not self._network_task.done():
+            return self.async_show_progress(
+                step_id="scan", progress_action="scan_network", progress_task=self._network_task
+            )
+        try:
+            self._network_results = self._network_task.result()
+        except Exception:
+            self._network_results = []
+        self._network_task = None
+        return self.async_show_progress_done(next_step_id="select_device")
+
+    async def async_step_select_device(self, user_input=None):
+        if not self._network_results:
+            return self.async_abort(reason="no_devices_found")
+        if user_input is not None:
+            found = next((item for item in self._network_results if item.host == user_input.get(CONF_HOST)), None)
+            if found:
+                return await self._async_offer_discovery(found)
+        return self.async_show_form(
+            step_id="select_device",
+            data_schema=vol.Schema({vol.Required(CONF_HOST): vol.In({
+                item.host: f"{item.model} ({item.host}, {item.serial})" for item in self._network_results
+            })}),
+        )
+
+    async def async_step_dhcp(self, discovery_info):
+        # Hostname/OUI are only hints. Read the Ochsner application identity.
+        conn = connection_from_controller({CONF_HOST: discovery_info.ip})
+        for entry in self._async_current_entries():
+            for ctrl in controllers_from_entry(entry):
+                mac = str(ctrl.get(CONF_MAC_ADDRESS) or "").replace(":", "").lower()
+                if ctrl.get(CONF_HOST) == discovery_info.ip or (mac and mac == discovery_info.macaddress.lower()):
+                    conn = connection_from_controller({**ctrl, CONF_HOST: discovery_info.ip})
+        found = await async_probe(async_get_clientsession(self.hass), conn)
+        if found is None:
+            return self.async_abort(reason="not_ochsner")
+        return await self._async_offer_discovery(found)
+
+    async def _async_offer_discovery(self, found):
+        self._discovered = found
+        for entry in self._async_current_entries():
+            for ctrl in controllers_from_entry(entry):
+                if ctrl.get(CONF_SERIAL_NUMBER) == found.serial:
+                    async_update_address(self.hass, entry, identity_key(ctrl), found, reload=True)
+                    return self.async_abort(reason="already_configured")
+                if ctrl.get(CONF_HOST) == found.host:
+                    return self.async_abort(reason="already_configured")
+        await self.async_set_unique_id(f"{DOMAIN}:{serial_key(found.serial)}")
+        self._abort_if_unique_id_configured()
+        self.context["title_placeholders"] = {"name": f"{found.model} ({found.serial})"}
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(self, user_input=None):
+        if self._discovered is None:
+            return self.async_abort(reason="not_ochsner")
+        errors = {}
+        if user_input is not None:
+            conn = connection_from_controller({CONF_HOST: self._discovered.host})
+            found = await async_probe(async_get_clientsession(self.hass), conn)
+            if found is None:
+                errors["base"] = "cannot_connect"
+            elif found.serial != self._discovered.serial:
+                errors["base"] = "identity_changed"
+            else:
+                error = await self._async_validate_and_scan(
+                    host=conn.host, port=conn.port, username=conn.username,
+                    password=conn.password, pin=conn.pin,
+                )
+                if error is None:
+                    return await self._async_finish_local_entry()
+                errors["base"] = error
+        self._set_confirm_only()
+        return self.async_show_form(
+            step_id="discovery_confirm", data_schema=vol.Schema({}), errors=errors,
+            description_placeholders={"model": self._discovered.model,
+                                      "host": self._discovered.host,
+                                      "serial": self._discovered.serial},
+        )
+
+    async def _async_finish_local_entry(self):
+        if self._plant_serial:
+            for entry in self._async_current_entries():
+                for ctrl in controllers_from_entry(entry):
+                    if ctrl.get(CONF_SERIAL_NUMBER) == self._plant_serial:
+                        found = ControllerIdentity(
+                            self._conn[CONF_HOST], self._plant_serial,
+                            self._plant_model or "Climatix",
+                            self._discovered.mac if self._discovered else None,
+                        )
+                        async_update_address(self.hass, entry, identity_key(ctrl), found, reload=True)
+                        return self.async_abort(reason="already_configured")
+            await self.async_set_unique_id(f"{DOMAIN}:{serial_key(self._plant_serial)}")
+            self._abort_if_unique_id_configured()
+        return self._create_local_entry()
+
+    async def async_step_manual(self, user_input: Optional[Dict[str, Any]] = None):
         """IP-only onboarding: local catalog scan, no cloud account, no bundle."""
 
         errors: Dict[str, str] = {}
@@ -228,7 +353,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     pin=DEFAULT_PIN,
                 )
                 if error is None:
-                    return self._create_local_entry()
+                    return await self._async_finish_local_entry()
                 errors["base"] = error
                 # Offer the advanced (credentials/PIN) settings after a failure.
                 self._offer_advanced = True
@@ -240,7 +365,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             schema_dict[vol.Optional("advanced", default=False)] = selector.BooleanSelector()
 
         return self.async_show_form(
-            step_id="user",
+            step_id="manual",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
@@ -267,7 +392,7 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     pin=str(user_input.get(CONF_PIN) or DEFAULT_PIN),
                 )
                 if error is None:
-                    return self._create_local_entry()
+                    return await self._async_finish_local_entry()
                 errors["base"] = error
 
         schema = vol.Schema(
@@ -584,7 +709,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
 
         controllers = self._iter_controllers()
         for ctrl in controllers:
-            host = str(ctrl.get(CONF_HOST) or "").strip()
+            host = identity_key(ctrl)
             plant_name = str(ctrl.get(CONF_PLANT_NAME) or host or "controller")
 
             for s in list(ctrl.get(CONF_SENSORS, []) or []):
@@ -678,7 +803,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     def _find_number_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
         controllers = self._iter_controllers()
         for ctrl in controllers:
-            host = str(ctrl.get(CONF_HOST) or "").strip()
+            host = identity_key(ctrl)
             for n in list(ctrl.get(CONF_NUMBERS, []) or []):
                 if not isinstance(n, dict):
                     continue
@@ -693,7 +818,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     def _find_select_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
         controllers = self._iter_controllers()
         for ctrl in controllers:
-            host = str(ctrl.get(CONF_HOST) or "").strip()
+            host = identity_key(ctrl)
             for sel in list(ctrl.get(CONF_SELECTS, []) or []):
                 if not isinstance(sel, dict):
                     continue
@@ -708,7 +833,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     def _find_sensor_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
         controllers = self._iter_controllers()
         for ctrl in controllers:
-            host = str(ctrl.get(CONF_HOST) or "").strip()
+            host = identity_key(ctrl)
             for s in list(ctrl.get(CONF_SENSORS, []) or []):
                 if not isinstance(s, dict):
                     continue
@@ -723,7 +848,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
     def _find_binary_sensor_cfg_by_unique_id(self, entity_unique_id: str) -> Optional[Dict[str, Any]]:
         controllers = self._iter_controllers()
         for ctrl in controllers:
-            host = str(ctrl.get(CONF_HOST) or "").strip()
+            host = identity_key(ctrl)
             for bs in list(ctrl.get(CONF_BINARY_SENSORS, []) or []):
                 if not isinstance(bs, dict):
                     continue
