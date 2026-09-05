@@ -68,10 +68,14 @@ def test_builder_counts_and_provenance(builder):
     # Reference seed: all 387 primary/read ids survive membership (backward
     # compatibility depends on it), plus confirmed-circuit propagation.
     assert stats["reference_points"] >= 387
-    # Writability only ever comes from reference/bundle evidence, never APK-only.
+    # Writability requires reference/bundle or explicitly reviewed APK settings.
     for p in cat["points"]:
         if p.get("write_id"):
-            assert "reference" in p["sources"] or "hc_template" in p["sources"]
+            assert (
+                "reference" in p["sources"]
+                or "hc_template" in p["sources"]
+                or (p["id"] in builder.APK_NUMBER_BINDINGS and p.get("write_source") == "apk_settings")
+            )
 
 
 def test_technical_names_disabled_but_included(builder):
