@@ -66,7 +66,7 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
 
 ## Verification (2026-09-05)
 
-- Python 3.14.7, Home Assistant 2026.9.1: 89 passed, 21 skipped, including real HA config
+- Python 3.14.7, Home Assistant 2026.9.1: 93 passed, 21 skipped, including real HA config
   entries/device registry, discovery confirmation/progress, and HTTP simulation.
 - The HTTP simulation starts an old entry without a serial, learns identity,
   then puts another pump at its old IP. Coordinator polling finds the original
@@ -80,9 +80,14 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
   recovered to that verified serial and read heating/cooling setpoints of
   22.5, 17, 24 and 26 °C. No hardware settings or DHCP lease were changed.
   Hardware has no DHW circuit. Serial/MAC values are omitted from these notes.
-- Actual router DHCP reassignment and discovery in Christoph's running HA UI
-  still need user acceptance testing. Tests exercise these behaviors with
-  simulated identities and real HA classes; they are not a running frontend test.
+- Live HA 2026.9.0 / HACS 2.0.5: installed the branch, restarted HA, and used
+  the actual configuration-flow API behind the UI. Add integration → Scan
+  network found the existing pump in 65.1 seconds; selecting it returned
+  `already_configured`. All 441 original entity IDs, unique IDs and device
+  associations survived. No entry was deleted/recreated. This validates the
+  live flow/backend; it is not a browser-rendering test or an actual DHCP move.
+- Actual router DHCP reassignment and the first-install automatic discovery
+  card on an empty HA instance still need user acceptance testing.
 
 Reproduce HA tests with Python supported by that HA release:
 

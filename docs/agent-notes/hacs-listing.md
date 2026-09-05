@@ -19,8 +19,8 @@ Sources:
 | Root `hacs.json` with a name | Already satisfied |
 | Required integration manifest fields | Already present; key order corrected for Hassfest |
 | Brand icons | Already registered in [home-assistant/brands](https://github.com/home-assistant/brands/tree/master/custom_integrations/ochsner_local_ots) (`icon.png`, `icon@2x.png`) |
-| HACS validation without ignored checks | Workflow added in PR #18; inspect its run before release |
-| Hassfest validation | Workflow added in PR #18; official container passes locally |
+| HACS validation without ignored checks | Passed on PR #18; recheck the release commit |
+| Hassfest validation | Passed on PR #18 and in the official local container |
 | New release after successful validation | Pending merge, green Actions runs, and release |
 | Entry in `hacs/default` | Not present; submit after the release prerequisite is met |
 
@@ -51,3 +51,5 @@ Action references are pinned, with Dependabot configured to update them.
 The integration need not become a Home Assistant Core integration. HACS default
 listing is a separate submission/review process. No release or default-list
 submission is made as part of this preparation PR.
+
+Both validators passed on commit `3205bc8`: [Actions run](https://github.com/permissionBRICK/OTS-HomeAssistant/actions/runs/33998236992).
