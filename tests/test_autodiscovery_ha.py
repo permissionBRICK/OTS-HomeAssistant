@@ -378,3 +378,50 @@ async def test_empty_network_scan_explains_manual_fallback(hass, monkeypatch):
         await result["progress_task"]
         await flow.async_step_scan()
     assert (await flow.async_step_select_device())["reason"] == "no_devices_found"
+
+
+@pytest.mark.asyncio
+async def test_user_scan_can_test_existing_pump_without_recreating_entry(
+    hass, monkeypatch
+):
+    """The documented non-destructive discovery test includes configured pumps."""
+    found = ControllerIdentity("192.168.1.2", "123", "AIRHAWK", "00:a0:03:11:22:33")
+    controller = {
+        CONF_HOST: found.host,
+        CONF_IDENTITY_KEY: found.host,
+        CONF_SERIAL_NUMBER: found.serial,
+        CONF_DEVICE_MODEL: found.model,
+        CONF_MAC_ADDRESS: found.mac,
+        CONF_SENSORS: [{CONF_ID: "temperature", CONF_NAME: "Temperature"}],
+    }
+    entry = add_entry(hass, [controller], {CONF_SCAN_INTERVAL: 45})
+    original_data, original_options = dict(entry.data), dict(entry.options)
+    reload = AsyncMock()
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+    entry.add_update_listener(_async_update_listener)
+    ad.async_register_controller(hass, entry, controller, "http://192.168.1.2:80")
+    device_id = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)[
+        0
+    ].id
+    monkeypatch.setattr(cf, "async_find_controllers", AsyncMock(return_value=[found]))
+    flow = flow_for(hass)
+    flow.context = {"source": "user"}
+    result = await flow.async_step_scan()
+    if result["type"] == FlowResultType.SHOW_PROGRESS:
+        await result["progress_task"]
+        await flow.async_step_scan()
+    assert (await flow.async_step_select_device())["step_id"] == "select_device"
+    result = await flow.async_step_select_device({CONF_HOST: found.host})
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == [entry]
+    assert entry.data == original_data
+    assert entry.options == original_options
+    assert [
+        device.id
+        for device in dr.async_entries_for_config_entry(
+            dr.async_get(hass), entry.entry_id
+        )
+    ] == [device_id]
+    reload.assert_not_awaited()

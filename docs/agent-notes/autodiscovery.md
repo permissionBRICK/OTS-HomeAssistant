@@ -66,7 +66,7 @@ change or create a reload loop. Local catalog rescans reject a changed serial.
 
 ## Verification (2026-09-05)
 
-- Python 3.14.7, Home Assistant 2026.9.1: 88 passed, 21 skipped, including real HA config
+- Python 3.14.7, Home Assistant 2026.9.1: 89 passed, 21 skipped, including real HA config
   entries/device registry, discovery confirmation/progress, and HTTP simulation.
 - The HTTP simulation starts an old entry without a serial, learns identity,
   then puts another pump at its old IP. Coordinator polling finds the original
@@ -125,3 +125,40 @@ after creating serial-based entities or changing the address can create new
 entity/device IDs. Take an HA backup before those tests and restore it for a
 complete rollback. A code-only rollback retains the latest stored address but
 does not retain this branch's dynamic recovery or identity handling.
+
+## Testing while preserving the existing installation
+
+Install the discovery branch and restart HA while retaining the existing
+Ochsner entry. Let it finish loading so legacy identity metadata can be learned.
+
+### Read-only discovery test
+
+1. Open **Settings → Devices & services → Add integration → Ochsner Local OTS**.
+2. Choose **Scan network**. The results deliberately include configured pumps.
+3. Check that the model, serial and IP correspond to your existing pump.
+4. Select it. **Already configured** is the expected successful outcome: the
+   scanner identified it and the serial check prevented a duplicate entry.
+5. Check your existing device/entity IDs. They should be unchanged. When the
+   stored address/identity metadata already matches, this test does not reload
+   the entry or change its options. You can also stop at the results list.
+
+An automatic DHCP discovery card is deliberately suppressed for a configured
+serial, including disabled entries. Disabling the entry does not turn it into
+an unconfigured device. To test the exact first-install card, use a temporary
+Home Assistant instance with its own empty configuration on the same LAN,
+install this branch there, and restart that instance. Leave the production
+configuration untouched. Stop at the discovered card; adoption is unnecessary
+to verify that the automatic advertisement appears. A NAT-only test VM might
+not receive the pump LAN's DHCP/discovery information.
+
+### Address recovery test
+
+Keep the existing entry. Record a few entity IDs and the parent device's URL.
+Let the controller obtain a different address through the router's normal DHCP
+procedure; do not change its address in the HA integration. Check that the same
+entities recover and the parent device URL changes. DHCP events can update the
+address immediately; otherwise the polling failure triggers the subnet sweep.
+A /24 sweep can take about a minute, followed by up to five minutes between
+failed attempts. Restoring the original DHCP reservation can exercise recovery
+in the opposite direction. This changes network availability temporarily, but
+requires no deletion/recreation of entries or entities.
