@@ -97,7 +97,7 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
         if self._hc_uid:
             return DeviceInfo(
                 identifiers={(DOMAIN, f"{self._host}:hc:{self._hc_uid}")},
-                via_device=(DOMAIN, self._host),
+                via_device_id=self.coordinator.device_id,
                 name=self._hc_name or "Heating circuit",
                 manufacturer="Ochsner",
                 model=self._device_model,

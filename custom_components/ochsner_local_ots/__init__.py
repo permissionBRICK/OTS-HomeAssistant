@@ -883,7 +883,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise
 
         base_url = api.base_url
-        async_register_controller(hass, entry, ctrl, base_url)
+        coordinator.device_id = async_register_controller(hass, entry, ctrl, base_url).id
         runtime_controllers.append(
             {
                 "api": api,

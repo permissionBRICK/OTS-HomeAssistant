@@ -326,6 +326,8 @@ async def test_setup_poll_recovery_and_reload_keep_entities(
             dr.async_get(hass), entry.entry_id
         )[0].id
 
+        assert runtime["coordinator"].device_id == device_id
+
         # Another controller acquires the previous lease while HA is running.
         devices["127.0.0.1"] = "OTHER"
         requests.clear()
@@ -350,6 +352,7 @@ async def test_setup_poll_recovery_and_reload_keep_entities(
         after = []
         await sensor.async_setup_entry(hass, entry, after.extend)
         assert [entity.unique_id for entity in after] == ids
+        assert hass.data[DOMAIN][entry.entry_id]["controllers"][0]["coordinator"].device_id == device_id
         assert (
             len(dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id))
             == 1
@@ -491,3 +494,72 @@ async def test_missing_quick_candidates_do_not_start_a_scan(
     )
     adapters.assert_not_awaited()
     probe.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("platform", ["sensor", "binary_sensor", "number", "select", "text", "switch"])
+async def test_heating_circuit_registry_links_survive_reload(hass, platform, caplog):
+    """Every platform reuses the correct parent and existing circuit device."""
+    from datetime import timedelta
+    from importlib import import_module
+
+    from custom_components.ochsner_local_ots.coordinator import ClimatixCoordinator
+
+    module = import_module(f"custom_components.ochsner_local_ots.{platform}")
+    controllers = [
+        {CONF_HOST: "192.168.1.2", CONF_IDENTITY_KEY: "old-host", CONF_SERIAL_NUMBER: "123"},
+        {CONF_HOST: "192.168.1.3", CONF_IDENTITY_KEY: "serial:456", CONF_SERIAL_NUMBER: "456"},
+    ]
+    entry = add_entry(hass, controllers)
+    registry = dr.async_get(hass)
+    original_ids = []
+    token = current_entry.set(entry)
+    try:
+        for _ in range(2):
+            runtime = []
+            parent_ids = []
+            for ctrl in controllers:
+                key = identity_key(ctrl)
+                url = f"http://{ctrl[CONF_HOST]}"
+                parent = ad.async_register_controller(hass, entry, ctrl, url)
+                parent_ids.append(parent.id)
+                coordinator = ClimatixCoordinator(
+                    hass, api=None, ids=[], update_interval=timedelta(seconds=30)
+                )
+                coordinator.device_id = parent.id
+                cfg = {
+                    "id": "value", "read_id": "value", "write_id": "value",
+                    "name": "Circuit value", "heating_circuit_uid": "hc1",
+                    "heating_circuit_name": "Heating circuit 1",
+                    "options": {"Off": 0, "On": 1}, "on_value": 1, "off_value": 0,
+                }
+                runtime.append({
+                    "host": key, "base_url": url, "api": None,
+                    "coordinator": coordinator,
+                    ("switches" if platform == "switch" else f"{platform}s"): [cfg],
+                })
+            hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"controllers": runtime}
+            entities = []
+            await module.async_setup_entry(hass, entry, entities.extend)
+            circuit_ids = []
+            for entity in entities:
+                info = entity.device_info
+                if not any(":hc:" in ident for _, ident in info["identifiers"]):
+                    assert "via_device" not in info
+                    assert "via_device_id" not in info
+                    continue
+                assert "via_device" not in info
+                index = len(circuit_ids)
+                assert info["via_device_id"] == parent_ids[index]
+                assert info["identifiers"] == {(DOMAIN, f"{identity_key(controllers[index])}:hc:hc1")}
+                device = registry.async_get_or_create(config_entry_id=entry.entry_id, **info)
+                assert device.via_device_id == parent_ids[index]
+                circuit_ids.append(device.id)
+            assert len(circuit_ids) == 2
+            if original_ids:
+                assert circuit_ids == original_ids
+            original_ids = circuit_ids
+        assert len(dr.async_entries_for_config_entry(registry, entry.entry_id)) == 4
+        assert "deprecated `via_device`" not in caplog.text
+    finally:
+        current_entry.reset(token)
