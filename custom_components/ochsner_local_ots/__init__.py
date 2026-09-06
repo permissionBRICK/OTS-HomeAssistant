@@ -870,6 +870,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         setups.append("text")
     if any_switches:
         setups.append("switch")
+    # Unload exactly what this entry loaded, even if its saved catalog changes.
+    hass.data[DOMAIN][entry.entry_id]["platforms"] = list(setups)
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
     return True
@@ -925,22 +927,21 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # Unload each platform independently and tolerate ones that were never set
-    # up for this entry (e.g. no switches/selects/... existed at load time).
-    # async_unload_platforms() aborts on the first "Config entry was never
-    # loaded!" ValueError, which breaks reloads (e.g. a bundle rescan that only
-    # now adds the first switch), so unload per-platform instead.
-    unload_ok = True
-    for platform in ("sensor", "binary_sensor", "number", "select", "text", "switch"):
-        try:
-            ok = await hass.config_entries.async_forward_entry_unload(entry, platform)
-        except ValueError as err:
-            # Only tolerate the "Config entry was never loaded!" case (platform
-            # was never forwarded for this entry). Re-raise any other ValueError.
-            if "never loaded" not in str(err).lower():
-                raise
-            ok = True
-        unload_ok = unload_ok and ok
+    store = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+    platforms = store.get("platforms")
+    if platforms is None:
+        # Compatibility with an already loaded runtime from before tracking.
+        controllers = store.get("controllers", [])
+        platforms = ["sensor"] if controllers else []
+        for platform, key in (
+            ("binary_sensor", "binary_sensors"), ("number", "numbers"),
+            ("select", "selects"), ("text", "texts"), ("switch", "switches"),
+        ):
+            if any(ctrl.get(key) for ctrl in controllers):
+                platforms.append(platform)
+    # HA catches platform exceptions inside its forwarding wrapper and returns
+    # False. Catching ValueError here cannot handle a never-loaded platform.
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         # Close per-controller sessions so we don't hold any connections.
