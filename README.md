@@ -42,38 +42,7 @@ If no discovery card appears:
 
 1) Choose **Add integration → Ochsner Local OTS → Scan network**.
 2) Select the heat pump by its model and serial number, then confirm.
-3) Alternatively, choose **Enter address manually**. Advanced credentials/PIN
-   settings are offered after a failed connection attempt.
-
-Automatic cards use Home Assistant's DHCP/network discovery. Siemens Climatix
-MAC/hostname patterns are candidate hints, **not Ochsner identification and not
-guaranteed across all models**. The explicit network scan does not require
-these hints. Home Assistant must be able to reach the heat pump's LAN; check
-**Settings → System → Network** if the scan finds nothing. Initial discovery
-uses the standard local API credentials and port.
-
-Once the serial number is known, a fixed IP is optional. The integration keeps
-the last address and first checks Home Assistant's cached DHCP address for the
-saved MAC if that address becomes unavailable or answers with a different serial.
-It switches only after verifying the saved
-serial at the new address. Existing entities, history, device associations,
-and entity overrides retain their identifiers. Older installations learn the
-serial from their working address on the next restart.
-
-**Full subnet scans run only when you choose Scan network, or when a configured
-pump is unavailable and quick discovery cannot find it.** Installation, healthy
-polling and ordinary DHCP discovery events do not start a full scan. Quick
-recovery does not require a particular hostname or MAC vendor prefix.
-
-Full scans cover enabled private IPv4 subnets of up to /20, with at most 4096
-candidates, eight concurrent probes and a two-second timeout per candidate.
-A /24 scan can take about a minute; larger networks take longer. Recovery also
-tries the saved address's /24 when it is outside Home Assistant's selected
-subnets, which helps with routed/container setups. Unsuccessful recovery scans
-wait five minutes before trying again; cached DHCP recovery remains available
-during that wait. Scanning is IPv4-only. For initial
-setup on a remote/VLAN network without a selected interface, enter a reachable
-controller address manually.
+3) Alternatively, choose **Enter address manually**. If you had to go the manual IP route, also make sure that you assign a fixed IP to your heat pump in your router.
 
 ---
 
