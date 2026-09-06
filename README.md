@@ -34,9 +34,8 @@ After that restart Home Assistant.
 ### 2) Add the integration into Home Assistant
 
 After restarting Home Assistant, check **Settings → Devices & services** for a
-discovered Ochsner heat pump and click **Add**. The integration verifies the
-model and serial number before offering it, then scans its available sensors
-and controls when you adopt it.
+discovered Ochsner heat pump and click **Add**. The integration automatically 
+scans its available sensors and controls when you adopt it, which can take a second.
 
 If no discovery card appears:
 
