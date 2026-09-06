@@ -2,11 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "Ochsner Wärmepumpe (lokal)",
-        "description": "Gib die lokale IP-Adresse deiner Wärmepumpe ein. Es wird kein Cloud-Konto benötigt: Die Integration scannt den Regler mit dem mitgelieferten Datenpunkt-Katalog (Best-Effort; Abdeckung variiert je nach Modell, Firmware und Ausstattung). Stelle sicher, dass diese IP im Router statisch/reserviert ist.",
-        "data": {
-          "local_ip": "Lokale IP-Adresse",
-          "advanced": "Erweiterte Verbindungseinstellungen anzeigen"
+        "title": "Ochsner Wärmepumpe",
+        "menu_options": {
+          "scan": "Netzwerk durchsuchen",
+          "manual": "Adresse manuell eingeben"
         }
       },
       "advanced": {
@@ -19,17 +18,45 @@
           "password": "Passwort",
           "pin": "PIN"
         }
+      },
+      "manual": {
+        "title": "Ochsner Wärmepumpe (lokal)",
+        "description": "Gib die IP-Adresse oder den Hostnamen deiner Wärmepumpe ein. Nach der Erkennung über die Seriennummer werden IP-Änderungen automatisch übernommen.",
+        "data": {
+          "local_ip": "Lokale IP-Adresse",
+          "advanced": "Erweiterte Verbindungseinstellungen anzeigen"
+        }
+      },
+      "scan": {
+        "title": "Wärmepumpen suchen"
+      },
+      "select_device": {
+        "title": "Wärmepumpe auswählen",
+        "data": {
+          "host": "Wärmepumpe"
+        }
+      },
+      "discovery_confirm": {
+        "title": "{model}",
+        "description": "Wärmepumpe **{model}** unter **{host}** gefunden (Seriennummer **{serial}**). Zum Hinzufügen bestätigen."
       }
     },
     "error": {
       "invalid_host": "Bitte eine gültige IP/Host eingeben.",
       "cannot_connect": "An dieser IP konnte kein Climatix-Regler erreicht werden (Adresse prüfen und sicherstellen, dass das Gerät im Netzwerk ist).",
       "auth_failed": "Der Regler hat die Standard-Zugangsdaten abgelehnt. Bitte in den erweiterten Einstellungen Benutzername/Passwort des Reglers eingeben.",
-      "probe_failed": "Verbunden, aber kein Katalog-Datenpunkt war lesbar. Das deutet meist auf eine abweichende PIN hin — bitte in den erweiterten Einstellungen eingeben."
+      "probe_failed": "Verbunden, aber kein Katalog-Datenpunkt war lesbar. Das deutet meist auf eine abweichende PIN hin — bitte in den erweiterten Einstellungen eingeben.",
+      "identity_changed": "Unter dieser Adresse antwortet eine andere Wärmepumpe. Bitte erneut suchen."
     },
     "abort": {
-      "already_configured": "Dieser Regler ist bereits eingerichtet."
-    }
+      "already_configured": "Dieser Regler ist bereits eingerichtet.",
+      "not_ochsner": "Kein unterstützter Ochsner-Regler erkannt.",
+      "no_devices_found": "Keine Wärmepumpe gefunden. Prüfe die Netzwerkauswahl in Home Assistant oder gib die Adresse manuell ein."
+    },
+    "progress": {
+      "scan_network": "Das lokale Netzwerk wird nach Wärmepumpen durchsucht. Dies kann einige Minuten dauern."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {

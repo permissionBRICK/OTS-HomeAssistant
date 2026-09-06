@@ -17,6 +17,8 @@ from homeassistant.helpers.storage import Store
 from .api import ClimatixGenericApi, ClimatixGenericApiWriteHook, ClimatixGenericConnection
 from .const import (
     CONF_ID,
+    CONF_IDENTITY_KEY,
+    CONF_MAC_ADDRESS,
     CONF_OPTIONS,
     CONF_READ_ID,
     CONF_SELECTS,
@@ -70,6 +72,12 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
+from .connection import SerialVerifiedApi
+from .autodiscovery import (
+    async_find_cached_controller, async_find_controllers, async_register_controller, async_store_controllers,
+    async_update_address, connection_from_controller,
+)
+from .network_discovery import async_probe, identity_key
 
 from .bundle_generator import generate_entities_from_bundle
 from .flash_warnings import async_maybe_create_flash_wear_notifications
@@ -531,6 +539,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("Failed to persist migrated bundle bounds: %s", err)
         controllers = migrated_controllers
 
+    # Freeze old entity/device namespaces before any address may change.
+    # Learn identity once for old installations which did not store a serial.
+    identity_changed = False
+    for ctrl in controllers:
+        if not ctrl.get(CONF_IDENTITY_KEY):
+            ctrl[CONF_IDENTITY_KEY] = identity_key(ctrl)
+            identity_changed = True
+        if not ctrl.get(CONF_SERIAL_NUMBER) or not ctrl.get(CONF_MAC_ADDRESS):
+            found = await async_probe(session, connection_from_controller(ctrl))
+            if found and ctrl.get(CONF_SERIAL_NUMBER) in (None, "", found.serial):
+                ctrl[CONF_SERIAL_NUMBER] = found.serial
+                ctrl[CONF_DEVICE_MODEL] = found.model
+                if found.mac:
+                    ctrl[CONF_MAC_ADDRESS] = found.mac
+                identity_changed = True
+    if identity_changed:
+        async_store_controllers(hass, entry, controllers, reload=False)
+
     if (rescan_on_start or rescan_now) and controllers:
         updated_controllers, added_by_platform = await _async_rescan_from_stored_bundles(
             hass,
@@ -636,6 +662,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     for ctrl in controllers:
         host: str = str(ctrl.get(CONF_HOST) or "")
+        stable_key = identity_key(ctrl)
         if not host:
             continue
         port: int = int(ctrl.get(CONF_PORT, DEFAULT_PORT))
@@ -704,7 +731,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 oa = str(ent_id or "").strip()
                 if oa:
-                    key = f"{host}:sensor:{oa}".replace("=", "")
+                    key = f"{stable_key}:sensor:{oa}".replace("=", "")
                     id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
             except Exception:
                 pass
@@ -716,7 +743,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 oa = str(ent_id or "").strip()
                 if oa:
-                    key = f"{host}:binary_sensor:{oa}".replace("=", "")
+                    key = f"{stable_key}:binary_sensor:{oa}".replace("=", "")
                     id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
             except Exception:
                 pass
@@ -728,7 +755,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 oa = str(ent_id or "").strip()
                 if oa:
-                    key = f"{host}:number:{oa}".replace("=", "")
+                    key = f"{stable_key}:number:{oa}".replace("=", "")
                     id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
             except Exception:
                 pass
@@ -740,7 +767,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 oa = str(ent_id or "").strip()
                 if oa:
-                    key = f"{host}:select:{oa}".replace("=", "")
+                    key = f"{stable_key}:select:{oa}".replace("=", "")
                     id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
             except Exception:
                 pass
@@ -756,7 +783,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 oa = str(ent_id or "").strip()
                 if oa:
-                    key = f"{host}:switch:{oa}".replace("=", "")
+                    key = f"{stable_key}:switch:{oa}".replace("=", "")
                     id_modes[oa] = _combine_polling_modes(id_modes.get(oa), _mode_for_entity_key(key))
             except Exception:
                 pass
@@ -788,7 +815,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await ctrl_session.close()
             raise
 
-        async def _on_write(host_key: str = host) -> None:
+        if ctrl.get(CONF_SERIAL_NUMBER):
+            saved_conn = connection_from_controller(ctrl)
+
+            def _factory(conn, session=ctrl_session, max_ids=max_ids_per_read):
+                return ClimatixGenericApi(session, conn, max_ids_per_read_request=max_ids)
+
+            async def _discover(conn):
+                return await async_find_controllers(hass, conn)
+
+            async def _quick_discover(conn, current_ctrl=ctrl):
+                return await async_find_cached_controller(
+                    hass, conn, current_ctrl.get(CONF_MAC_ADDRESS)
+                )
+
+            async def _on_address(found, key=stable_key, current_ctrl=ctrl):
+                if not async_update_address(hass, entry, key, found, reload=False):
+                    raise RuntimeError("Controller configuration changed during recovery")
+                current_ctrl[CONF_HOST] = found.host
+
+            recovery_state = hass.data[DOMAIN].setdefault("recovery", {}).setdefault(
+                (entry.entry_id, stable_key), {}
+            )
+            inner_api = SerialVerifiedApi(
+                saved_conn, ctrl[CONF_SERIAL_NUMBER], _factory, _discover, _on_address,
+                recovery_state=recovery_state,
+                quick_discover=_quick_discover,
+            )
+
+        async def _on_write(host_key: str = stable_key) -> None:
             write_counts[host_key] = int(write_counts.get(host_key, 0)) + 1
             ent = write_count_entities.get(host_key)
             if ent is not None:
@@ -819,15 +874,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             poll_threshold=poll_threshold,
             update_interval=timedelta(seconds=scan_interval_sec),
         )
-        await coordinator.async_config_entry_first_refresh()
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except BaseException:
+            await ctrl_session.close()
+            for runtime in runtime_controllers:
+                await runtime["session"].close()
+            raise
 
-        base_url = f"http://{host}:{port}" if int(port) != 80 else f"http://{host}"
+        base_url = api.base_url
+        async_register_controller(hass, entry, ctrl, base_url)
         runtime_controllers.append(
             {
                 "api": api,
                 "coordinator": coordinator,
                 "session": ctrl_session,
-                "host": host,
+                # Platforms use this namespace for ids and options; the API
+                # owns the current network address independently.
+                "host": stable_key,
                 "port": port,
                 "base_url": base_url,
                 "device_name": str(ctrl.get(CONF_PLANT_NAME) or f"Climatix ({host})"),
@@ -878,6 +942,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    # Several controller migrations/address updates can queue before we run.
+    pending = hass.data.get(DOMAIN, {}).get("_address_updates", {})
+    if pending.get(entry.entry_id, 0):
+        pending[entry.entry_id] -= 1
+        if not pending[entry.entry_id]:
+            pending.pop(entry.entry_id)
+        return
+
     # Internal: avoid a redundant reload when we clear one-shot options.
     skip = (hass.data.get(DOMAIN, {}) or {}).get("_skip_reload_once")
     if isinstance(skip, set) and entry.entry_id in skip:

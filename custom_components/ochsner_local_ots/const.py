@@ -29,6 +29,9 @@ DISABLE_BY_DEFAULT_SENSOR_KEYWORDS = [
 ]
 
 CONF_HOST = "host"
+# Immutable namespace for entity/device ids and options (legacy: original host).
+CONF_IDENTITY_KEY = "identity_key"
+CONF_MAC_ADDRESS = "mac_address"
 CONF_PORT = "port"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
