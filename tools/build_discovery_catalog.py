@@ -120,6 +120,7 @@ Catalog point record keys:
                   point's own German labels where the shared map has none)
   enum_label_gaps {de: [tokens], en: [tokens]} tokens without a label
   sources       subset of [apk, reference, hc_template]
+  write_source  apk_settings for explicitly reviewed Smart app write bindings
   write_id, unit, options, value_map, min/max/bundle_min/bundle_max/step,
   on_value/off_value, enabled_default, diagnostic, hc_tag
 
@@ -146,6 +147,33 @@ sys.path.insert(0, str(PKG_DIR))
 import catalog as oa_catalog  # noqa: E402  (loaded as a plain module, no HA needed)
 
 HC_TAGS = list(oa_catalog.HC_INSTANCE_TAGS)
+
+# Confirmed Smart app settings, including circuits absent from the reference
+# plant. These are explicit write bindings, not inferred from an OA type or
+# a setpoint-like name. Evidence: docs/agent-notes/dhw-setpoints.md.
+APK_NUMBER_BINDINGS = {
+    "ASMv1XXZAAE=": (5.0, 75.0),   # Comfort
+    "ASOp1XXZAAE=": (5.0, 75.0),   # Eco
+    "ASOXCHXZAAE=": (5.0, 75.0),   # Reduced
+    "ASPuhXXZAAE=": (40.0, 75.0),  # Boost
+}
+
+
+def apply_apk_number_binding(rec: Dict[str, Any]) -> None:
+    """Supply reviewed APK write metadata; plant-specific metadata wins later."""
+    bounds = APK_NUMBER_BINDINGS.get(rec["id"])
+    if bounds is None:
+        return
+    rec.update(
+        platform="number",
+        write_id=rec["id"],
+        write_source="apk_settings",
+        unit="°C",
+        min=bounds[0],
+        max=bounds[1],
+        step=0.5,
+    )
+
 
 # The v4 classification rules (privacy, service/one-shot, technical-name
 # test) live in the shipped catalog module: the runtime bundle-overlay path
@@ -927,6 +955,7 @@ def build_catalog(
             )
             or {}
         )
+        apply_apk_number_binding(rec)
         ref = entry.get("ref")
         if ref is not None:
             for k in (

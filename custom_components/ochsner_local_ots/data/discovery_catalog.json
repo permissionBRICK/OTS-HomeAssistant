@@ -1,6 +1,6 @@
 {
  "app_source": "com.ochsner.app v1.2.0/1785 + reference plant seed",
- "catalog_version": "6ec949efa0cca96d",
+ "catalog_version": "2f170571ba272e41",
  "enum_token_label_sources": {
   "de": {
    "acknowledge": "translated",
@@ -4053,16 +4053,22 @@
   },
   {
    "id": "ASMv1XXZAAE=",
+   "max": 75.0,
+   "min": 5.0,
    "name": "Target value for Comfort",
    "name_de": "Sollwert Komfort",
    "name_de_source": "translated",
    "name_en": "Target value for Comfort",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
-   "platform": "sensor",
+   "platform": "number",
    "sources": [
     "apk"
-   ]
+   ],
+   "step": 0.5,
+   "unit": "°C",
+   "write_id": "ASMv1XXZAAE=",
+   "write_source": "apk_settings"
   },
   {
    "id": "ASMyInXZAAE=",
@@ -4167,16 +4173,22 @@
   },
   {
    "id": "ASOXCHXZAAE=",
+   "max": 75.0,
+   "min": 5.0,
    "name": "Target value for Reduced",
    "name_de": "Sollwert Reduziert",
    "name_de_source": "translated",
    "name_en": "Target value for Reduced",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
-   "platform": "sensor",
+   "platform": "number",
    "sources": [
     "apk"
-   ]
+   ],
+   "step": 0.5,
+   "unit": "°C",
+   "write_id": "ASOXCHXZAAE=",
+   "write_source": "apk_settings"
   },
   {
    "bundle_max": 20.0,
@@ -4374,16 +4386,22 @@
   },
   {
    "id": "ASOp1XXZAAE=",
+   "max": 75.0,
+   "min": 5.0,
    "name": "Target value for Eco",
    "name_de": "Sollwert Eco",
    "name_de_source": "translated",
    "name_en": "Target value for Eco",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
-   "platform": "sensor",
+   "platform": "number",
    "sources": [
     "apk"
-   ]
+   ],
+   "step": 0.5,
+   "unit": "°C",
+   "write_id": "ASOp1XXZAAE=",
+   "write_source": "apk_settings"
   },
   {
    "id": "ASOuxHXZAAE=",
@@ -4522,16 +4540,22 @@
   },
   {
    "id": "ASPuhXXZAAE=",
+   "max": 75.0,
+   "min": 40.0,
    "name": "Target value for Boost",
    "name_de": "Sollwert Boost",
    "name_de_source": "translated",
    "name_en": "Target value for Boost",
    "name_en_source": "apk_label",
    "name_source": "apk_label",
-   "platform": "sensor",
+   "platform": "number",
    "sources": [
     "apk"
-   ]
+   ],
+   "step": 0.5,
+   "unit": "°C",
+   "write_id": "ASPuhXXZAAE=",
+   "write_source": "apk_settings"
   },
   {
    "enum_label_sources": {
@@ -13553,7 +13577,7 @@
   "shared_token_labels_de": 136,
   "shared_token_labels_en": 136,
   "shared_tokens_untranslated_de": [],
-  "writable_points": 196
+  "writable_points": 200
  },
  "tags": [
   {
