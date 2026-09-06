@@ -49,16 +49,14 @@ If no discovery card appears:
 
 Instead of interacting with the heat pump over the Interface that is offered via ModbusTCP which is very undocumented and allows you to only read some values and control almost nothing, this one uses the JSON Interface that the OTS App itself uses to communicate with the heat pump (which is even less documented since it is entirely reverse engineered), except it runs entirely locally!
 
-The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID. The datapoint id system was reverse engineered (an id is the Base64 encoding of object type, module instance tag, point index and member id), which makes it possible to ship a datapoint catalog with the integration and probe which of those datapoints your controller actually has - entirely locally, with only the IP address, no cloud account needed.
-
-Setup runs a two-phase scan: first one representative datapoint per known module to see which modules your plant has (heating circuits, DHW, buffer, ...), then all catalog datapoints of the present modules. Only ids that the controller answers with a value become entities. The scan is strictly read-only and takes only a few seconds; afterwards the entity list is stored in Home Assistant, so the scan does not run again unless you ask for a rescan. The integration works entirely locally, no matter what happens to the Ochsner cloud.
+The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID. Since v2.0, this integration also no longer needs the Ochsner cloud to retrieve all the register IDs needed to read and control your heat pump, they already come shipped with the integration from the start, so it now works entirely offline with no reliance on the Ochsner cloud whatsoever!
 
 This has been tested and confirmed working so far with:
  - Air Hawk 518
  - Air Hawk 208
  - Air Falcon 212
 
-However, it is plausible that it could work with any Ochsner Heat Pump that uses the OTS app.
+However, it is plausible that it could work with any Ochsner Heat Pump that uses the Ochsner Smart app.
 
 
 ## Disclaimer & Warning
