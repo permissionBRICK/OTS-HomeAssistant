@@ -29,7 +29,7 @@ Copy this folder into your HA config directory:
 
 - `custom_components/ochsner_local_ots/`
 
-After that restart Home Assistant.
+After you did either of these steps, restart Home Assistant, and move on to 2.
 
 ### 2) Add the integration into Home Assistant
 
