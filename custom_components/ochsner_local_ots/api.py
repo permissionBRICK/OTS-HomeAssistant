@@ -52,6 +52,10 @@ class ClimatixGenericApi:
             n = 200
         self._max_ids_per_read_request = n
 
+    @property
+    def base_url(self) -> str:
+        return self._conn.base_url
+
     async def _get_json(
         self,
         params: List[Tuple[str, str]],
@@ -226,6 +230,10 @@ class ClimatixGenericApiWriteHook:
     ) -> None:
         self._inner = inner
         self._on_write = on_write
+
+    @property
+    def base_url(self) -> str:
+        return self._inner.base_url
 
     async def read(
         self,

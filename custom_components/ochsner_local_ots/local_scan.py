@@ -278,6 +278,11 @@ async def async_local_scan_merge(
             updated.append(ctrl_d)
             continue
 
+        expected_serial = ctrl_d.get(CONF_SERIAL_NUMBER)
+        if expected_serial and scan.plant_serial != expected_serial:
+            _LOGGER.warning("Skipping catalog rescan: controller identity changed at %s", host)
+            updated.append(ctrl_d)
+            continue
         merged, added = merge_discovered_entities(ctrl_d, discovered)
         # Pump-first device naming: refresh the identity read from the
         # controller (model type, serial number, software version). The plant
