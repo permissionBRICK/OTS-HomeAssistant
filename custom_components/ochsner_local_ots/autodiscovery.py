@@ -141,14 +141,14 @@ def async_update_address(
     return False
 
 
-def async_register_controller(hass, entry, controller: dict, base_url: str) -> None:
+def async_register_controller(hass, entry, controller: dict, base_url: str) -> dr.DeviceEntry:
     key = identity_key(controller)
     identifiers = {(DOMAIN, key)}
     serial = controller.get(CONF_SERIAL_NUMBER)
     if serial:
         identifiers.add((DOMAIN, serial_key(serial)))
     mac = controller.get(CONF_MAC_ADDRESS)
-    dr.async_get(hass).async_get_or_create(
+    return dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers=identifiers,
         connections={(dr.CONNECTION_NETWORK_MAC, mac)} if mac else set(),

@@ -53,6 +53,8 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             name="ochsner_local_ots",
             update_interval=update_interval,
         )
+        # Set during setup before platforms create heating-circuit devices.
+        self.device_id: str | None = None
         self.api = api
         self.ids = ids
         self._id_modes: Dict[str, str] = {
