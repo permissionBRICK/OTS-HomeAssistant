@@ -8,7 +8,7 @@
 
 **What is this repo?**
 
-It's a way to locally read and control Ochsner heat pump settings via Home Assistant, allowing you to access all the same settings and values as the OTS app, all without Modbus or Cloud services required.
+It's a way to locally read and control Ochsner heat pump settings via Home Assistant, allowing you to access all the same settings and values as the Ochsner Smart app, all without Modbus or Cloud services required.
 
 ---
 
