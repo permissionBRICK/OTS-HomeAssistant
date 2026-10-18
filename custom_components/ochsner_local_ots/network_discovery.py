@@ -15,7 +15,13 @@ from aiohttp import ClientSession
 
 from .api import ClimatixGenericApi, ClimatixGenericConnection, extract_first_value
 from .catalog import PLANT_MODEL_OA, PLANT_SERIAL_OA
-from .const import CONF_HOST, CONF_IDENTITY_KEY
+from .const import (
+    CONF_HOST,
+    CONF_IDENTITY_KEY,
+    DEFAULT_PASSWORD,
+    DEFAULT_PIN,
+    DEFAULT_USERNAME,
+)
 
 PLANT_MAC_OA = "IgABAAAAAAA="
 PROBE_TIMEOUT = 2.0
@@ -33,6 +39,15 @@ class ControllerIdentity:
 
 def serial_key(serial: str) -> str:
     return f"serial:{serial}"
+
+
+def has_factory_credentials(conn: ClimatixGenericConnection) -> bool:
+    """Only the public Climatix defaults may be sent to unverified hosts."""
+    return (conn.username, conn.password, conn.pin) == (
+        DEFAULT_USERNAME,
+        DEFAULT_PASSWORD,
+        DEFAULT_PIN,
+    )
 
 
 def identity_key(controller: dict) -> str:

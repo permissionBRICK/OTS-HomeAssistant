@@ -43,6 +43,12 @@ If no discovery card appears:
 2) Select the heat pump by its model and serial number, then confirm.
 3) Alternatively, choose **Enter address manually**. If you had to go the manual IP route, also make sure that you assign a fixed IP to your heat pump in your router.
 
+#### If the heat pump's IP address changes
+
+The integration identifies the heat pump by its serial number and follows address changes on its own. It first tries the address that Home Assistant's DHCP data shows for the heat pump's MAC address. If that fails, it searches the local network, at most every five minutes. That search only sends the factory default username, password and PIN, so it is skipped if you entered custom ones in the advanced settings. In that case Home Assistant shows a repair issue instead.
+
+To enter a new address yourself, open **Settings → Devices & services → Ochsner Local OTS** and choose **Reconfigure** from the entry's menu.
+
 ---
 
 ## How does this work?

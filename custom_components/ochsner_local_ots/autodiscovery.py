@@ -31,6 +31,7 @@ from .network_discovery import (
     ControllerIdentity,
     async_discover,
     async_probe,
+    has_factory_credentials,
     identity_key,
     scan_hosts,
     serial_key,
@@ -57,7 +58,13 @@ def controllers_from_entry(entry) -> list[dict]:
 async def async_find_controllers(
     hass, conn: ClimatixGenericConnection
 ) -> list[ControllerIdentity]:
-    """Scan enabled LANs; serialize sweeps across configured controllers."""
+    """Scan enabled LANs; serialize sweeps across configured controllers.
+
+    Every host on the subnet receives the credentials, so only the public
+    factory defaults are allowed here.
+    """
+    if not has_factory_credentials(conn):
+        raise ValueError("Subnet scans only send the factory default credentials")
     data = hass.data.setdefault(DOMAIN, {})
     lock = data.setdefault("network_scan_lock", asyncio.Lock())
     async with lock:
@@ -117,13 +124,21 @@ def async_store_controllers(
 def async_update_address(
     hass, entry, key: str, found: ControllerIdentity, *, reload: bool
 ) -> bool:
-    """Update only the serial-matched controller; never rewrite stored ids."""
+    """Update only the serial-matched controller; never rewrite stored ids.
+
+    A controller without a saved serial learns it here, as setup does.
+    """
     controllers = controllers_from_entry(entry)
     for ctrl in controllers:
-        if identity_key(ctrl) != key or ctrl.get(CONF_SERIAL_NUMBER) != found.serial:
+        if identity_key(ctrl) != key or ctrl.get(CONF_SERIAL_NUMBER) not in (
+            None,
+            "",
+            found.serial,
+        ):
             continue
         ctrl[CONF_IDENTITY_KEY] = key
         ctrl[CONF_HOST] = found.host
+        ctrl[CONF_SERIAL_NUMBER] = found.serial
         if found.mac:
             ctrl[CONF_MAC_ADDRESS] = found.mac
         async_store_controllers(hass, entry, controllers, reload=reload)

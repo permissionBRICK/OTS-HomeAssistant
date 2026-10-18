@@ -10,7 +10,7 @@
       },
       "advanced": {
         "title": "Advanced connection settings",
-        "description": "Only needed for plants that do not use the standard Climatix credentials/PIN. Leave the defaults unless your controller was reconfigured.",
+        "description": "Only needed for plants that do not use the standard Climatix credentials/PIN. Leave the defaults unless your controller was reconfigured. With custom credentials, a changed IP address is only picked up from Home Assistant's DHCP data; the network is never searched with them.",
         "data": {
           "local_ip": "Local IP address",
           "port": "Port",
@@ -39,6 +39,14 @@
       "discovery_confirm": {
         "title": "{model}",
         "description": "Found **{model}** at **{host}** (serial **{serial}**). Confirm to add this heat pump."
+      },
+      "reconfigure": {
+        "title": "Change heat pump address",
+        "description": "Enter the heat pump's current IP address or hostname. The serial number must match the configured heat pump; the saved credentials and PIN are kept.",
+        "data": {
+          "identity_key": "Heat pump",
+          "local_ip": "Local IP address"
+        }
       }
     },
     "error": {
@@ -46,12 +54,14 @@
       "cannot_connect": "Could not reach a Climatix controller at this IP (check the address and that the device is on your network).",
       "auth_failed": "The controller rejected the standard credentials. Use the advanced settings to enter your controller's username/password.",
       "probe_failed": "Connected, but no catalog datapoint was readable. This usually means a non-default PIN — use the advanced settings to enter it.",
-      "identity_changed": "A different controller now responds at this address. Run discovery again."
+      "identity_changed": "A different controller now responds at this address. Run discovery again.",
+      "serial_mismatch": "The heat pump at this address has a different serial number than the configured one."
     },
     "abort": {
       "already_configured": "This controller is already configured.",
       "not_ochsner": "No supported Ochsner controller identified.",
-      "no_devices_found": "No heat pumps found. Check Home Assistant’s network selection or enter the address manually."
+      "no_devices_found": "No heat pumps found. Check Home Assistant’s network selection or enter the address manually.",
+      "reconfigure_successful": "The heat pump address was updated."
     },
     "progress": {
       "scan_network": "Searching the local network for heat pumps. This can take a few minutes."
@@ -117,6 +127,12 @@
       "no_controllers": "This entry has no controllers to update.",
       "no_bundle_key": "No stored bundle key found for this controller.",
       "no_ots_ids": "The OTS config/site id is missing for this controller."
+    }
+  },
+  "issues": {
+    "address_unknown": {
+      "title": "{name} cannot be found",
+      "description": "**{name}** is not answering at **{host}**, and Home Assistant's DHCP data shows no other address for it. Because it uses custom credentials, the integration does not search the network for it, so they are never sent to other devices.\n\nIf the heat pump's IP address changed, go to **Settings → Devices & services → Ochsner Local OTS**, choose **Reconfigure** from the entry's menu and enter the new address. If the heat pump was only switched off, this message disappears once it answers again."
     }
   },
   "entity": {

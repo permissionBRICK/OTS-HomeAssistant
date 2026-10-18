@@ -24,8 +24,11 @@ The DHW setpoint fix is separate: `feat/dhw-setpoint-controls`, PR #17.
   MAC `IgABAAAAAAA=`. Model and serial must contain actual non-placeholder
   values. Successful HTTP status or protocol state codes do not qualify.
 - Automatic discovery uses default credentials/port; rediscovery uses stored
-  credentials when the address or registered MAC matches. Recovery always uses
-  the saved credentials/port. Manual setup remains available for overrides.
+  credentials when the address or registered MAC matches. Recovery uses the
+  saved credentials/port, but only for the saved address and the saved MAC's
+  DHCP address; the full subnet scan runs only when they are the factory
+  defaults (HACS review, 2026-10-18). Otherwise a repair issue points to
+  Reconfigure. Manual setup remains available for overrides.
 
 ## Persistence and recovery
 

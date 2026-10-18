@@ -10,7 +10,7 @@
       },
       "advanced": {
         "title": "Erweiterte Verbindungseinstellungen",
-        "description": "Nur nötig, wenn der Regler nicht die Standard-Climatix-Zugangsdaten/PIN verwendet. Belasse die Standardwerte, außer dein Regler wurde umkonfiguriert.",
+        "description": "Nur nötig, wenn der Regler nicht die Standard-Climatix-Zugangsdaten/PIN verwendet. Belasse die Standardwerte, außer dein Regler wurde umkonfiguriert. Mit eigenen Zugangsdaten wird eine geänderte IP-Adresse nur aus den DHCP-Daten von Home Assistant übernommen; das Netzwerk wird damit nie durchsucht.",
         "data": {
           "local_ip": "Lokale IP-Adresse",
           "port": "Port",
@@ -39,6 +39,14 @@
       "discovery_confirm": {
         "title": "{model}",
         "description": "Wärmepumpe **{model}** unter **{host}** gefunden (Seriennummer **{serial}**). Zum Hinzufügen bestätigen."
+      },
+      "reconfigure": {
+        "title": "Adresse der Wärmepumpe ändern",
+        "description": "Gib die aktuelle IP-Adresse oder den Hostnamen der Wärmepumpe ein. Die Seriennummer muss zur eingerichteten Wärmepumpe passen; gespeicherte Zugangsdaten und PIN bleiben erhalten.",
+        "data": {
+          "identity_key": "Wärmepumpe",
+          "local_ip": "Lokale IP-Adresse"
+        }
       }
     },
     "error": {
@@ -46,12 +54,14 @@
       "cannot_connect": "An dieser IP konnte kein Climatix-Regler erreicht werden (Adresse prüfen und sicherstellen, dass das Gerät im Netzwerk ist).",
       "auth_failed": "Der Regler hat die Standard-Zugangsdaten abgelehnt. Bitte in den erweiterten Einstellungen Benutzername/Passwort des Reglers eingeben.",
       "probe_failed": "Verbunden, aber kein Katalog-Datenpunkt war lesbar. Das deutet meist auf eine abweichende PIN hin — bitte in den erweiterten Einstellungen eingeben.",
-      "identity_changed": "Unter dieser Adresse antwortet eine andere Wärmepumpe. Bitte erneut suchen."
+      "identity_changed": "Unter dieser Adresse antwortet eine andere Wärmepumpe. Bitte erneut suchen.",
+      "serial_mismatch": "Die Wärmepumpe unter dieser Adresse hat eine andere Seriennummer als die eingerichtete."
     },
     "abort": {
       "already_configured": "Dieser Regler ist bereits eingerichtet.",
       "not_ochsner": "Kein unterstützter Ochsner-Regler erkannt.",
-      "no_devices_found": "Keine Wärmepumpe gefunden. Prüfe die Netzwerkauswahl in Home Assistant oder gib die Adresse manuell ein."
+      "no_devices_found": "Keine Wärmepumpe gefunden. Prüfe die Netzwerkauswahl in Home Assistant oder gib die Adresse manuell ein.",
+      "reconfigure_successful": "Die Adresse der Wärmepumpe wurde aktualisiert."
     },
     "progress": {
       "scan_network": "Das lokale Netzwerk wird nach Wärmepumpen durchsucht. Dies kann einige Minuten dauern."
@@ -117,6 +127,12 @@
       "no_ots_ids": "OTS Config-/Site-ID für diesen Controller fehlt.",
       "no_selection": "Bitte eine Entität auswählen.",
       "invalid_range": "Maximum muss größer als Minimum sein."
+    }
+  },
+  "issues": {
+    "address_unknown": {
+      "title": "{name} nicht erreichbar",
+      "description": "**{name}** antwortet nicht unter **{host}**, und die DHCP-Daten von Home Assistant zeigen keine andere Adresse dafür. Weil eigene Zugangsdaten verwendet werden, durchsucht die Integration das Netzwerk nicht danach, damit diese nie an andere Geräte gesendet werden.\n\nWenn sich die IP-Adresse der Wärmepumpe geändert hat, öffne **Einstellungen → Geräte & Dienste → Ochsner Local OTS**, wähle im Menü des Eintrags **Neu konfigurieren** und gib die neue Adresse ein. War die Wärmepumpe nur ausgeschaltet, verschwindet diese Meldung, sobald sie wieder antwortet."
     }
   },
   "entity": {

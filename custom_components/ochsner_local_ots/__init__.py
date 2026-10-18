@@ -11,6 +11,7 @@ import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 
@@ -75,7 +76,7 @@ from .coordinator import ClimatixCoordinator
 from .connection import SerialVerifiedApi
 from .autodiscovery import (
     async_find_cached_controller, async_find_controllers, async_register_controller, async_store_controllers,
-    async_update_address, connection_from_controller,
+    async_update_address, connection_from_controller, controllers_from_entry,
 )
 from .network_discovery import async_probe, identity_key
 
@@ -85,6 +86,10 @@ from .local_scan import async_local_scan_merge, async_relocalize_controllers
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _address_issue_id(entry_id: str, key: str) -> str:
+    return f"address_unknown_{entry_id}_{key}"
 
 
 def _combine_polling_modes(existing: str | None, new: str | None) -> str:
@@ -834,6 +839,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     raise RuntimeError("Controller configuration changed during recovery")
                 current_ctrl[CONF_HOST] = found.host
 
+            def _on_address_unknown(unknown, key=stable_key, current_ctrl=ctrl):
+                issue_id = _address_issue_id(entry.entry_id, key)
+                if not unknown:
+                    ir.async_delete_issue(hass, DOMAIN, issue_id)
+                    return
+                ir.async_create_issue(
+                    hass,
+                    DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="address_unknown",
+                    translation_placeholders={
+                        "name": str(current_ctrl.get(CONF_PLANT_NAME) or entry.title),
+                        "host": str(current_ctrl.get(CONF_HOST) or ""),
+                    },
+                )
+
             recovery_state = hass.data[DOMAIN].setdefault("recovery", {}).setdefault(
                 (entry.entry_id, stable_key), {}
             )
@@ -841,6 +864,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 saved_conn, ctrl[CONF_SERIAL_NUMBER], _factory, _discover, _on_address,
                 recovery_state=recovery_state,
                 quick_discover=_quick_discover,
+                on_address_unknown=_on_address_unknown,
             )
 
         async def _on_write(host_key: str = stable_key) -> None:
@@ -1032,3 +1056,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:
             pass
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    for ctrl in controllers_from_entry(entry):
+        ir.async_delete_issue(hass, DOMAIN, _address_issue_id(entry.entry_id, identity_key(ctrl)))

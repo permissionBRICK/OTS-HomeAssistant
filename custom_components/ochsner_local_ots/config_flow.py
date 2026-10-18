@@ -406,6 +406,47 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="advanced", data_schema=schema, errors=errors)
 
+    async def async_step_reconfigure(self, user_input: Optional[Dict[str, Any]] = None):
+        """Move a controller to a new address; its serial number must still match."""
+
+        entry = self._get_reconfigure_entry()
+        controllers = {identity_key(ctrl): ctrl for ctrl in controllers_from_entry(entry)}
+        if not controllers:
+            return self.async_abort(reason="not_ochsner")
+        key = next(iter(controllers))
+        errors: Dict[str, str] = {}
+        if user_input is not None:
+            key = str(user_input.get(CONF_IDENTITY_KEY) or key)
+            ctrl = controllers.get(key)
+            host = str(user_input.get(CONF_LOCAL_IP) or "").strip()
+            if ctrl is None or not host:
+                errors["base"] = "invalid_host"
+            else:
+                # The user chose this address, so the saved credentials may go there.
+                found = await async_probe(
+                    async_get_clientsession(self.hass),
+                    connection_from_controller({**ctrl, CONF_HOST: host}),
+                )
+                if found is None:
+                    errors["base"] = "cannot_connect"
+                elif not async_update_address(self.hass, entry, key, found, reload=True):
+                    errors["base"] = "serial_mismatch"
+                else:
+                    return self.async_abort(reason="reconfigure_successful")
+
+        schema: Dict[Any, Any] = {}
+        if len(controllers) > 1:
+            schema[vol.Required(CONF_IDENTITY_KEY, default=key)] = vol.In(
+                {
+                    k: f"{ctrl.get(CONF_PLANT_NAME) or k} ({ctrl.get(CONF_HOST)})"
+                    for k, ctrl in controllers.items()
+                }
+            )
+        schema[vol.Required(CONF_LOCAL_IP, default=str(controllers[key].get(CONF_HOST) or ""))] = str
+        return self.async_show_form(
+            step_id="reconfigure", data_schema=vol.Schema(schema), errors=errors
+        )
+
     async def async_step_import(self, user_input: Dict[str, Any]):
         # Import from YAML so the integration becomes a config entry.
         host = user_input[CONF_HOST]
