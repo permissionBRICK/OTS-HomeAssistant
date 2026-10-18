@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from dataclasses import replace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -134,20 +135,74 @@ class FakeApi:
         return {"values": {oid: value}}
 
 
+FACTORY_CREDENTIALS = ("JSON", "SBTAdmin!", "7659")
+
+
 def make_connection(
-    connection, net, catalog_mod, devices, results, recovery_state=None
+    connection,
+    net,
+    catalog_mod,
+    devices,
+    results,
+    recovery_state=None,
+    credentials=FACTORY_CREDENTIALS,
+    **kwargs,
 ):
     calls = []
     discover = AsyncMock(return_value=results)
     saved = AsyncMock()
-    conn = connection.ClimatixGenericConnection(
-        "192.168.1.2", 80, "user", "pass", "pin"
-    )
+    conn = connection.ClimatixGenericConnection("192.168.1.2", 80, *credentials)
     factory = lambda c: FakeApi(c.host, devices, catalog_mod, calls)
     api = connection.SerialVerifiedApi(
-        conn, "123", factory, discover, saved, recovery_state
+        conn, "123", factory, discover, saved, recovery_state, **kwargs
     )
     return api, calls, discover, saved
+
+
+def test_only_factory_defaults_count_as_factory_credentials(connection, net):
+    conn = connection.ClimatixGenericConnection("192.168.1.2", 80, *FACTORY_CREDENTIALS)
+    assert net.has_factory_credentials(conn)
+    for field in ("username", "password", "pin"):
+        assert not net.has_factory_credentials(replace(conn, **{field: "custom"}))
+    assert not net.has_factory_credentials(replace(conn, pin=""))
+
+
+def test_custom_credentials_never_start_a_subnet_scan(connection, net, catalog_mod):
+    async def scenario():
+        devices = {}
+        reports = []
+        quick = AsyncMock(return_value=[])
+        api, calls, full_scan, saved = make_connection(
+            connection,
+            net,
+            catalog_mod,
+            devices,
+            [],
+            credentials=("user", "pass", "pin"),
+            quick_discover=quick,
+            on_address_unknown=reports.append,
+        )
+        for _ in range(2):
+            with pytest.raises(connection.AddressUnknown):
+                await api.read(["x"])
+        with pytest.raises(connection.AddressUnknown):
+            await api.write("setpoint", 21)
+        full_scan.assert_not_awaited()
+        assert quick.await_count == 3
+        assert {call[0] for call in calls} == {"192.168.1.2"}
+        assert not any(call[1] == "write" for call in calls)
+        assert reports == [True]
+
+        # The saved MAC's DHCP address still recovers a moved controller.
+        found = net.ControllerIdentity("192.168.1.3", "123", "AIRHAWK")
+        devices[found.host] = "123"
+        quick.return_value = [found]
+        assert await api.read(["x"]) == {"values": {"x": 22.5}}
+        saved.assert_awaited_once_with(found)
+        full_scan.assert_not_awaited()
+        assert reports == [True, False]
+
+    asyncio.run(scenario())
 
 
 def test_recovery_rejects_old_ip_reused_by_other_pump(connection, net, catalog_mod):

@@ -19,6 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import frame
+from homeassistant.helpers import issue_registry as ir
 
 from custom_components.ochsner_local_ots import _async_update_listener
 from custom_components.ochsner_local_ots import autodiscovery as ad
@@ -32,10 +33,13 @@ from custom_components.ochsner_local_ots.const import (
     CONF_IDENTITY_KEY,
     CONF_MAC_ADDRESS,
     CONF_NAME,
+    CONF_PASSWORD,
+    CONF_PIN,
     CONF_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SENSORS,
     CONF_SERIAL_NUMBER,
+    CONF_USERNAME,
     DOMAIN,
 )
 from custom_components.ochsner_local_ots.network_discovery import (
@@ -51,6 +55,7 @@ async def hass(tmp_path):
     frame.async_setup(instance)
     dr.async_setup(instance)
     await dr.async_load(instance, load_empty=True)
+    await ir.async_load(instance, load_empty=True)
     yield instance
     await instance.async_stop(force=True)
 
@@ -228,6 +233,163 @@ async def test_manual_scan_ignores_hostname_and_vendor_prefix(hass, monkeypatch)
         found
     ]
     assert probe.await_args.args[1].host == found.host
+
+
+CUSTOM_CREDENTIALS = {CONF_USERNAME: "user", CONF_PASSWORD: "secret", CONF_PIN: "1234"}
+
+
+@pytest.mark.asyncio
+async def test_subnet_scan_refuses_custom_credentials(hass, monkeypatch):
+    adapters, probe = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(ad.network, "async_get_adapters", adapters)
+    monkeypatch.setattr(ad, "async_probe", probe)
+    conn = ad.connection_from_controller({CONF_HOST: "192.168.1.2", **CUSTOM_CREDENTIALS})
+    with pytest.raises(ValueError):
+        await ad.async_find_controllers(hass, conn)
+    adapters.assert_not_awaited()
+    probe.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_moves_controller_after_serial_check(hass, monkeypatch):
+    controller = {
+        CONF_HOST: "192.168.1.2",
+        CONF_IDENTITY_KEY: "serial:123",
+        CONF_SERIAL_NUMBER: "123",
+        **CUSTOM_CREDENTIALS,
+    }
+    entry = add_entry(hass, [controller])
+    reload = AsyncMock(return_value=True)
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+    entry.add_update_listener(_async_update_listener)
+    monkeypatch.setattr(cf, "async_get_clientsession", lambda _: None)
+    probe = AsyncMock(return_value=None)
+    monkeypatch.setattr(cf, "async_probe", probe)
+    flow = flow_for(hass)
+    flow.context = {"source": "reconfigure", "entry_id": entry.entry_id}
+
+    form = await flow.async_step_reconfigure()
+    assert form["step_id"] == "reconfigure"
+    assert list(form["data_schema"].schema) == ["local_ip"]
+    result = await flow.async_step_reconfigure({"local_ip": "192.168.1.3"})
+    assert result["errors"] == {"base": "cannot_connect"}
+    probe.return_value = ControllerIdentity("192.168.1.3", "OTHER", "AIRHAWK")
+    result = await flow.async_step_reconfigure({"local_ip": "192.168.1.3"})
+    assert result["errors"] == {"base": "serial_mismatch"}
+    assert entry.data[CONF_CONTROLLERS][0][CONF_HOST] == "192.168.1.2"
+
+    probe.return_value = ControllerIdentity("192.168.1.3", "123", "AIRHAWK")
+    result = await flow.async_step_reconfigure({"local_ip": " 192.168.1.3 "})
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    conn = probe.await_args.args[1]
+    assert (conn.host, conn.username, conn.password, conn.pin) == (
+        "192.168.1.3", "user", "secret", "1234"
+    )
+    await hass.async_block_till_done()
+    reload.assert_awaited_once_with(entry.entry_id)
+    saved = entry.data[CONF_CONTROLLERS][0]
+    assert saved[CONF_HOST] == "192.168.1.3"
+    assert saved[CONF_IDENTITY_KEY] == "serial:123"
+    assert saved[CONF_PASSWORD] == "secret"
+
+
+@pytest.mark.asyncio
+async def test_address_update_learns_a_missing_serial_but_never_replaces_one(hass):
+    entry = add_entry(hass, [{CONF_HOST: "192.168.1.2"}])
+    found = ControllerIdentity("192.168.1.3", "123", "AIRHAWK")
+    assert ad.async_update_address(hass, entry, "192.168.1.2", found, reload=False)
+    saved = entry.data[CONF_CONTROLLERS][0]
+    assert (saved[CONF_HOST], saved[CONF_SERIAL_NUMBER]) == ("192.168.1.3", "123")
+    assert identity_key(saved) == "192.168.1.2"
+    other = ControllerIdentity("192.168.1.4", "OTHER", "AIRHAWK")
+    assert not ad.async_update_address(hass, entry, "192.168.1.2", other, reload=False)
+    assert entry.data[CONF_CONTROLLERS][0][CONF_HOST] == "192.168.1.3"
+
+
+@pytest.mark.asyncio
+async def test_custom_credentials_raise_and_clear_repair_issue(
+    hass, monkeypatch, unused_tcp_port
+):
+    """A moved pump with custom credentials gets a repair issue, not a sweep."""
+    from aiohttp import ClientSession, web
+
+    from custom_components import ochsner_local_ots as integration
+    from custom_components.ochsner_local_ots.catalog import (
+        PLANT_MODEL_OA,
+        PLANT_SERIAL_OA,
+    )
+
+    devices = {"127.0.0.1": "123"}
+
+    async def controller(request):
+        host = request.host.split(":")[0]
+        values = {PLANT_SERIAL_OA: devices[host], PLANT_MODEL_OA: "AIRHAWK", "temperature": 22.5}
+        return web.json_response(
+            {"values": {key: values[key] for key in request.query.getall("OA") if key in values}}
+        )
+
+    app = web.Application()
+    app.router.add_get("/{path:.*}", controller)
+    runner = web.AppRunner(app, access_log=None)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", unused_tcp_port).start()
+    entry = add_entry(
+        hass,
+        [
+            {
+                CONF_HOST: "127.0.0.1",
+                CONF_PORT: unused_tcp_port,
+                CONF_IDENTITY_KEY: "serial:123",
+                CONF_SERIAL_NUMBER: "123",
+                CONF_MAC_ADDRESS: "00:a0:03:11:22:33",
+                CONF_SENSORS: [{CONF_ID: "temperature", CONF_NAME: "Temperature"}],
+                **CUSTOM_CREDENTIALS,
+            }
+        ],
+    )
+    monkeypatch.setattr(hass.config_entries, "async_forward_entry_setups", AsyncMock())
+    monkeypatch.setattr(
+        hass.config_entries, "async_forward_entry_unload", AsyncMock(return_value=True)
+    )
+    find = AsyncMock(return_value=[])
+    monkeypatch.setattr(integration, "async_find_controllers", find)
+    session = ClientSession()
+    monkeypatch.setattr(integration, "async_get_clientsession", lambda _: session)
+    monkeypatch.setattr(ad, "async_get_clientsession", lambda _: session)
+    monkeypatch.setattr(ad.dhcp, "async_discovered_service_info", lambda _: [])
+    issue_id = f"address_unknown_{entry.entry_id}_serial:123"
+    context_token = current_entry.set(entry)
+    entry._async_set_state(hass, ConfigEntryState.SETUP_IN_PROGRESS, None)
+    try:
+        assert await integration.async_setup_entry(hass, entry)
+        coordinator = hass.data[DOMAIN][entry.entry_id]["controllers"][0]["coordinator"]
+        assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None
+
+        devices["127.0.0.1"] = "OTHER"
+        await coordinator.async_refresh()
+        assert not coordinator.last_update_success
+        find.assert_not_awaited()
+        issue = ir.async_get(hass).async_get_issue(DOMAIN, issue_id)
+        assert issue.translation_key == "address_unknown"
+        assert issue.translation_placeholders["host"] == "127.0.0.1"
+
+        devices["127.0.0.1"] = "123"
+        await coordinator.async_refresh()
+        assert coordinator.last_update_success
+        assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None
+
+        devices["127.0.0.1"] = "OTHER"
+        await coordinator.async_refresh()
+        assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is not None
+        await integration.async_remove_entry(hass, entry)
+        assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None
+        find.assert_not_awaited()
+    finally:
+        current_entry.reset(context_token)
+        await integration.async_unload_entry(hass, entry)
+        await session.close()
+        await runner.cleanup()
 
 
 @pytest.mark.asyncio

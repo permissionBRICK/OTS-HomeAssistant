@@ -9,7 +9,11 @@ from dataclasses import replace
 
 from .api import ClimatixGenericApi, ClimatixGenericConnection
 from .catalog import PLANT_MODEL_OA, PLANT_SERIAL_OA
-from .network_discovery import ControllerIdentity, parse_identity
+from .network_discovery import (
+    ControllerIdentity,
+    has_factory_credentials,
+    parse_identity,
+)
 
 RECOVERY_INTERVAL = 300.0
 
@@ -18,12 +22,18 @@ class ControllerUnavailable(RuntimeError):
     """The saved controller cannot be identified at any candidate address."""
 
 
+class AddressUnknown(ControllerUnavailable):
+    """The controller moved, and custom credentials rule out a subnet scan."""
+
+
 class SerialVerifiedApi:
     """Verify before reads/writes, recover reads, never replay a failed write.
 
     A lock prevents a reconnect from changing a concurrent write's destination.
     Recovery candidates must have the expected serial, and are rechecked before
     committing the address. Failed scans are rate-limited across polling cycles.
+    Subnet scans only run with the factory default credentials; custom ones are
+    only sent to the saved address and the saved MAC's DHCP address.
     """
 
     def __init__(
@@ -41,6 +51,7 @@ class SerialVerifiedApi:
             [ClimatixGenericConnection], Awaitable[list[ControllerIdentity]]
         ]
         | None = None,
+        on_address_unknown: Callable[[bool], None] | None = None,
     ) -> None:
         self.conn = conn
         self.serial = serial
@@ -50,6 +61,8 @@ class SerialVerifiedApi:
         self._quick_discover = quick_discover
         self._on_address = on_address
         self._recovery_state = recovery_state if recovery_state is not None else {}
+        self._on_address_unknown = on_address_unknown
+        self._address_unknown: bool | None = None
         self._lock = asyncio.Lock()
 
     @property
@@ -71,6 +84,12 @@ class SerialVerifiedApi:
             candidates = await self._quick_discover(self.conn)
             if await self._connect(candidates):
                 return
+        if not has_factory_credentials(self.conn):
+            # A subnet scan would send the custom credentials to every host.
+            self._report_address_unknown(True)
+            raise AddressUnknown(
+                "Controller not found at its saved or DHCP-cached address"
+            )
         if time.monotonic() < self._recovery_state.get("next_scan", 0.0):
             raise ControllerUnavailable(
                 "Controller unavailable; waiting before another subnet scan"
@@ -107,11 +126,17 @@ class SerialVerifiedApi:
         self.conn, self._api = conn, api
         return True
 
+    def _report_address_unknown(self, unknown: bool) -> None:
+        if self._on_address_unknown is not None and unknown is not self._address_unknown:
+            self._address_unknown = unknown
+            self._on_address_unknown(unknown)
+
     async def _ensure_identity(self, on_http_request=None) -> None:
         try:
             await self._verify(self._api, self.conn.host, on_http_request)
         except Exception:  # noqa: BLE001 -- protocol/auth/transport failures all need verification elsewhere
             await self._recover()
+        self._report_address_unknown(False)
 
     async def _read(self, method, ids, on_http_request=None):
         async with self._lock:
