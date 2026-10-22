@@ -285,3 +285,14 @@ test("panel: menu button, plant tabs and footer links", { skip: !CHROME && "no c
   assert.equal(await page.eval("harness.events.filter((e) => e.type === 'location-changed').length"), 1);
   assert.deepEqual(page.errors, []);
 });
+
+test("changing the configured view keeps the theme variables", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=house&view=all&theme=dark");
+  const heat = () => page.eval(`getComputedStyle(harness.el).getPropertyValue("--ohp-heat").trim()`);
+  assert.ok(await heat(), "scheme variables set");
+  await page.eval(`harness.el.setConfig({ type: "custom:ochsner-heatpump-card", view: "controls" })`);
+  await sleep(120);
+  assert.ok(await page.eval(`!!${sr}.querySelector(".card-controls") && !${sr}.querySelector(".card-plant")`));
+  assert.ok(await heat(), "variables survive the skeleton rebuild");
+  assert.match(await page.eval(`${sr}.querySelector("style.vars").textContent`), /--ohp-heat/);
+});

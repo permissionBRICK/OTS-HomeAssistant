@@ -204,6 +204,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     const box = (v) => `<ha-card class="card-${v}"><div class="v" data-v="${v}"></div></ha-card>`;
     const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc">${box("controls")}${box("efficiency")}</div></div>`;
     this.shadowRoot.innerHTML = `<style>${CSS}${TINTS}</style><style class="vars"></style><div class="msg" hidden></div>${body}`;
+    this._schemeKey = null; // the new <style class="vars"> is empty
     for (const v of views) {
       const el = this.shadowRoot.querySelector(`.v[data-v="${v}"]`);
       this._containers[v] = el;
