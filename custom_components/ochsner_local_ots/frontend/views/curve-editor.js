@@ -75,8 +75,7 @@ export class CurveEditor {
   }
 
   /** Newest feed event of this editor's plant (not the render snapshot). */
-  _liveNow() {
-    const store = this.card.store;
+  _liveNow(store = this.card.store) {
     return (store && store.liveFor(this.plantId)) || { values: {} };
   }
 
@@ -326,10 +325,19 @@ export class CurveEditor {
     const s = this._s(n);
     if (!ctx || s.applying || ctx.disabled) return;
     const I = ctx.I;
+    // The whole Apply belongs to the connection, store and plant it started
+    // on: once any of them changes (or the editor is thrown away) no further
+    // write goes out, whatever connection the card has by then.
+    const hass = this.card.hass;
+    const store = this.card.store;
+    if (!hass || !store) return;
+    const conn = hass.connection;
+    const callService = hass.callService.bind(hass);
+    const owned = () => !this.disposed && this.card.store === store && !!this.card.hass && this.card.hass.connection === conn && this.card.currentPlantId() === this.plantId;
     // Revalidate the complete curve against the newest metadata and live
     // values right before writing: drags were checked against older values.
     const bounds = this._bounds(ctx, n);
-    const base = this._baseFrom(this._liveNow(), bounds, n);
+    const base = this._baseFrom(this._liveNow(store), bounds, n);
     const diff = pendingDiff(base, s.pending, bounds);
     // Drop no-op entries.
     for (const k of Object.keys(s.pending)) if (!diff.some((d) => d.key === k)) delete s.pending[k];
@@ -377,9 +385,10 @@ export class CurveEditor {
     s.applying = { i: 0, n: writes.length }; // handles are frozen meanwhile
     this.card.requestRender();
     for (const d of writes) {
+      if (!owned()) break; // checked after every await
       // The controller state may have moved since: never write a value that
       // turns a valid curve into a crossed one.
-      const now = this._baseFrom(this._liveNow(), bounds, n);
+      const now = this._baseFrom(this._liveNow(store), bounds, n);
       if (!curveProblems(now, order).length && curveProblems({ ...now, [d.key]: d.to }, order).length) {
         s.error = I.t("apply_refused", { why: I.t("invalid_changed") });
         break;
@@ -392,7 +401,7 @@ export class CurveEditor {
       s.applying.i++;
       this.card.requestRender();
       try {
-        await this.card.call("number", "set_value", { entity_id: d.entity, value: d.value });
+        await callService("number", "set_value", { entity_id: d.entity, value: d.value });
         if (s.pending[d.key] === d.to) delete s.pending[d.key];
         s.awaiting[d.key] = { v: d.to, at: Date.now() };
       } catch (err) {
@@ -401,7 +410,7 @@ export class CurveEditor {
       }
     }
     s.applying = null;
-    this.card.requestRender();
+    if (!this.disposed) this.card.requestRender();
   }
 
   /** Unit the entity's state is shown in now (undefined without a state). */

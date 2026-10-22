@@ -172,6 +172,13 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     if (changed) this.requestRender();
   }
 
+  /** Plant this card shows for its current connection and config (null while unknown). */
+  currentPlantId() {
+    const store = this._store;
+    const p = store && store.plants ? pickPlant(store.plants, this._config) : null;
+    return p ? p.plant_id : null;
+  }
+
   stateOf(eid) {
     return eid && this._hass ? this._hass.states[eid] : undefined;
   }

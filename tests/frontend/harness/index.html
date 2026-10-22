@@ -96,7 +96,7 @@ if (view === "panel") {
 }
 const fake = fakeHass(plants, {
   lang, dark: theme === "dark", noHistory: !!q.get("nohistory"), failPlants: !!q.get("fail"),
-  onUpdate: (h) => { el.hass = h; },
+  onUpdate: (h) => { if (!window.harness || !window.harness.detached) el.hass = h; },
 });
 fake.conn.colorScheme = scheme;
 el.hass = fake.hass;
@@ -105,7 +105,8 @@ for (const t of ["hass-more-info", "hass-toggle-menu", "location-changed"]) {
   window.addEventListener(t, (e) => events.push({ type: t, detail: e.detail }));
 }
 stage.appendChild(el);
-window.harness = { plants, plant: plants[0], fake, el, events, writes: () => plants.flatMap((p) => p.writes()) };
+// harness.fakeHass: a second connection (another HA instance); harness.detached stops feeding el.hass.
+window.harness = { plants, plant: plants[0], fake, el, events, fakeHass, detached: false, writes: () => plants.flatMap((p) => p.writes()) };
 // Ready once the store delivered data and a couple of frames rendered.
 const until = (fn) => new Promise((res) => { const tick = () => (fn() ? res() : setTimeout(tick, 30)); tick(); });
 await until(() => fake.conn.subscriptions > 0 || q.get("fail"));

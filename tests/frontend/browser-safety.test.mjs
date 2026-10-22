@@ -55,19 +55,42 @@ test("control state is per plant: switching plants cancels A's queued edits and 
   assert.deepEqual(page.errors, []);
 });
 
-test("an Apply that is running when the plant changes only writes A's entities", { skip }, async () => {
+test("switching plants during an Apply stops its remaining writes; nothing goes to B", { skip }, async () => {
   const page = await b.open("variant=multi&view=panel&theme=light&latency=300", { width: 1280, height: 1600 });
   const c = on(page, CARD);
   await c.focusKey('[data-h="heat_norm"]', "ArrowUp", "ArrowLeft");
   await c.focusKey('[data-h="heat_max"]', "ArrowUp");
   await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.writes().length === 1", 2000);
   await panelTab(page, "192.0.2.81");
-  await page.waitFor("harness.writes().length === 3", 4000);
-  await sleep(400);
+  await sleep(1500);
   const w = await writes(page);
-  assert.equal(w.length, 3);
-  for (const x of w) assert.match(x, /^number\.set_value number\.(?!wp2_)fussboden_/, x);
+  assert.equal(w.length, 1, "only the write already on the wire: " + JSON.stringify(w));
+  assert.match(w[0], /^number\.set_value number\.(?!wp2_)fussboden_/);
   assert.ok(!(await c.exists(".pendbar")), "B shows nothing of A's apply");
+  assert.deepEqual(page.errors, []);
+});
+
+test("an Apply never continues on a replaced connection", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=300");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_max"]', "ArrowUp");
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.writes().length === 1", 2000);
+  // the card is handed the hass of another HA instance while write 1 runs
+  await page.eval(`(() => {
+    harness.detached = true;
+    const other = harness.fakeHass(harness.plants).hass;
+    window.otherCalls = [];
+    other.callService = (d, s, data) => { otherCalls.push(d + "." + s + " " + data.entity_id); return Promise.resolve(); };
+    harness.el.hass = other;
+    return true;
+  })()`);
+  await sleep(1200);
+  assert.deepEqual(await page.eval("otherCalls"), [], "nothing was sent to connection B");
+  assert.deepEqual(await writes(page), ["number.set_value number.fussboden_maximale_vorlauftemperatur 41"], "and nothing more to A");
+  assert.deepEqual(page.errors, []);
 });
 
 test("a mode change drops a queued DHW temperature edit (Comfort 52 → + → Eco 46)", { skip }, async () => {
