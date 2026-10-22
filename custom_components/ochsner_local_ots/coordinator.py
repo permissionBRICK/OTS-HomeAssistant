@@ -477,7 +477,12 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             return
         new_data = dict(data)
         new_data["values"] = {k: v for k, v in values.items() if k not in ids}
-        self.async_set_updated_data(new_data)
+        # Not async_set_updated_data: forgetting values reads nothing, so it
+        # must not report a recovery (last_update_success / last_exception
+        # stay as the last poll left them) nor reschedule the next poll.
+        self.data = new_data
+        self.last_read_ids = frozenset()
+        self.async_update_listeners()
 
     def async_abandon(self, ids: Iterable[str]) -> None:
         """A write or its re-read was interrupted (cancelled): what the

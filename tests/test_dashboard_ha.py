@@ -1240,6 +1240,40 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_invalidation_never_reports_a_recovery(hass, monkeypatch, fake_controller):
+    from homeassistant.exceptions import HomeAssistantError
+
+    plant = await setup_plant(hass, monkeypatch, lossy_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        fake.fail_reads = 1  # the controller stops answering
+        await coordinator.async_refresh()
+        assert not coordinator.last_update_success and not c.available
+        assert coordinator.last_exception is not None
+        seen = []
+        unsub = coordinator.async_add_listener(lambda: seen.append(coordinator.last_update_success))
+
+        # A command queued during the outage fails and forgets its values:
+        # no listener ever sees the coordinator (and its entities) recovered.
+        fake.lose_response, fake.fail_reads = True, 2
+        with pytest.raises(HomeAssistantError):
+            await c.async_set_temperature(temperature=22.5)
+        assert seen and not any(seen)
+        assert OFF1 not in coordinator.data["values"]
+        outdoor = "AyKWuiiJAAE="
+        assert outdoor in coordinator.data["values"]
+        failure = coordinator.last_exception
+        seen.clear()
+        coordinator.async_invalidate([outdoor])
+        assert seen == [False] and coordinator.last_exception is failure
+        assert outdoor not in coordinator.data["values"] and not c.available
+        unsub()
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
 async def test_reread_omitting_a_dependent_marks_it_unknown(hass, monkeypatch, fake_controller):
     plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller))
     fake, coordinator = plant.fake, plant.ctrl["coordinator"]
