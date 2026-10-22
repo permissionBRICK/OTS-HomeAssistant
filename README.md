@@ -58,8 +58,9 @@ Instead of interacting with the heat pump over the Interface that is offered via
 The local API offers an interface that allows you to read and write almost any parameter, as long as you know its ID. Since v2.0, this integration also no longer needs the Ochsner cloud to retrieve all the register IDs needed to read and control your heat pump, they already come shipped with the integration from the start, so it now works entirely offline with no reliance on the Ochsner cloud whatsoever!
 
 This has been tested and confirmed working so far with:
- - Air Hawk 518
  - Air Hawk 208
+ - Air Hawk 518
+ - Air Hawk 616
  - Air Falcon 212
 
 However, it is plausible that it could work with any Ochsner Heat Pump that uses the Ochsner Smart app.
