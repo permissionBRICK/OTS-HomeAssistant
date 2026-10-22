@@ -1215,9 +1215,14 @@ async def test_ws_honours_entity_read_permissions(hass, monkeypatch, fake_contro
         assert "hc1.heat_curve_norm_flow" not in roles and "hc1.room_offset" not in roles
         assert not any(r.startswith(("hc2.", "hc3.", "avail.")) for r in roles)
         assert "hc4.availability" not in roles  # plant anchor (status sensor) not readable
-        assert [(c["index"], c["climate"]) for c in p["circuits"]] == [(1, climate1)]
+        assert [(c["index"], c["climate"], c["name"]) for c in p["circuits"]] == [(1, climate1, "Fußboden")]
+        assert p["circuits"][0] == full["circuits"][0]
         assert p["flash_writes"] is None
-        assert p["capabilities"] == full["capabilities"]
+        # Plant metadata needs the plant anchor (status sensor): generic here.
+        assert (p["title"], p["model"], p["device_id"]) == ("Wärmepumpe", "", None)
+        assert full["title"] != "Wärmepumpe" and full["model"] == "AIRHAWK518C11A"
+        # Only capabilities computed from what the user sees: the circuit.
+        assert p["capabilities"] == {"cooling": False}
 
         conn = FakeConnection(user)
         plant_api.ws_subscribe(hass, conn, {"id": 5, "type": f"{DOMAIN}/subscribe"})
@@ -1225,13 +1230,36 @@ async def test_ws_honours_entity_read_permissions(hass, monkeypatch, fake_contro
         assert set(values) <= set(roles)
         assert values["hc1.badge"] == 3 and values["hp.outdoor"] == pytest.approx(12.1851)
         assert "hp.status" not in values and "hc2.badge" not in values and "avail.dhw" not in values
+        assert conn.messages[0]["event"]["capabilities"] == {"cooling": False}
         coordinator = plant.ctrl["coordinator"]
         data = dict(coordinator.data)
         data["values"] = dict(data["values"], **{"CyNmeMdZAAE=": [3, 3], "CyPmL458AAE=": [5, 5]})
         coordinator.async_set_updated_data(data)  # every push is filtered
         pushed = conn.messages[-1]["event"]["values"]
         assert len(conn.messages) == 2 and pushed["hc1.badge"] == 5 and "hp.status" not in pushed
+        assert conn.messages[-1]["event"]["capabilities"] == {"cooling": False}
         conn.subscriptions[5]()
+
+        # Only HC1's flow target sensor: the value, nothing about the circuit
+        # (name, flags) or the plant.
+        flow_target = full["roles"]["hc1.flow_target"]["entity_id"]
+        assert flow_target and full["roles"]["hc1.name"]["entity_id"]
+        user = policy_user(hass, {"entities": {"entity_ids": {flow_target: True}}})
+        (p,) = await ws_plants_as(hass, user)
+        assert set(p["roles"]) == {"hc1.flow_target"} and p["circuits"] == []
+        assert p["capabilities"] == {} and p["dhw"] is None
+        assert (p["title"], p["model"], p["device_id"]) == ("Wärmepumpe", "", None)
+        assert "Fußboden" not in json.dumps(p, ensure_ascii=False)
+        assert "AIRHAWK" not in json.dumps(p)
+        conn = FakeConnection(user)
+        plant_api.ws_subscribe(hass, conn, {"id": 7, "type": f"{DOMAIN}/subscribe"})
+        event = conn.messages[0]["event"]
+        assert set(event["values"]) == {"hc1.flow_target"} and event["capabilities"] == {}
+        conn.subscriptions[7]()
+
+        # English generic names.
+        (p,) = (await plant_api.async_build_plants(hass, "en", lambda e: bool(e) and e == flow_target))["plants"]
+        assert p["title"] == "Heat pump"
 
         # The status sensor anchors the plant-level roles without an entity.
         (p,) = await ws_plants_as(hass, policy_user(hass, {"entities": {"entity_ids": {status: True}}}))
@@ -1241,6 +1269,13 @@ async def test_ws_honours_entity_read_permissions(hass, monkeypatch, fake_contro
         }
         assert "avail.bms" in anchored
         assert set(p["roles"]) == {"hp.status"} | anchored and p["circuits"] == []
+        assert (p["title"], p["model"], p["device_id"]) == (full["title"], full["model"], full["device_id"])
+        # Capabilities from availability points without an entity (anchored
+        # to the status sensor); not those with their own sensor (DHW, aux,
+        # buffer aux, pool), power (power sensors) or cooling (no circuit).
+        assert p["capabilities"] == {
+            k: full["capabilities"][k] for k in ("bms", "buffer", "silent", "emergency")
+        }
 
         # Nothing of the plant readable: no plant, no events.
         nobody = policy_user(hass, {"entities": {"entity_ids": {"light.kitchen": True}}})

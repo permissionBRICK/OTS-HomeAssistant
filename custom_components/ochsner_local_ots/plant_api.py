@@ -11,7 +11,10 @@ Both honour Home Assistant's entity read permissions: a user who may not
 read every entity only gets roles whose entity they may read, and roles
 without an entity only if they may read the section's anchor entity
 (circuit -> its climate, DHW -> the water heater, heat pump / plant ->
-the heat pump status sensor, else the flash write counter).
+the heat pump status sensor, else the flash write counter). Everything
+else in their payload comes from what they may read too: a circuit only
+with its climate, a capability only with the roles it is computed from,
+the plant's name and model only with the plant anchor (else generic).
 """
 
 from __future__ import annotations
@@ -232,33 +235,69 @@ def readable_roles(
     flash_writes: Optional[str],
     can_read: CanRead,
 ) -> set:
-    plant_anchor = role_entities.get("hp.status") or flash_writes
+    anchor = plant_anchor(role_entities, flash_writes)
     out = set()
     for role, eid in role_entities.items():
-        target = eid or section_anchor(role, climates, water_heater, plant_anchor)
+        target = eid or section_anchor(role, climates, water_heater, anchor)
         if can_read(target):
             out.add(role)
     return out
 
 
-def filter_plant(plant: Dict[str, Any], can_read: CanRead) -> Optional[Dict[str, Any]]:
+# Capability -> the roles it is computed from (B3); "cooling" follows the
+# circuits the user sees, "dhw" also the water heater.
+_CAPABILITY_SOURCES: Dict[str, Tuple[str, ...]] = {
+    "bms": ("avail.bms",),
+    "dhw": ("avail.dhw",),
+    "buffer": ("avail.buffer",),
+    "buffer_temp": ("avail.buffer_aux",),
+    "buffer_aux_heater": ("avail.buffer_aux",),
+    "aux": ("avail.aux",),
+    "aux_temp": ("avail.aux",),
+    "pool": ("avail.pool",),
+    "silent": ("avail.silent",),
+    "emergency": ("avail.emergency",),
+    "power": ("hp.el_power", "hp.heat_output"),
+}
+
+
+def visible_capabilities(
+    capabilities: Dict[str, bool],
+    roles: set,
+    circuits: List[Dict[str, Any]],
+    water_heater_readable: bool,
+) -> Dict[str, bool]:
+    """The capabilities a restricted user may see; the others are omitted."""
+    out: Dict[str, bool] = {}
+    for key, value in capabilities.items():
+        if key == "cooling":
+            if circuits:
+                out[key] = any(bool(c.get("cool")) for c in circuits)
+        elif key == "dhw" and water_heater_readable:
+            out[key] = value
+        elif all(r in roles for r in _CAPABILITY_SOURCES.get(key, ("",))):
+            out[key] = value
+    return out
+
+
+def plant_anchor(role_entities: Dict[str, Optional[str]], flash_writes: Optional[str]) -> Optional[str]:
+    """The entity whose read permission covers the plant as a whole."""
+    return role_entities.get("hp.status") or flash_writes
+
+
+def filter_plant(plant: Dict[str, Any], can_read: CanRead, language: str) -> Optional[Dict[str, Any]]:
     """The ``plants`` entry as a restricted user may see it (None = nothing)."""
     climates = {c["index"]: c.get("climate") for c in plant["circuits"]}
     dhw = plant.get("dhw") or {}
-    roles = readable_roles(
-        {r: v.get("entity_id") for r, v in plant["roles"].items()},
-        climates, dhw.get("water_heater"), plant.get("flash_writes"), can_read,
-    )
+    role_entities = {r: v.get("entity_id") for r, v in plant["roles"].items()}
+    roles = readable_roles(role_entities, climates, dhw.get("water_heater"), plant.get("flash_writes"), can_read)
 
     def visible(eid: Optional[str]) -> Optional[str]:
         return eid if can_read(eid) else None
 
-    circuits = []
-    for c in plant["circuits"]:
-        climate = visible(c.get("climate"))
-        prefix = f"hc{c['index']}."
-        if climate or any(r.startswith(prefix) for r in roles):
-            circuits.append({**c, "climate": climate})
+    # A circuit (name, flags, device) only with its climate entity, which
+    # carries the same name and modes.
+    circuits = [c for c in plant["circuits"] if visible(c.get("climate"))]
     new_dhw = None
     if plant.get("dhw") is not None:
         new_dhw = {k: visible(v) for k, v in dhw.items()}
@@ -267,8 +306,15 @@ def filter_plant(plant: Dict[str, Any], can_read: CanRead) -> Optional[Dict[str,
     flash = visible(plant.get("flash_writes"))
     if not roles and not circuits and new_dhw is None and flash is None:
         return None
+    main = can_read(plant_anchor(role_entities, plant.get("flash_writes")))
     return {
         **plant,
+        "device_id": plant["device_id"] if main else None,
+        "title": plant["title"] if main else P.default_plant_title(language),
+        "model": plant["model"] if main else "",
+        "capabilities": visible_capabilities(
+            plant["capabilities"], roles, circuits, bool(visible(dhw.get("water_heater"))),
+        ),
         "circuits": circuits,
         "dhw": new_dhw,
         "roles": {r: v for r, v in plant["roles"].items() if r in roles},
@@ -276,8 +322,11 @@ def filter_plant(plant: Dict[str, Any], can_read: CanRead) -> Optional[Dict[str,
     }
 
 
-def event_roles(hass: HomeAssistant, ctrl: Dict[str, Any], caps: Dict[str, Any], can_read: CanRead) -> set:
-    """Roles of a plant a restricted user may read (for subscription pushes)."""
+def event_view(
+    hass: HomeAssistant, ctrl: Dict[str, Any], caps: Dict[str, Any], can_read: CanRead
+) -> Tuple[set, Callable[[Dict[str, bool]], Dict[str, bool]]]:
+    """For a restricted user's subscription push: the roles they may read
+    and the capability filter (same rules as filter_plant)."""
     host = ctrl["host"]
     registry = er.async_get(hass)
     index = entity_index(ctrl)
@@ -291,7 +340,10 @@ def event_roles(hass: HomeAssistant, ctrl: Dict[str, Any], caps: Dict[str, Any],
     }
     water_heater = _entity_id(hass, "water_heater", f"{host}:water_heater:dhw") if caps["dhw"] else None
     flash = _entity_id(hass, "sensor", f"{host}:flash_writes".replace("=", ""))
-    return readable_roles(role_entities, climates, water_heater, flash, can_read)
+    roles = readable_roles(role_entities, climates, water_heater, flash, can_read)
+    circuits = [c for c in caps["circuits"] if can_read(climates.get(int(c["index"])))]
+    readable_heater = can_read(water_heater)
+    return roles, lambda capabilities: visible_capabilities(capabilities, roles, circuits, readable_heater)
 
 
 def build_plant(
@@ -370,26 +422,28 @@ def build_plant(
 def build_event(
     entry: Any,
     ctrl: Dict[str, Any],
-    allowed: Optional[Callable[[Dict[str, Any]], set]] = None,
+    view: Optional[Callable[[Dict[str, Any]], Tuple[set, Callable[[Dict[str, bool]], Dict[str, bool]]]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """The subscription event.
 
-    ``allowed(caps)`` returns the roles the user may read (None = all); a
-    plant they may read nothing of gives None.
+    ``view(caps)`` returns the roles the user may read and their capability
+    filter (None = everything); a plant they may read nothing of gives None.
     """
     values = _values(ctrl)
     caps = P.compute_capabilities(values)
     ids = P.role_ids(caps)
-    if allowed is not None:
-        readable = allowed(caps)
+    capabilities = P.public_capabilities(caps)
+    if view is not None:
+        readable, visible_caps = view(caps)
         if not readable:
             return None
         ids = {r: oid for r, oid in ids.items() if r in readable}
+        capabilities = visible_caps(capabilities)
     return {
         "plant_id": plant_id(entry, ctrl),
         "available": bool(ctrl["coordinator"].last_update_success),
         "updated": dt_util.utcnow().isoformat(timespec="seconds"),
-        "capabilities": P.public_capabilities(caps),
+        "capabilities": capabilities,
         "values": P.role_values(values, ids),
     }
 
@@ -405,7 +459,7 @@ async def async_build_plants(
         catalog = None
     plants = [build_plant(hass, entry, ctrl, catalog, language) for entry, ctrl in iter_plants(hass)]
     if can_read is not None:
-        plants = [p for p in (filter_plant(p, can_read) for p in plants) if p is not None]
+        plants = [p for p in (filter_plant(p, can_read, language) for p in plants) if p is not None]
     return {
         "version": API_VERSION,
         "settings": {"color_scheme": color_scheme(hass)},
@@ -434,10 +488,10 @@ def ws_subscribe(hass: HomeAssistant, connection: Any, msg: Dict[str, Any]) -> N
 
     @callback
     def push(entry: Any, ctrl: Dict[str, Any]) -> None:
-        allowed = None
+        view = None
         if can_read is not None:
-            allowed = lambda caps: event_roles(hass, ctrl, caps, can_read)  # noqa: E731
-        event = build_event(entry, ctrl, allowed)
+            view = lambda caps: event_view(hass, ctrl, caps, can_read)  # noqa: E731
+        event = build_event(entry, ctrl, view)
         if event is not None:
             connection.send_message(websocket_api.event_message(msg_id, event))
 

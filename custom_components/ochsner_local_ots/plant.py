@@ -1073,6 +1073,10 @@ def default_circuit_name(n: int, language: str) -> str:
     return (f"Heizkreis {n}" if normalize_language(language) == "de" else f"Heating circuit {n}")
 
 
+def default_plant_title(language: str) -> str:
+    return "Wärmepumpe" if normalize_language(language) == "de" else "Heat pump"
+
+
 def circuit_device_map(
     entities_by_platform: Mapping[str, Iterable[Mapping[str, Any]]],
 ) -> Dict[int, Tuple[str, str]]:
