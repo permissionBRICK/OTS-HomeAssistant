@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
 from .api import ClimatixGenericApi, ClimatixGenericApiWriteHook, ClimatixGenericConnection
@@ -59,6 +60,11 @@ from .const import (
     CONF_LOCAL_SCAN_NOW,
     DISCOVERY_SOURCE_LOCAL,
     CONF_POLLING_MODE,
+    CONF_COLOR_SCHEME,
+    CONF_SIDEBAR_PANEL,
+    COLOR_SCHEME_HA,
+    DEFAULT_SIDEBAR_PANEL,
+    SIGNAL_PLANTS_CHANGED,
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
     POLLING_MODE_SLOW,
@@ -81,8 +87,12 @@ from .autodiscovery import (
 from .network_discovery import async_probe, identity_key
 
 from .bundle_generator import generate_entities_from_bundle
+from .catalog import load_catalog
+from .dashboard import async_notify_dashboard_added, async_setup_frontend, async_sync_panel
 from .flash_warnings import async_maybe_create_flash_wear_notifications
-from .local_scan import async_local_scan_merge, async_relocalize_controllers
+from .local_scan import async_local_scan_merge, async_relocalize_controllers, resolve_language
+from . import plant as plant_lib
+from . import plant_api
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -346,11 +356,20 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
+    data = hass.data.setdefault(DOMAIN, {})
+    # Heat pump dashboard: websocket API + card/panel frontend (once per run).
+    if not data.get("_dashboard_setup"):
+        data["_dashboard_setup"] = True
+        plant_api.async_register(hass)
+        try:
+            await async_setup_frontend(hass)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Heat pump dashboard frontend unavailable: %s", err)
+
     cfg = config.get(DOMAIN)
     if not cfg:
         return True
 
-    hass.data.setdefault(DOMAIN, {})
     if hass.data[DOMAIN].get("_import_started"):
         return True
     hass.data[DOMAIN]["_import_started"] = True
@@ -364,6 +383,19 @@ async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
             data=dict(cfg),
         )
     )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """1.1 -> 1.2: dashboard options for existing installs (panel on + one notice)."""
+    if entry.version > 1:
+        return False
+    if entry.version == 1 and entry.minor_version < 2:
+        options = dict(entry.options or {})
+        options.setdefault(CONF_SIDEBAR_PANEL, DEFAULT_SIDEBAR_PANEL)
+        options.setdefault(CONF_COLOR_SCHEME, COLOR_SCHEME_HA)
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
+        async_notify_dashboard_added(hass)
     return True
 
 
@@ -890,6 +922,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         api: Any = ClimatixGenericApiWriteHook(inner_api, on_write=_on_write)
 
+        # Plant capabilities (which circuits/DHW/... exist) come from a few
+        # availability points; poll them like any entity datapoint.
+        for oa in plant_lib.capability_ids():
+            if oa not in ids:
+                ids.append(oa)
+
         coordinator = ClimatixCoordinator(
             hass,
             api=api,
@@ -908,6 +946,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         base_url = api.base_url
         coordinator.device_id = async_register_controller(hass, entry, ctrl, base_url).id
+
+        plant, supplements = await _async_prepare_plant(
+            hass, entry, ctrl, coordinator,
+            stored={
+                "sensors": sensors, "binary_sensors": binary_sensors, "numbers": numbers,
+                "selects": selects, "texts": texts, "switches": switches,
+            },
+        )
+        # Supplement entities are runtime-only (never persisted in the entry).
+        numbers = numbers + supplements["numbers"]
+        selects = selects + supplements["selects"]
+
         runtime_controllers.append(
             {
                 "api": api,
@@ -928,6 +978,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "selects": selects,
                 "texts": texts,
                 "switches": switches,
+                "plant": plant,
             }
         )
 
@@ -958,11 +1009,91 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         setups.append("text")
     if any_switches:
         setups.append("switch")
+    caps = [rc["plant"]["caps"] for rc in runtime_controllers]
+    if any(c["circuits"] for c in caps):
+        setups.append("climate")
+    if any(c["dhw"] for c in caps):
+        setups.extend(["water_heater", "button"])
     # Unload exactly what this entry loaded, even if its saved catalog changes.
     hass.data[DOMAIN][entry.entry_id]["platforms"] = list(setups)
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
+    await _async_dashboard_changed(hass)
     return True
+
+
+async def _async_dashboard_changed(hass: HomeAssistant) -> None:
+    try:
+        await async_sync_panel(hass)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Could not update the heat pump sidebar panel: %s", err)
+    async_dispatcher_send(hass, SIGNAL_PLANTS_CHANGED)
+
+
+async def _async_prepare_plant(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    ctrl: Dict[str, Any],
+    coordinator: ClimatixCoordinator,
+    *,
+    stored: Dict[str, List[Dict[str, Any]]],
+) -> tuple[Dict[str, Any], Dict[str, List[Dict[str, Any]]]]:
+    """Capabilities, role polling and supplement entities for one controller.
+
+    Runs after the first refresh: the availability points decide which
+    sections exist; their role ids join the poll list (one extra read now),
+    then writable app datapoints without a writable entity get a runtime
+    supplement entity.
+    """
+
+    def _current_values() -> Dict[str, Any]:
+        data = coordinator.data if isinstance(coordinator.data, dict) else {}
+        values = data.get("values")
+        return values if isinstance(values, dict) else {}
+
+    caps = plant_lib.compute_capabilities(_current_values())
+    role_ids = plant_lib.role_ids(caps)
+    extra = [oa for oa in dict.fromkeys(role_ids.values()) if oa not in coordinator.ids]
+    if extra:
+        coordinator.ids.extend(extra)
+        try:
+            await coordinator.async_refresh_ids(extra)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Initial plant role read failed: %s", type(err).__name__)
+
+    values = _current_values()
+    language = resolve_language(hass, option_value=entry.options.get(CONF_LANGUAGE), controller=ctrl)
+    circuit_devices = plant_lib.circuit_device_map(stored)
+    supplements = plant_lib.supplement_entities(
+        values=values, caps=caps, existing=stored, circuit_devices=circuit_devices, language=language,
+    )
+
+    # Enum labels the climate attributes show, in the entity language.
+    labels: Dict[str, Dict[str, str]] = {}
+    if caps["circuits"]:
+        try:
+            catalog = await hass.async_add_executor_job(load_catalog)
+        except Exception:  # noqa: BLE001
+            catalog = None
+        index = plant_api.entity_index({"host": "", **stored})
+        for c in caps["circuits"]:
+            ids = plant_lib.circuit_role_ids(int(c["index"]))
+            for key in ("op_program", "status"):
+                role = plant_lib.hc_key(int(c["index"]), key)
+                oid = ids[role]
+                cands = index.get(plant_lib.canonical_id(oid), [])
+                found = plant_api.role_labels(role, cands[0][2] if cands else None, catalog, oid, language)
+                if found:
+                    labels[role] = found
+
+    plant = {
+        "caps": caps,
+        "role_ids": role_ids,
+        "circuit_devices": circuit_devices,
+        "language": language,
+        "labels": labels,
+    }
+    return plant, supplements
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -1040,6 +1171,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        await _async_dashboard_changed(hass)
         # Close per-controller sessions so we don't hold any connections.
         try:
             controllers = (store or {}).get("controllers") if isinstance(store, dict) else None

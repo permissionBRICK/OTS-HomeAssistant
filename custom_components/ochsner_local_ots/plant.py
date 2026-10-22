@@ -353,15 +353,6 @@ def public_capabilities(caps: Mapping[str, Any]) -> Dict[str, bool]:
     return {k: bool(v) for k, v in caps.items() if k != "circuits"}
 
 
-def presence_signature(caps: Mapping[str, Any]) -> Tuple[Any, ...]:
-    """Changes when the role/entity layout would change (circuits, DHW, pool)."""
-    return (
-        tuple((c["index"], c["heat"], c["cool"], c["room_sensor"], c["humidity"]) for c in caps.get("circuits", [])),
-        bool(caps.get("dhw")),
-        bool(caps.get("pool")),
-    )
-
-
 def role_ids(caps: Mapping[str, Any]) -> Dict[str, str]:
     """Role key -> id for every role of a present section.
 
