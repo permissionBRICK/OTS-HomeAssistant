@@ -1515,6 +1515,46 @@ async def test_ws_honours_entity_read_permissions(hass, monkeypatch, fake_contro
         await teardown(hass, plant)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("with_dhw", [False, True])
+async def test_dhw_and_pool_flags_need_the_bms_point(hass, monkeypatch, fake_controller, with_dhw):
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=dhw_plant if with_dhw else None)
+    try:
+        (full,) = (await plant_api.async_build_plants(hass, "de"))["plants"]
+        assert full["capabilities"]["dhw"] is with_dhw and full["capabilities"]["pool"] is False
+        avail = {r: full["roles"][r]["entity_id"] for r in ("avail.dhw", "avail.pool", "avail.bms")}
+        # DHW and pool have their own availability sensors; BMS hangs on the status sensor.
+        assert avail["avail.dhw"] and avail["avail.pool"] and avail["avail.bms"] is None
+        status = full["roles"]["hp.status"]["entity_id"]
+        water_heater = (full["dhw"] or {}).get("water_heater")
+        assert bool(water_heater) is with_dhw
+
+        async def seen(*entity_ids):
+            user = policy_user(hass, {"entities": {"entity_ids": dict.fromkeys(entity_ids, True)}})
+            (p,) = await ws_plants_as(hass, user)
+            conn = FakeConnection(user)
+            plant_api.ws_subscribe(hass, conn, {"id": 9, "type": f"{DOMAIN}/subscribe"})
+            plant.ctrl["coordinator"].async_update_listeners()  # a push, filtered the same way
+            events = [m["event"]["capabilities"] for m in conn.messages]
+            conn.subscriptions[9]()
+            assert len(events) == 2 and all(e == p["capabilities"] for e in events)
+            return p["capabilities"]
+
+        # Both availability sensors but not the BMS point: no DHW / pool flag
+        # (off under BMS, so either value would tell the BMS state).
+        assert await seen(avail["avail.dhw"], avail["avail.pool"]) == {}
+        # With the status sensor (the BMS point's anchor) they show.
+        caps = await seen(avail["avail.dhw"], avail["avail.pool"], status)
+        assert caps["dhw"] is with_dhw and caps["pool"] is False and caps["bms"] is False
+        if with_dhw:
+            # The readable water heater stands for the DHW section on its own.
+            user = policy_user(hass, {"entities": {"entity_ids": {water_heater: True}}})
+            (p,) = await ws_plants_as(hass, user)
+            assert p["capabilities"] == {"dhw": True}
+    finally:
+        await teardown(hass, plant)
+
+
 def test_raw_roles_follow_their_section_anchor():
     roles = {
         "hp.status": "sensor.status", "hp.cycles_total": None, "avail.pool": None,

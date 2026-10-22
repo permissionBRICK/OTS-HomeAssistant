@@ -280,17 +280,18 @@ def readable_roles(
     return out
 
 
-# Capability -> the roles it is computed from (B3); "cooling" follows the
-# circuits the user sees, "dhw" also the water heater.
+# Capability -> every role it is computed from (B3), so a flag never tells
+# more than the user may read (DHW and pool are off under BMS); "cooling"
+# follows the circuits the user sees, "dhw" also the water heater.
 _CAPABILITY_SOURCES: Dict[str, Tuple[str, ...]] = {
     "bms": ("avail.bms",),
-    "dhw": ("avail.dhw",),
+    "dhw": ("avail.dhw", "avail.bms"),
     "buffer": ("avail.buffer",),
     "buffer_temp": ("avail.buffer_aux",),
     "buffer_aux_heater": ("avail.buffer_aux",),
     "aux": ("avail.aux",),
     "aux_temp": ("avail.aux",),
-    "pool": ("avail.pool",),
+    "pool": ("avail.pool", "avail.bms"),
     "silent": ("avail.silent",),
     "emergency": ("avail.emergency",),
     "power": ("hp.el_power", "hp.heat_output"),
