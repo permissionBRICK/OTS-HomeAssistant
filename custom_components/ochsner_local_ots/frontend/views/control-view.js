@@ -60,6 +60,7 @@ export class ControlView {
   }
 
   dispose() {
+    this.disposed = true;
     this.cancelWrites();
     for (const t of this._timers) clearTimeout(t);
     this._timers.clear();
@@ -94,17 +95,60 @@ export class ControlView {
   }
 
   /**
+   * Entity a stepper key ("hc<n>" or "dhw") may write to in `ctx` right now:
+   * its section is shown, the controller is available and the entity is of
+   * the right domain and writable. null = no write allowed.
+   */
+  _target(ctx, key) {
+    if (!ctx || ctx.disabled) return null;
+    if (key === "dhw") {
+      if (!ctx.sec.dhw) return null;
+      const wh = ofDomain(ctx.plant.dhw && ctx.plant.dhw.water_heater, "water_heater");
+      const st = wh && ctx.state(wh);
+      return st && st.state !== "unavailable" && st.attributes && typeof st.attributes.temperature === "number" ? wh : null;
+    }
+    const c = ctx.sec.circuits.find((x) => `hc${x.index}` === key);
+    if (!c || !ofDomain(c.climate, "climate")) return null;
+    return circuitTarget(ctx, c).writable ? c.climate : null;
+  }
+
+  /** The stepper binding still holds as of now (fresh store/hass, not the last render). */
+  _bindingHolds(key, entityId, conn) {
+    if (this.disposed) return false;
+    const snap = this.card.snapshot();
+    if (!snap || snap.hass.connection !== conn || snap.plant.plant_id !== this.plantId) return false;
+    const ctx = { ...snap, disabled: !snap.available, state: (eid) => snap.hass.states[eid] };
+    return this._target(ctx, key) === entityId;
+  }
+
+  /**
+   * Render/refetch: drop queued values whose section disappeared, whose
+   * entity mapping changed or whose control became read-only/unavailable.
+   */
+  _reconcile(ctx) {
+    for (const [key, c] of [...this.coal]) {
+      if (c.conn === ctx.hass.connection && this._target(ctx, key) === c.entityId) continue;
+      if (c.state === "waiting") this._note(key, "info", ctx.I.t("dropped_gone"), 6000);
+      c.dispose();
+      this.coal.delete(key);
+    }
+  }
+
+  /**
    * Coalescer for a stepper (circuit room target or DHW target), bound to the
    * entity the user acted on: a different entity for the same key (payload
    * changed) gets a fresh coalescer and the old queued value is dropped.
    */
   _coal(key, entityId, domain) {
     let c = this.coal.get(key);
-    if (c && c.entityId === entityId) return c;
+    const conn = this.card.hass && this.card.hass.connection;
+    if (c && c.entityId === entityId && c.conn === conn) return c;
     if (c) c.dispose();
     let lastState = "idle";
     c = new Coalescer({
       delay: this.card.writeDelay,
+      // Re-checked against the newest store/hass right before the write.
+      valid: () => this._bindingHolds(key, entityId, conn),
       send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityId, temperature: v }),
       current: () => {
         const st = this.card.stateOf(entityId);
@@ -120,7 +164,7 @@ export class ControlView {
       onChange: () => {
         const I = this.card.i18n;
         if (c.state === "error") this._note(key, "err", `${I.t("error")}: ${c.error}`, 8000);
-        else if (c.state === "dropped") this._note(key, "info", I.t("dropped_ctx"), 6000);
+        else if (c.state === "dropped") this._note(key, "info", I.t(c.reason === "invalid" ? "dropped_gone" : "dropped_ctx"), 6000);
         else if (lastState === "sending" && (c.state === "sent" || c.state === "idle")) this._note(key, "ok", "✓ " + I.t("saved"), 1800);
         else if (c.state === "waiting" || c.state === "sending") this.notes.delete(key);
         lastState = c.state;
@@ -128,6 +172,7 @@ export class ControlView {
       },
     });
     c.entityId = entityId;
+    c.conn = conn;
     this.coal.set(key, c);
     return c;
   }
@@ -190,9 +235,8 @@ export class ControlView {
         return;
       }
       case "step": {
-        if (!circuit || !circuit.climate) return;
+        if (!circuit || this._target(ctx, `hc${circuit.index}`) !== circuit.climate) return;
         const tg = circuitTarget(ctx, circuit);
-        if (!tg.writable) return;
         const c = this._coal(`hc${circuit.index}`, circuit.climate, "climate");
         const base = c.display();
         const next = Math.min(tg.max, Math.max(tg.min, Math.round(((base ?? tg.value) + Number(d.d) * tg.step) / tg.step) * tg.step));
@@ -221,9 +265,8 @@ export class ControlView {
         return;
       }
       case "dhwstep": {
-        const st = wh && ctx.state(wh);
-        if (!st || !st.attributes || typeof st.attributes.temperature !== "number") return;
-        const a = st.attributes;
+        if (!wh || this._target(ctx, "dhw") !== wh) return;
+        const a = ctx.state(wh).attributes;
         const step = a.target_temp_step || 0.5;
         const c = this._coal("dhw", wh, "water_heater");
         const base = c.display() ?? a.temperature;
@@ -402,7 +445,7 @@ export class ControlView {
     const running = boostOn || boostBusy === 1;
     const heating = mode === "dhw";
     const dis = ctx.disabled ? " disabled" : "";
-    const canSet = !!st && typeof a.temperature === "number" && !ctx.disabled;
+    const canSet = this._target(ctx, "dhw") === wh;
     const minT = typeof a.min_temp === "number" ? a.min_temp : D(5);
     const maxT = typeof a.max_temp === "number" ? a.max_temp : D(75);
     const margin = convertDelta(5, "K", tu);
@@ -437,6 +480,7 @@ export class ControlView {
 
   render(ctx) {
     const { I, sec } = ctx;
+    this._reconcile(ctx);
     let h = this._hero(ctx) + ctx.banner + this._hpSection(ctx);
     if (sec.circuits.length || sec.pool) {
       h += `<div class="sect"><div class="lab">${esc(I.t("section_circuits"))}</div>`;

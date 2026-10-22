@@ -122,6 +122,58 @@ test("a queued circuit edit is dropped when the preset changes externally", { sk
   assert.deepEqual((await writes(page)).slice(1), ["climate.set_preset_mode climate.wintergarten eco"]);
 });
 
+test("a queued circuit edit is dropped when a refetch maps the circuit to another entity", { skip }, async () => {
+  const page = await b.open("variant=house&view=controls&latency=30");
+  const c = on(page);
+  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /22,0°/);
+  // same plant, new payload: HC1 is now served by another climate entity
+  await page.eval("harness.plant.climateMap[1] = 'climate.fussboden_neu'; harness.el.store.refetch(true); true");
+  await sleep(2200);
+  assert.deepEqual(await writes(page), [], "nothing goes to the old climate.fussboden");
+  assert.ok(!(await c.exists('.hc[data-key="hc1"] .stepper .v.pend')));
+  assert.match(await c.text('.hc[data-key="hc1"] .note'), /verworfen/);
+  assert.deepEqual(page.errors, []);
+});
+
+test("a queued circuit edit is dropped when the feed hides the circuit controls (BMS)", { skip }, async () => {
+  const page = await b.open("variant=house&view=controls&latency=30");
+  const c = on(page);
+  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  await c.click('.hc[data-key="hc2"] [data-d="1"]');
+  // the feed reports BMS: no circuit controls any more; the climate
+  // entities still exist in HA until the entry reloads
+  await page.eval(`(() => {
+    const p = harness.plant;
+    p.values["avail.bms"] = 1;
+    const ev = p.event();
+    p.values["avail.bms"] = 0;
+    for (const cb of p._subs) cb(ev);
+    return true;
+  })()`);
+  await sleep(100);
+  assert.ok(!(await c.exists('.hc[data-key="hc1"]')), "circuit controls hidden");
+  await sleep(2100);
+  assert.deepEqual(await writes(page), []);
+  assert.equal(await page.eval("harness.el._views.controls.coal.size"), 0);
+  assert.deepEqual(page.errors, []);
+});
+
+test("a queued edit is re-checked right before sending (binding lost between renders)", { skip }, async () => {
+  const page = await b.open("variant=house&view=controls&latency=30");
+  const c = on(page);
+  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  // the controller becomes unavailable; no render has run yet when the timer fires
+  await page.eval(`(() => {
+    harness.el.requestRender = () => {};
+    harness.el.store.live.get(harness.plant.plantId).available = false;
+    return true;
+  })()`);
+  await sleep(2200);
+  assert.deepEqual(await writes(page), []);
+  assert.equal(await page.eval("harness.el._views.controls.coal.get('hc1').reason"), "invalid");
+});
+
 const curveState = (page, n = 1) => page.eval(`(() => { const s = harness.el._views.efficiency.curve.st.get(${n}); return s ? { pending: { ...s.pending }, error: s.error, applying: !!s.applying } : null; })()`);
 const setPending = (page, pending, n = 1) => page.eval(`(() => { const ed = harness.el._views.efficiency.curve; ed._s(${n}).pending = ${JSON.stringify(pending)}; harness.el.requestRender(); })()`);
 

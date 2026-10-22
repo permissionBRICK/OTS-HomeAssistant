@@ -179,6 +179,24 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     return p ? p.plant_id : null;
   }
 
+  /**
+   * Plant, newest feed event and sections as of now (not the last render's
+   * snapshot), or null while nothing is loaded.
+   */
+  snapshot() {
+    const store = this._store;
+    const hass = this._hass;
+    const plant = hass && store && store.plants ? pickPlant(store.plants, this._config) : null;
+    if (!plant) return null;
+    const ev = store.liveFor(plant.plant_id);
+    const live = ev || { values: {}, available: plant.available };
+    const sec = sections(plant, live, { circuits: this._config.circuits || circuitsForDevice(plant, this._config.device_id) });
+    // The feed is current; the one-shot payload only counts until it arrives
+    // (a controller that recovered must not stay disabled until a refetch).
+    const available = ev ? ev.available !== false : plant.available !== false;
+    return { hass, plant, live, sec, available };
+  }
+
   stateOf(eid) {
     return eid && this._hass ? this._hass.states[eid] : undefined;
   }
@@ -283,15 +301,8 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       const all = this.shadowRoot.querySelector(".all");
       if (all) all.hidden = false;
     }
-    const ev = store.liveFor(plant.plant_id);
-    const live = ev || { values: {}, available: plant.available };
-    const circuitsFilter = this._config.circuits || circuitsForDevice(plant, this._config.device_id);
-    const sec = sections(plant, live, { circuits: circuitsFilter });
-    // The feed is current; the one-shot payload only counts until it arrives
-    // (a controller that recovered must not stay disabled until a refetch).
-    const available = ev ? ev.available !== false : plant.available !== false;
+    const { hass, live, sec, available } = this.snapshot();
     const watch = new Map();
-    const hass = this._hass;
     const ctx = {
       hass,
       I,

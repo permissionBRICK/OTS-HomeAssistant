@@ -16,12 +16,17 @@ export class Coalescer {
    *   mode/preset). Captured with the baseline value when a burst starts; if
    *   either changed by the time the write would go out, the queued value is
    *   dropped (state "dropped") instead of landing on the wrong setpoint.
+   * @param {() => boolean} [o.valid] checked right before sending: false drops
+   *   the queued value (state "dropped", reason "invalid"), e.g. when the entity
+   *   is no longer the one for this control or became read-only.
    * @param {{setTimeout:Function, clearTimeout:Function}} [o.timers]
    */
-  constructor({ send, current, onChange, context, delay = 1500, confirmTimeout = 15000, timers } = {}) {
+  constructor({ send, current, onChange, context, valid, delay = 1500, confirmTimeout = 15000, timers } = {}) {
     this._send = send;
     this._current = current;
     this._context = context || null;
+    this._valid = valid || null;
+    this.reason = null; // why the last value was dropped: "context" | "invalid"
     this._snap = null; // { ctx, base } at the start of the current burst
     this._lastSent = undefined;
     this._onChange = onChange || (() => {});
@@ -57,6 +62,7 @@ export class Coalescer {
     this._value = v;
     this._dirty = true;
     this.error = null;
+    this.reason = null;
     this.state = "waiting";
     this._clearConfirm();
     this._arm();
@@ -143,9 +149,11 @@ export class Coalescer {
     const v = this._value;
     this._dirty = false;
     if (v === undefined) return;
-    if (this._contextChanged()) {
+    const reason = this._valid && !this._valid() ? "invalid" : this._contextChanged() ? "context" : null;
+    if (reason) {
       this._value = undefined;
       this.state = "dropped";
+      this.reason = reason;
       this._onChange();
       return;
     }

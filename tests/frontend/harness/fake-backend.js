@@ -269,6 +269,7 @@ export class FakePlant {
     this.failNext = null; // string → next service call rejects with this message
     this.flashWrites = 1284;
     this.available = true;
+    this.climateMap = {}; // circuit → climate entity id in the plants payload (re-mapped entity)
     this._subs = new Set();
     this._listeners = new Set();
     this._entities = null;
@@ -396,7 +397,7 @@ export class FakePlant {
       model: this.model,
       available: this.available,
       capabilities: caps,
-      circuits: this.circuits.map((c) => ({ ...c, name: this._circuitName(c.index), device_id: `dev_hc${c.index}_${this.variant}`, climate: this.climateId(c.index) })),
+      circuits: this.circuits.map((c) => ({ ...c, name: this._circuitName(c.index), device_id: `dev_hc${c.index}_${this.variant}`, climate: this.climateMap[c.index] || this.climateId(c.index) })),
       dhw: caps.dhw ? { water_heater: this.waterHeaterId, boost_button: this.boostId } : null,
       badges: BADGES,
       roles: this.roles(lang),

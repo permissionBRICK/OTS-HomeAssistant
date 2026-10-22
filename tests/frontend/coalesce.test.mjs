@@ -227,3 +227,26 @@ test("our own previous write landing during a new burst does not drop it", async
   await flush();
   assert.deepEqual(sent, [21.5, 22]);
 });
+
+test("the binding is re-checked right before sending: invalid → dropped, nothing sent", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const sent = [];
+  const env = { ok: true };
+  const c = new Coalescer({ delay: 1500, current: () => 21.5, valid: () => env.ok, send: async (v) => { sent.push(v); } });
+  c.push(22);
+  t.mock.timers.tick(1000);
+  env.ok = false; // e.g. the circuit's climate entity was replaced or hidden
+  t.mock.timers.tick(500);
+  await flush();
+  assert.deepEqual(sent, []);
+  assert.equal(c.state, "dropped");
+  assert.equal(c.reason, "invalid");
+  assert.equal(c.value, undefined);
+  // a new burst on a valid binding is written normally
+  env.ok = true;
+  c.push(22.5);
+  assert.equal(c.reason, null);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, [22.5]);
+});
