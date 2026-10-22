@@ -188,7 +188,11 @@ async def test_setup_polls_present_roles_and_adds_entities(hass, monkeypatch, fa
         for role, oid in P.role_ids(P.compute_capabilities(plant.fake.values)).items():
             assert oid in ids, role
         assert "CyPmLyssAAE=" not in ids  # HC4 absent: its roles are not polled
-        assert not any(oid in ids for oid in P.DHW_ROLES.values() if oid not in P.capability_ids())
+        # (The DHW emergency status has a catalog sensor of its own, polled anyway.)
+        assert not any(
+            oid in ids for role, oid in P.DHW_ROLES.items()
+            if oid not in P.capability_ids() and role != "dhw.emergency_status"
+        )
         caps = plant.ctrl["plant"]["caps"]
         assert [c["index"] for c in caps["circuits"]] == [1, 2, 3]
 
@@ -472,7 +476,18 @@ async def test_ws_plants_payload_against_fixture(hass, monkeypatch, fake_control
         assert not any(r.startswith(("dhw.", "pool.", "hc4.")) and r != "hc4.availability" for r in roles)
         assert "hc3.heat_curve_base_flow" in roles
 
+        # Emergency mode status: catalog enum labels, bilingual.
+        assert roles["hp.emergency_status"]["labels"] == {
+            "0": "Passiv", "1": "Reduziert, nicht bestätigt", "2": "Reduziert, bestätigt",
+            "3": "Standard, bestätigt", "4": "Anlagenstörung",
+        }
+        assert "dhw.emergency_status" not in roles  # no DHW on this plant
+
         en = (await plant_api.async_build_plants(hass, "en"))["plants"][0]["roles"]
+        assert en["hp.emergency_status"]["labels"] == {
+            "0": "Passive", "1": "Reduced, unconfirmed", "2": "Reduced, confirmed",
+            "3": "Standard, confirmed", "4": "Plant fault",
+        }
         assert en["hp.status"]["labels"]["1"] != "Heizen"
         assert en["hc1.op_program"]["labels"]["1"] == "Off"
         assert en["hp.program"]["options"] == hp_program["options"]  # entity strings, not translated
@@ -499,6 +514,12 @@ async def test_ws_plants_dhw_and_handler(hass, monkeypatch, fake_controller):
         assert p["roles"]["dhw.comfort_eco"]["options"] == {"1": "Eco", "2": "Komfort"}
         assert p["roles"]["dhw.setpoint_boost"]["min"] == 40.0
         assert p["roles"]["dhw.offset"]["step"] == 3.0
+        assert p["roles"]["dhw.emergency_status"]["labels"]["4"] == "Anlagenstörung"
+        conn = FakeConnection()
+        plant_api.ws_subscribe(hass, conn, {"id": 8, "type": f"{DOMAIN}/subscribe"})
+        values = conn.messages[0]["event"]["values"]
+        assert values["dhw.emergency_status"] == 0 and values["hp.emergency_status"] == 0
+        conn.subscriptions[8]()
     finally:
         await teardown(hass, plant)
 
@@ -534,6 +555,7 @@ async def test_ws_subscribe_pushes_on_updates(hass, monkeypatch, fake_controller
         assert values["hp.outdoor"] == pytest.approx(12.1851)
         assert values["hp.status"] == 1 and values["hc1.badge"] == 3 and values["hc1.season"] == 4
         assert values["hc1.name"] == "Fußboden" and values["avail.dhw"] == 0
+        assert values["hp.emergency_status"] == 0 and "dhw.emergency_status" not in values
         assert "hc1.room_temp" not in values
         json.dumps(first)
 

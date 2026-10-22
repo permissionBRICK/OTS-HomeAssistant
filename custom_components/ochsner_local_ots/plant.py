@@ -167,6 +167,9 @@ HP_ROLES: Dict[str, str] = {
     "hp.sum_fault": "BSLZ1IwCAAE=",
     "hp.dhw_valve": "ByIDxCiJAAE=",
     "hp.capability": "ESO6g8dZAAE=",
+    # Emergency mode status (HPMEmgySta): 0 Passiv, 1 RedUnConf, 2 RedConf,
+    # 3 StdConf, 4 PltFlt (labels from the catalog).
+    "hp.emergency_status": "CyNfYLWVAAE=",
 }
 
 DHW_ROLES: Dict[str, str] = {
@@ -181,6 +184,8 @@ DHW_ROLES: Dict[str, str] = {
     "dhw.setpoint_eco": "ASOp1XXZAAE=",
     "dhw.setpoint_reduced": "ASOXCHXZAAE=",
     "dhw.setpoint_boost": "ASPuhXXZAAE=",
+    # DHW emergency mode status (DHWEmgySta), same enum as hp.emergency_status.
+    "dhw.emergency_status": "CyNBRFsWAAE=",
 }
 
 # Pool module (tag 56386), from the app's pool tile (B7/Q.java) and actions
@@ -591,7 +596,11 @@ def catalog_labels(
         return dict(sorted(numeric.items(), key=lambda kv: int(kv[0])))
     vm = rec.get("value_map")
     if isinstance(vm, Mapping) and vm:
-        return {str(k): str(v) for k, v in vm.items()}
+        # Raw pump tokens ("RedUnConf"): their bilingual labels, else the token.
+        return {
+            str(k): resolve_enum_label(dict(rec), str(v), lang, dict(shared_labels or {}))
+            for k, v in vm.items()
+        }
     opts = rec.get("options")
     if isinstance(opts, Mapping) and opts:
         out = {}
