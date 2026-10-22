@@ -109,13 +109,24 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .sp.alt { margin-top: 4px; }
 /* "aktiv" under the value inside the stepper: costs no width */
 .stepper .v.act { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
-/* small stepper as wide as the main one, values centred under each other */
-.stepper.sm { gap: 4px; }
+/* small stepper = the main one (34 / 6 / 58 px) scaled to ~82 % as a whole,
+   centred in a box as wide as the main stepper so the values line up */
+.spbox { width: 138px; display: flex; justify-content: center; flex: none; }
+.stepper.sm { gap: 5px; }
 .stepper.sm button { width: 28px; height: 28px; font-size: 15px; }
-.stepper.sm .v { min-width: 74px; font-size: 13.5px; font-weight: 400; }
-.spbadge { font-size: 11px; line-height: 1.6; padding: 0 7px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); white-space: nowrap; }
+.stepper.sm .v { min-width: 48px; font-size: 14px; font-weight: 400; }
+.spbadge { font-size: 11px; line-height: 1.6; padding: 0 6px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); white-space: nowrap; }
 .sptag { display: block; margin-top: 1px; font-size: 9.5px; font-weight: 500; line-height: 1.3; letter-spacing: .2px; padding: 0 6px; border-radius: 999px; white-space: nowrap; color: var(--ohp-on-heat); background: var(--ohp-heat); }
 .sptag.cool { color: var(--ohp-on-cool); background: var(--ohp-cool); }
+.hcrow2 { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px; }
+.hcrow2 .sp.alt { margin-top: 0; }
+.hcinfo { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.hcinfo .sub { white-space: nowrap; font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.hcinfo .room { margin: 0; font-size: 12.5px; }
+.hc .room { display: flex; flex-wrap: wrap; column-gap: 8px; }
+.hc .room > span { white-space: nowrap; }
+.hcinfo .corr { font-size: 11.5px; padding: 1px 8px; }
+.hcinfo button.corr { min-height: 24px; }
 .subrow { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; margin-top: 4px; }
 .corr { font-size: 12px; line-height: 1.3; padding: 3px 9px; border-radius: 999px; white-space: nowrap; color: var(--ohp-aux-text); border: 1px solid color-mix(in srgb, var(--ohp-aux) 50%, transparent); background: color-mix(in srgb, var(--ohp-aux) 12%, transparent); }
 button.corr { cursor: pointer; min-height: 28px; }

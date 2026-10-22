@@ -156,7 +156,7 @@ test("correction chip only while the offset is not 0; ✕ writes 0 once", { skip
   assert.ok(!(await c.exists(".corr")), "offset 0: no chip");
   page = await b.open("variant=house&view=controls&latency=30&set=hc1.room_offset:1,hc1.room_target_heat:22.5");
   c = on(page);
-  assert.equal(await c.text(`${tile(1)} .subrow`), "Vorlauf 25,9° / 26,8°Korrektur +1,0 K ✕");
+  assert.equal(await c.text(`${tile(1)} .hcinfo`), "VL 25,9° / 26,8°Korr. +1,0 K ✕");
   assert.equal(await attr(page, c, `${tile(1)} button.corr`, "title"), "Korrektur auf 0 zurücksetzen");
   assert.ok(!(await c.exists(`${tile(2)} .corr`)));
   assert.deepEqual((await active(page, c))[0], "hc1.setpoint_normal_heat:main", "21.5 + 1 = 22.5");
@@ -171,14 +171,14 @@ test("correction chip only while the offset is not 0; ✕ writes 0 once", { skip
   // negative offset, English
   page = await b.open("variant=house&view=controls&latency=30&lang=en&set=hc2.room_offset:-1.5");
   c = on(page);
-  assert.equal(await c.text(`${tile(2)} button.corr`), "Correction −1.5 K ✕");
+  assert.equal(await c.text(`${tile(2)} button.corr`), "Offset −1.5 K ✕");
 });
 
 test("correction chip without ✕ when the offset entity is read-only or the plant unreachable", { skip }, async () => {
   for (const q of ["disable=hc1.room_offset", "unavailable=1"]) {
     const page = await b.open(`variant=house&view=controls&latency=30&set=hc1.room_offset:1&${q}`);
     const c = on(page);
-    assert.equal(await c.text(`${tile(1)} .corr`), "Korrektur +1,0 K", q);
+    assert.equal(await c.text(`${tile(1)} .corr`), "Korr. +1,0 K", q);
     assert.ok(!(await c.exists(`${tile(1)} button.corr`)), q);
     assert.deepEqual(page.errors, [], q);
   }
@@ -269,14 +269,14 @@ test("room sensors: temperature, humidity and (cooling) dew point on card B; not
   assert.doesNotMatch(await svgText(page, c), /Raum/);
   page = await b.open("variant=full&view=all&latency=30", { width: 1280, height: 1600 });
   c = on(page);
-  assert.equal(await c.text(`${tile(1)} .room`), "Raum 24,6° · 52 % · Taupunkt 15,2°");
-  assert.equal(await c.text(`${tile(2)} .room`), "Raum 25,3° · 48 % · Taupunkt 15,6°");
+  assert.equal(await c.text(`${tile(1)} .room`), "Raum 24,6° 52 % Taupunkt 15,2°");
+  assert.equal(await c.text(`${tile(2)} .room`), "Raum 25,3° 48 % Taupunkt 15,6°");
   // card A: room temperature and humidity lead the circuit's second line
   assert.match(await svgText(page, c), /Raum 24,6° · 52 % · VL 18,6° · Soll 18,5°/);
   // a sensor value update reaches both cards
   await setValues(page, { "hc1.room_temp": 23.9, "hc1.humidity": 55 });
   await sleep(80);
-  assert.match(await c.text(`${tile(1)} .room`), /^Raum 23,9° · 55 %/);
+  assert.match(await c.text(`${tile(1)} .room`), /^Raum 23,9° 55 %/);
   assert.match(await svgText(page, c), /Raum 23,9° · 55 %/);
   assert.deepEqual(await writes(page), []);
   assert.deepEqual(page.errors, []);
@@ -296,11 +296,11 @@ test("room sensors on narrow layouts: the schematic drops the less important par
 test("room sensors in Fahrenheit: room temperature in HA's unit, dew point labelled °C", { skip }, async () => {
   const page = await b.open("variant=full&view=all&latency=30&fahrenheit=1&lang=en", { width: 1280, height: 1600 });
   const c = on(page);
-  assert.equal(await c.text(`${tile(1)} .room`), "Room 76.3°F · 52 % · Dew point 15.2°C");
+  assert.equal(await c.text(`${tile(1)} .room`), "Room 76.3°F 52 % Dew point 15.2°C");
   assert.match(await svgText(page, c), /Room 76\.3°F · 52 % · Flow 18\.6°C/);
   // without the climate attribute the feed value is converted the same way
   await page.eval(`(() => { const id = harness.plant.climateId(1); const s = harness.fake.hass.states[id]; harness.fake.hass.states[id] = { ...s, attributes: { ...s.attributes, current_temperature: null } }; harness.el.hass = { ...harness.fake.hass }; return true; })()`);
   await sleep(80);
-  assert.equal(await c.text(`${tile(1)} .room`), "Room 76.3°F · 52 % · Dew point 15.2°C");
+  assert.equal(await c.text(`${tile(1)} .room`), "Room 76.3°F 52 % Dew point 15.2°C");
   assert.deepEqual(page.errors, []);
 });

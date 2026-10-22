@@ -478,7 +478,7 @@ export class ControlView {
     const name = circuitName(c, live);
     const fa = num(live, hcKey(n, "flow_actual"));
     const ft = num(live, hcKey(n, "flow_target"));
-    const flow = fa !== undefined || ft !== undefined ? `${I.t("flow")} ${I.temp(fa)} / ${I.temp(ft)}` : "";
+    const flow = fa !== undefined || ft !== undefined ? `${I.t("flow_short")} ${I.temp(fa)} / ${I.temp(ft)}` : "";
     const corr = this._correctionChip(ctx, c, name);
 
     const ps = presetState(ctx, c);
@@ -503,10 +503,16 @@ export class ControlView {
     const more = c.climate || displayEntity(ctx.plant, hcKey(n, "status"));
     const notes = this._noteHtml(`hc${n}`) + SETPOINTS.map((s) => this._noteHtml(hcKey(n, s.key))).join("");
     const sp = this._setpoints(ctx, c, name);
+    // Room readings, flow and the correction chip sit left of the small
+    // setpoint row, so the tile needs no extra lines for them.
+    const room = this._roomLine(ctx, c);
+    const info = room || flow || corr
+      ? `<div class="hcinfo">${room}${flow ? `<span class="sub" title="${esc(I.t("flow"))}">${esc(flow)}</span>` : ""}${corr}</div>`
+      : "<div></div>";
     return `<div class="hc" data-key="hc${n}"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
-        ${sp.main}</div>${sp.alt}
-      ${this._roomLine(ctx, c)}${flow || corr ? `<div class="subrow"><span class="sub">${esc(flow)}</span>${corr}</div>` : ""}
+        ${sp.main}</div>
+      ${sp.alt || info !== "<div></div>" ? `<div class="hcrow2">${info}${sp.alt}</div>` : ""}
       ${chips}${notes}</div>`;
   }
 
@@ -543,9 +549,11 @@ export class ControlView {
       const tag = act ? `<small class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</small>` : "";
       const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_normal"))}</span>`;
       const btn = (d, sym, verb, dis) => `<button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="${d}" aria-label="${esc(`${verb} ${name}: ${full}`)}"${dis}>${sym}</button>`;
-      return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
+      const stepper = `<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
           <div class="v${pend ? " pend" : ""}${act ? " act" : ""}" aria-live="polite"><span>${v !== undefined ? I.temp(v) : "–"}</span>${tag}</div>
-          ${btn(1, "+", I.t("raise"), plus)}</div></div>`;
+          ${btn(1, "+", I.t("raise"), plus)}</div>`;
+      // the small stepper is the main one scaled down as a whole, centred under it
+      return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}${main ? stepper : `<div class="spbox">${stepper}</div>`}</div>`;
     };
     return { main: row(pair.main, true), alt: pair.alt ? row(pair.alt, false) : "" };
   }
@@ -582,7 +590,8 @@ export class ControlView {
     if (rd.temp !== undefined) parts.push(`<b>${esc(I.t("room"))} ${tempIn(I, rd.temp, rd.unit)}</b>`);
     if (rd.hum !== undefined) parts.push(`<span title="${esc(I.t("humidity"))}">${I.int(rd.hum)} %</span>`);
     if (rd.dew !== undefined) parts.push(`${esc(I.t("dew_point"))} ${I.temp(rd.dew)}`);
-    return `<div class="room">${parts.join(" · ")}</div>`;
+    // each reading wraps as a whole, never in the middle
+    return `<div class="room">${parts.map((p) => `<span>${p}</span>`).join(" ")}</div>`;
   }
 
   _pool(ctx) {

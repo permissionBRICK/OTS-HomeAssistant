@@ -375,7 +375,7 @@ test("Fahrenheit HA: every native temperature says °C, HA-unit values say °F",
   assert.doesNotMatch(svg.replace(/°[CF]/g, ""), /°/, "no bare degree sign in the schematic");
   // controls: setpoints and feed flow values in °C
   assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v span'), /^21,5°C$/);
-  assert.match(await c.text('.hc[data-key="hc1"]'), /Vorlauf 25,9°C \/ 26,8°C/);
+  assert.match(await c.text('.hc[data-key="hc1"]'), /VL 25,9°C \/ 26,8°C/);
   assert.match(await c.text(".card-controls .hero .sub"), /Puffer 26,3°C · VL 29,6°C → RL 25,1°C/);
   // curve: axis ticks, handles (label, slider text), now label, floating label, crosshair
   const ticks = await texts(page, c.root, "svg.ch[data-curve] text.ax");

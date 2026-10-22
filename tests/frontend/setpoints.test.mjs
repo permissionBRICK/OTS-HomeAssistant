@@ -151,7 +151,7 @@ test("setpoint and room labels exist in German and English", () => {
     assert.equal(translate("de", k), de, k);
     assert.equal(translate("en", k), en, k);
   }
-  assert.equal(translate("de", "correction_chip", { v: "+1,0" }), "Korrektur +1,0 K");
-  assert.equal(translate("en", "correction_chip", { v: "+1.0" }), "Correction +1.0 K");
+  assert.equal(translate("de", "correction_chip", { v: "+1,0" }), "Korr. +1,0 K");
+  assert.equal(translate("en", "correction_chip", { v: "+1.0" }), "Offset +1.0 K");
   assert.equal(translate("de", "setpoint_title", { name: "Normal (Komfort, Tag)" }), "Raumsollwert Normal (Komfort, Tag)");
 });
