@@ -50,6 +50,47 @@ The integration identifies the heat pump by its serial number and follows addres
 
 To enter a new address yourself, open **Settings → Devices & services → Ochsner Local OTS** and choose **Reconfigure** from the entry's menu.
 
+### 3) Heat pump dashboard
+
+![Heat pump view in Home Assistant](docs/images/dashboard-heating-light.png)
+
+<p align="center">
+  <img src="docs/images/mobile-heating-dark.png" alt="Heat pump view on a phone while heating" width="45%">
+  &nbsp;
+  <img src="docs/images/mobile-cooling-hot-water-light.png" alt="Heat pump view on a phone for a plant with cooling and a hot water tank" width="45%">
+</p>
+
+The last setup step asks whether to show the **Heat pump** view in the sidebar. It contains three parts, which are also available as separate cards in the dashboard card picker (search for "Ochsner"):
+
+- **Plant schematic:** outdoor unit, buffer tank, hot water tank and heating circuits, with live temperatures. Pipes move while water flows and take the colour of the current mode.
+- **Controls:** heat pump Auto/Off, and for each heating circuit Komfort/Eco/Off and the room setpoint correction (−/+, in 0.5 K steps, like the Ochsner app). Circuits that can cool also get Heat/Auto/Cool, and the hot water section has its mode, setpoint and a Boost button.
+- **Heating curve and efficiency:** the heating curve of each circuit with today's operating point, and the last 24 hours of heat output split into electricity and ambient heat.
+
+The view adapts to your plant the same way the Ochsner app does. Circuits, cooling, hot water, the buffer tank, the auxiliary heater and the pool only appear if the controller reports them.
+
+**Editing the heating curve:** drag the curve points, the heating limit or the maximum flow temperature, or move a focused point with the arrow keys. The chart shows the result at today's outdoor temperature. Nothing is written until you press **Apply**, and each changed value costs one controller write.
+
+**Protecting the controller's flash memory:** −/+ taps are sent as a single write once you stop tapping, and switching the heat pump off asks for confirmation. The controller recalculates its targets a few seconds after a change, so a correction made right after another change is sent once the controller has settled (up to 8 seconds).
+
+The integration also creates a **thermostat** (`climate`) entity for each heating circuit and, if the plant has one, a **water heater** entity with a hot water boost button. They work with Home Assistant's own thermostat and tile cards, voice assistants and HomeKit.
+
+**Settings:** open **Settings → Devices & services → Ochsner Local OTS → Configure** to hide the sidebar view or to switch the colours from your Home Assistant theme to the Ochsner app's palette.
+
+![The heat pump view with the Ochsner app's colours](docs/images/dashboard-ochsner-colours.png)
+
+Card example (YAML):
+
+```yaml
+type: custom:ochsner-heatpump-card   # or ochsner-plant-card / ochsner-control-card / ochsner-efficiency-card
+view: all                            # all | plant | controls | efficiency
+color_scheme: auto                   # auto (integration setting) | ha | ochsner
+```
+
+Notes:
+- The live COP is marked with \*. It divides the heat output by the compressor's electrical power only; fans and pumps aren't included, so the real COP is lower. The yearly performance factor (JAZ) next to it comes from the controller itself.
+- Values that rarely change are polled less often. A change made outside Home Assistant, for example in the Ochsner app, can take a few minutes to show. Changes made in Home Assistant show immediately.
+- Requires Home Assistant 2026.8 or newer.
+
 ---
 
 ## How does this work?
