@@ -146,7 +146,7 @@ export class ControlView {
 
   _act(act, d) {
     const ctx = this.card.ctx;
-    if (!ctx || ctx.disabled) return;
+    if (!ctx || ctx.disabled || ctx.plant.plant_id !== this.plantId) return;
     const { plant } = ctx;
     const circuit = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
     switch (act) {

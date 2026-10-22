@@ -31,6 +31,19 @@ export class EfficiencyView {
     this.hist = { key: null, at: 0, loading: false, data: null, error: null };
   }
 
+  set plantId(id) {
+    this._plantId = id;
+    this.curve.plantId = id;
+  }
+
+  get plantId() {
+    return this._plantId;
+  }
+
+  dispose() {
+    this.curve.dispose();
+  }
+
   bind(el) {
     this.curve.bind(el);
     el.addEventListener("click", (e) => {

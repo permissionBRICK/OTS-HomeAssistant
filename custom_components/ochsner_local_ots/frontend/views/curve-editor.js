@@ -27,6 +27,19 @@ export class CurveEditor {
     this._hoverTimer = null;
   }
 
+  /** View thrown away (other plant/connection): no more UI work. */
+  dispose() {
+    this.disposed = true;
+    this.drag = null;
+    if (this._hoverTimer) clearTimeout(this._hoverTimer);
+  }
+
+  /** Current context, only if it still belongs to this editor's plant. */
+  _ctx() {
+    const ctx = this.card.ctx;
+    return !this.disposed && ctx && ctx.plant.plant_id === this.plantId ? ctx : null;
+  }
+
   _s(n) {
     let s = this.st.get(n);
     if (!s) {
@@ -142,7 +155,7 @@ export class CurveEditor {
       return;
     }
     if (hEl.classList.contains("ro") || e.button > 0) return;
-    const ctx = this.card.ctx;
+    const ctx = this._ctx();
     if (!ctx || ctx.disabled) return;
     const id = hEl.getAttribute("data-h");
     const n = this.geom.n;
@@ -180,7 +193,7 @@ export class CurveEditor {
       return;
     }
     if (e.pointerId !== this.drag.pointerId) return;
-    const ctx = this.card.ctx;
+    const ctx = this._ctx();
     if (!ctx) return;
     const pt = this._svgPoint(e);
     if (!pt) return;
@@ -241,7 +254,7 @@ export class CurveEditor {
       this.pointerFocus = false;
       this.card.requestRender();
     }
-    const ctx = this.card.ctx;
+    const ctx = this._ctx();
     if (!ctx || !this.geom) return;
     const n = this.geom.n;
     const id = hEl.getAttribute("data-h");
@@ -278,7 +291,7 @@ export class CurveEditor {
   }
 
   async apply(n) {
-    const ctx = this.card.ctx;
+    const ctx = this._ctx();
     const s = this._s(n);
     if (!ctx || s.applying || ctx.disabled) return;
     const base = this._base(ctx, n);
@@ -290,23 +303,28 @@ export class CurveEditor {
       this.card.requestRender();
       return;
     }
+    // Bind every write to this plant's entities now: whatever happens while
+    // the writes run (tab switch, refetch), they go exactly here.
+    const I = ctx.I;
+    const plan = diff.map((d) => ({ ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key)) }));
+    const ro = plan.find((d) => !d.entity);
+    if (ro) {
+      s.error = I.t("handle_readonly", { name: I.t("r_" + ro.key) });
+      this.card.requestRender();
+      return;
+    }
     s.error = null;
-    s.applying = { i: 0, n: diff.length };
+    s.applying = { i: 0, n: plan.length };
     this.card.requestRender();
-    for (const d of diff) {
+    for (const d of plan) {
       s.applying.i++;
       this.card.requestRender();
-      const ent = writableEntity(this.card.ctx.plant, hcKey(n, d.key));
-      if (!ent) {
-        s.error = this.card.i18n.t("handle_readonly", { name: this.card.i18n.t("r_" + d.key) });
-        break;
-      }
       try {
-        await this.card.call("number", "set_value", { entity_id: ent, value: d.to });
+        await this.card.call("number", "set_value", { entity_id: d.entity, value: d.to });
         delete s.pending[d.key];
         s.awaiting[d.key] = { v: d.to, at: Date.now() };
       } catch (err) {
-        s.error = this.card.i18n.t("apply_error", { msg: errText(err) });
+        s.error = I.t("apply_error", { msg: errText(err) });
         break;
       }
     }

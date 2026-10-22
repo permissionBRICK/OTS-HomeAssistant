@@ -254,12 +254,16 @@ export class OchsnerHeatpumpCard extends HTMLElement {
   _render() {
     if (!this._hass || !this.isConnected) return;
     const store = this._store;
+    const plant = store && store.plants ? pickPlant(store.plants, this._config) : null;
+    // Control state (queued writes, pending curve edits, busy chips) belongs
+    // to one plant: another plant gets fresh views, nothing carries over.
+    if (plant && this._plantId !== undefined && plant.plant_id !== this._plantId) this._resetViews();
+    if (plant) this._plantId = plant.plant_id;
     this._ensureSkeleton();
     this._applyScheme(store && store.settings);
     const I = makeI18n(this._hass);
     if (!store) return this._message(I.t("not_loaded"));
     if (!store.plants) return this._message(store.error ? I.t("not_loaded") : I.t("loading"));
-    const plant = pickPlant(store.plants, this._config);
     if (!plant) return this._message(I.t("no_plant"));
     const msg = this.shadowRoot.querySelector(".msg");
     if (!msg.hidden) {
@@ -296,6 +300,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     if (plant.flash_writes) ctx.state(plant.flash_writes);
     this.ctx = ctx;
     for (const [name, view] of Object.entries(this._views)) {
+      if (view.plantId === undefined) view.plantId = plant.plant_id;
       const el = this._containers[name];
       const width = this._widths[name] || el.clientWidth || 400;
       const vctx = { ...ctx, width, narrow: width < 520 };
