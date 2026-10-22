@@ -822,3 +822,51 @@ async def test_overlapping_dhw_commands(hass, monkeypatch, fake_controller):
         assert fake.writes == [(CE, 1), (BOOST, 0), ("ASOp1XXZAAE=", 44.0)]
     finally:
         await teardown(hass, plant)
+
+
+# --- unknown room setpoint correction -----------------------------------------
+
+
+def _forget(coordinator, *oids):
+    data = dict(coordinator.data)
+    data["values"] = {k: v for k, v in data["values"].items() if k not in oids}
+    coordinator.async_set_updated_data(data)
+
+
+@pytest.mark.asyncio
+async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fake_controller):
+    from homeassistant.exceptions import HomeAssistantError
+
+    plant = await setup_plant(hass, monkeypatch, fake_controller)
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        # The real correction is +2 K (target 23.5) but HA does not know it yet.
+        fake.set(OFF1, 2.0)
+        fake.set("CiPcW458AAE=", 23.5)
+        await coordinator.async_refresh_ids(["CiPcW458AAE="])
+        _forget(coordinator, OFF1)
+        assert c.target_temperature == 23.5 and c.extra_state_attributes["room_offset"] is None
+        assert (c.min_temp, c.max_temp) == (7, 35)  # HA defaults: base unknown
+        fake.writes.clear()
+        fake.reads.clear()
+        await c.async_set_temperature(temperature=23.5)
+        assert fake.reads[0] == [OFF1]  # one targeted read, then planned with +2 K
+        assert fake.writes == []  # unchanged; never "offset 0"
+        _forget(coordinator, OFF1)
+        await c.async_set_temperature(temperature=22.5)
+        assert fake.writes == [(OFF1, 1.0)]
+
+        # Still unknown after the re-read: translated error, nothing written.
+        fake.drop(OFF1)
+        _forget(coordinator, OFF1)
+        fake.writes.clear()
+        fake.reads.clear()
+        with pytest.raises(HomeAssistantError) as err:
+            await c.async_set_temperature(temperature=23.5)
+        assert err.value.translation_domain == DOMAIN
+        assert err.value.translation_key == "room_offset_unknown"
+        assert fake.reads == [[OFF1]] and fake.writes == []
+        assert plant.runtime["write_counts"][KEY] == 1
+    finally:
+        await teardown(hass, plant)

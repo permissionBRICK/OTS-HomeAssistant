@@ -707,25 +707,66 @@ def circuit_target(values: Mapping[str, Any], ids: Mapping[str, str]) -> Optiona
     return t
 
 
+class UnknownValueError(ValueError):
+    """A value a write has to be computed from is not known (nothing written).
+
+    ``translation_key`` names the user-facing message (strings.json
+    ``exceptions``).
+    """
+
+    def __init__(self, translation_key: str, message: str) -> None:
+        super().__init__(message)
+        self.translation_key = translation_key
+
+
 def offset_bounds(target: Optional[float], offset: Optional[float]) -> Optional[Tuple[float, float]]:
-    """(min_temp, max_temp) a target can be moved to via the ±3 K offset."""
-    if target is None:
+    """(min_temp, max_temp) a target can be moved to via the ±3 K offset.
+
+    Unknown without both values: the base (target − offset) is not known.
+    """
+    if target is None or offset is None:
         return None
-    base = target - (offset or 0.0)
+    base = target - offset
     return (base - OFFSET_LIMIT, base + OFFSET_LIMIT)
 
 
-def new_offset(requested: float, target: float, offset: Optional[float]) -> float:
-    """Offset that moves the current target to ``requested`` (app −/+ math)."""
-    cur = offset or 0.0
+def new_offset(requested: float, target: float, offset: float) -> float:
+    """Offset that moves the current target to ``requested`` (app −/+ math).
+
+    The current offset must be known: the app refuses to change it otherwise
+    ("offset must not be null", p045d8/v.java); assuming 0 would move the
+    target the wrong way whenever the real correction is not 0.
+    """
+    cur = as_float(offset)
+    if cur is None:
+        raise UnknownValueError("room_offset_unknown", "room setpoint correction unknown")
     out = clamp(round_half(cur + float(requested) - float(target)), -OFFSET_LIMIT, OFFSET_LIMIT)
     return 0.0 if out == 0 else out
+
+
+def temperature_inputs_missing(values: Mapping[str, Any], ids: Mapping[str, str]) -> List[str]:
+    """Ids plan_temperature needs that have no value yet (to re-read once)."""
+    missing: List[str] = []
+    if as_float(first_value(values, ids.get("room_offset"))) is None:
+        missing.append(ids["room_offset"])
+    if circuit_target(values, ids) is None:
+        sel = as_int(first_value(values, ids.get("target_selector")))
+        if sel is None:
+            keys = ("target_selector", "room_target_heat", "room_target_cool", "room_target_current")
+        elif sel in (0, 2):
+            keys = ("room_target_heat", "room_target_current")
+        elif sel in (1, 3):
+            keys = ("room_target_cool", "room_target_current")
+        else:
+            keys = ("room_target_current",)
+        missing += [ids[k] for k in keys if ids.get(k)]
+    return missing
 
 
 def plan_temperature(requested: float, values: Mapping[str, Any], ids: Mapping[str, str]) -> List[Write]:
     target = circuit_target(values, ids)
     if target is None:
-        raise ValueError("circuit target temperature unknown")
+        raise UnknownValueError("room_target_unknown", "circuit target temperature unknown")
     off_id = ids["room_offset"]
     cur = as_float(first_value(values, off_id))
     new = new_offset(requested, target, cur)

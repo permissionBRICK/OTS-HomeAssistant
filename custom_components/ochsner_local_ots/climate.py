@@ -182,4 +182,11 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
             return
         requested = float(temperature)
-        await self._write(lambda values: P.plan_temperature(requested, values, self._ids))
+        # The correction is relative: with the current offset (or target)
+        # unknown it is re-read once, and nothing is written if it stays unknown.
+        await async_write_planned(
+            self._ctrl,
+            lambda values: P.plan_temperature(requested, values, self._ids),
+            self._dependents(),
+            missing=lambda values: P.temperature_inputs_missing(values, self._ids),
+        )

@@ -9,6 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
+from .plant import UnknownValueError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,20 +58,31 @@ async def async_write_planned(
     ctrl: Dict[str, Any],
     plan: Plan,
     refresh_ids: Iterable[str] = (),
+    *,
+    missing: Optional[Callable[[Mapping[str, Any]], List[str]]] = None,
 ) -> List[Tuple[str, Any]]:
     """Decide and write (id, value) pairs under the controller's write lock.
 
     ``plan`` gets the current values once every earlier write and its
     re-read has finished, and returns only the values that differ from
     them, so overlapping commands neither repeat a write nor drop a change.
-    The pairs go through the counted write path in order; afterwards the
-    touched and dependent ids are re-read once (also after a failure).
+    ``missing(values)`` lists ids the plan needs that have no value yet;
+    they are re-read once before planning. The pairs go through the counted
+    write path in order; afterwards the touched and dependent ids are
+    re-read once (also after a failure).
     """
     api = ctrl["api"]
     coordinator = ctrl["coordinator"]
     async with coordinator.async_write_session() as session:
+        if missing is not None and (ids := missing(coordinator_values(coordinator))):
+            try:
+                await coordinator.async_refresh_ids(ids)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Re-reading %s before a write failed: %s", ids, type(err).__name__)
         try:
             writes = list(plan(coordinator_values(coordinator)))
+        except UnknownValueError as err:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key=err.translation_key) from err
         except ValueError as err:
             raise HomeAssistantError(str(err)) from err
         if not writes:

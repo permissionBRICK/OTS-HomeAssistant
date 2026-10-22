@@ -309,10 +309,37 @@ def test_offset_math(plant_mod):
     assert P.plan_temperature(21.8, values, ids) == [(off, 1.0)]
     assert P.plan_temperature(20.24, values, ids) == [(off, -1.0)]
     assert P.new_offset(21.0, 21.5, -0.5) == -1.0
-    assert P.new_offset(21.5, 21.5, None) == 0.0
     values, ids = _circuit(P)
-    with pytest.raises(ValueError):
+    with pytest.raises(P.UnknownValueError) as err:
         P.plan_temperature(21.0, values, ids)
+    assert err.value.translation_key == "room_target_unknown"
+
+
+def test_unknown_offset_is_never_assumed_zero(plant_mod):
+    """The app refuses to move the target without the current offset (v.java)."""
+    P = plant_mod
+    # Target 23 incl. an unknown correction (could be +2 K): no write at all.
+    values, ids = _circuit(P, target_selector=0, room_target_heat=23.0)
+    for requested in (23.0, 22.0, 25.0):
+        with pytest.raises(P.UnknownValueError) as err:
+            P.plan_temperature(requested, values, ids)
+        assert err.value.translation_key == "room_offset_unknown"
+    with pytest.raises(P.UnknownValueError):
+        P.new_offset(23.0, 23.0, None)
+    assert P.offset_bounds(23.0, None) is None
+    assert P.temperature_inputs_missing(values, ids) == ["ACNZw458AAE="]
+    # Nothing known: offset, selector and every target candidate are re-read.
+    values, ids = _circuit(P)
+    assert P.temperature_inputs_missing(values, ids) == [
+        "ACNZw458AAE=", "CyP/dY58AAE=", "CiPcW458AAE=", "CiO36o58AAE=", "CiMeXI58AAE=",
+    ]
+    # Cooling target selected: only the cooling target (and the fallback).
+    values, ids = _circuit(P, target_selector=1, room_offset=0.0)
+    assert P.temperature_inputs_missing(values, ids) == ["CiO36o58AAE=", "CiMeXI58AAE="]
+    values, ids = _circuit(P, target_selector=0, room_target_heat=23.0, room_offset=2.0)
+    assert P.temperature_inputs_missing(values, ids) == []
+    assert P.plan_temperature(23.0, values, ids) == []
+    assert P.plan_temperature(22.0, values, ids) == [("ACNZw458AAE=", 1.0)]
 
 
 # --- DHW --------------------------------------------------------------------
