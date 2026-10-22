@@ -110,7 +110,8 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .mc.on.auto { color: #fff; background: linear-gradient(90deg, var(--ohp-heat), var(--ohp-cool)); text-shadow: 0 0 3px rgba(0,0,0,.35); }
 .mc.on.dhwc { color: var(--ohp-on-dhw); background: var(--ohp-dhw); }
 .mc.busy { opacity: .6; }
-.mc:disabled { cursor: default; }
+.mc:disabled { cursor: default; opacity: .55; }
+.seg button:disabled:not(.manual) { opacity: .55; }
 .note { font-size: 11.5px; margin-top: 6px; color: var(--ohp-ink2); }
 .note.ok { color: var(--ohp-ok-text); }
 .note.err { color: var(--ohp-err-text); }
@@ -148,7 +149,9 @@ svg.ch .h.ro { cursor: not-allowed; }
 svg.ch .h .hit { fill: transparent; stroke: none; }
 svg.ch .h .dotv { transition: r .12s; }
 svg.ch .h:hover .dotv, svg.ch .h:focus-visible .dotv, svg.ch .h.act .dotv { r: 9px; }
-svg.ch .h:focus-visible .ring { stroke: var(--primary-color, #03a9f4); stroke-width: 2; fill: none; }
+svg.ch .h:focus-visible .ring { stroke: var(--primary-color, #03a9f4); stroke-width: 2; }
+svg.ch circle.ring { fill: none; }
+svg.ch.pf .h:focus-visible circle.ring { stroke: none; }
 svg.ch .h .lineh { transition: stroke-width .12s; }
 svg.ch .h:hover .lineh, svg.ch .h:focus-visible .lineh, svg.ch .h.act .lineh { stroke-width: 3; }
 svg.ch.dragging, svg.ch.dragging .h { cursor: grabbing; }
@@ -164,6 +167,7 @@ svg.ch .flab text { font-size: 12px; fill: var(--ohp-ink); font-weight: 500; }
 .pendbar li { margin: 1px 0; }
 .pendbar .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .pendbar .cost { font-size: 11.5px; color: var(--ohp-ink2); margin-right: auto; }
+.pendbar .btns { display: flex; gap: 8px; margin-left: auto; }
 .btn { font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 10px; border: 1px solid var(--ohp-line); background: transparent; color: var(--ohp-ink); cursor: pointer; min-height: 34px; }
 .btn.primary { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); border-color: transparent; }
 .btn:disabled { opacity: .55; cursor: default; }

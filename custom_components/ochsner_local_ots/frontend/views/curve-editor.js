@@ -109,6 +109,7 @@ export class CurveEditor {
       const h = e.target.closest && e.target.closest("svg.ch .h[data-h]");
       if (h && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("svg.ch .h[data-h]"))) {
         this.focused = null;
+        this.pointerFocus = false;
         this.card.requestRender();
       }
     });
@@ -168,6 +169,7 @@ export class CurveEditor {
       hEl.focus({ preventScroll: true });
     } catch (_e) { /* ignore */ }
     this.focused = id;
+    this.pointerFocus = true;
     this._hideCross();
     this.card.requestRender();
   }
@@ -235,6 +237,10 @@ export class CurveEditor {
   _key(e) {
     const hEl = e.target.closest && e.target.closest("svg.ch .h[data-h]");
     if (!hEl) return;
+    if (this.pointerFocus) {
+      this.pointerFocus = false;
+      this.card.requestRender();
+    }
     const ctx = this.card.ctx;
     if (!ctx || !this.geom) return;
     const n = this.geom.n;
@@ -335,6 +341,13 @@ export class CurveEditor {
     line.setAttribute("x1", pt.x);
     line.setAttribute("x2", pt.x);
     line.style.display = "";
+    const dot = g.svg.querySelector(".cxd");
+    const fy = hasHeatCurve(vals) ? heatFlowAt(vals, x) : undefined;
+    if (dot && fy !== undefined && !aboveHeatLimit(vals, x)) {
+      dot.setAttribute("cx", pt.x);
+      dot.setAttribute("cy", g.Y(fy));
+      dot.style.display = "";
+    } else if (dot) dot.style.display = "none";
     tip.textContent = text;
     tip.style.display = "block";
     const rect = g.svg.getBoundingClientRect();
@@ -352,8 +365,10 @@ export class CurveEditor {
     const g = this.geom;
     if (!g || !g.svg) return;
     const line = g.svg.querySelector(".cx");
+    const dot = g.svg.querySelector(".cxd");
     const tip = g.svg.parentElement && g.svg.parentElement.querySelector(".tip.cur");
     if (line) line.style.display = "none";
+    if (dot) dot.style.display = "none";
     if (tip) tip.style.display = "none";
   }
 
@@ -381,7 +396,7 @@ export class CurveEditor {
     const ax = this.drag && this.drag.n === n ? this.drag.axes : axes(vals, { nowX, nowFlow, actualFlow: actual, cool });
 
     const W = Math.max(260, Math.round(width));
-    const H = Math.round(Math.min(340, Math.max(210, W * 0.56)));
+    const H = Math.round(Math.min(340, Math.max(232, W * (W < 480 ? 0.7 : 0.56))));
     const pw = W - P.l - P.r, ph = H - P.t - P.b;
     const X = (v) => P.l + ((v - ax.xmin) / (ax.xmax - ax.xmin)) * pw;
     const Y = (v) => H - P.b - ((v - ax.ymin) / (ax.ymax - ax.ymin)) * ph;
@@ -446,45 +461,12 @@ export class CurveEditor {
     }
     if (cool) curves += `<path d="${coolPath(vals)}" fill="none" stroke="var(--ohp-cool)" stroke-width="2.5" stroke-linejoin="round"/>`;
 
-    // now point
-    let now = "";
-    if (nowX !== undefined && nowFlow !== undefined && nowX >= ax.xmin && nowX <= ax.xmax) {
-      const nx = X(nowX), ny = Y(nowFlow);
-      now += `<line x1="${r1(nx)}" x2="${r1(nx)}" y1="${r1(ny)}" y2="${H - P.b}" stroke="var(--ohp-ink)" stroke-opacity=".35"/>`;
-      if (actual !== undefined) now += `<circle cx="${r1(nx)}" cy="${r1(Y(actual))}" r="4.5" fill="none" stroke="var(--ohp-ink)" stroke-width="1.5" opacity=".8"><title>${esc(I.t("flow_actual"))} ${I.temp(actual)}</title></circle>`;
-      now += `<circle cx="${r1(nx)}" cy="${r1(ny)}" r="5" fill="var(--ohp-ink)" stroke="var(--ohp-card)" stroke-width="2"/>`;
-      const txt = I.t("now_label", { flow: I.temp(nowFlow), out: I.temp(nowX) });
-      const tw = txt.length * 5.9, th = 12;
-      // Pick the label position that collides least with handles and curves.
-      const obstacles = [];
-      for (const id of ["heat_norm", "heat_base", "cool_norm", "cool_base"]) {
-        const h = HANDLES[id];
-        if (typeof vals[h.x] === "number" && typeof vals[h.y] === "number") obstacles.push([X(vals[h.x]), Y(vals[h.y]), 13]);
-      }
-      for (let px = P.l; px <= W - P.r; px += 6) {
-        const xv = Xi(px);
-        if (hasHeat) obstacles.push([px, Y(heatFlowAt(vals, xv)), 3]);
-        if (cool && (typeof vals.cool_limit !== "number" || xv >= vals.cool_limit)) obstacles.push([px, Y(coolFlowAt(vals, xv)), 3]);
-      }
-      const cands = [
-        [nx - 8 - tw, ny - 10 - th], [nx + 8, ny + 6], [nx - 8 - tw, ny + 6], [nx + 8, ny - 10 - th],
-        [nx - tw / 2, ny - 14 - th], [nx - tw / 2, ny + 10],
-      ];
-      let best = cands[0], bestScore = Infinity;
-      cands.forEach(([lx, ly], i) => {
-        let score = i * 0.01;
-        if (lx < P.l || lx + tw > W - P.r || ly < P.t || ly + th > H - P.b) score += 50;
-        for (const [ox, oy, rr] of obstacles) if (ox > lx - rr && ox < lx + tw + rr && oy > ly - rr && oy < ly + th + rr) score += rr > 5 ? 10 : 1;
-        if (score < bestScore) { bestScore = score; best = [lx, ly]; }
-      });
-      now += `<text class="ax" x="${r1(best[0])}" y="${r1(best[1] + th - 2)}" text-anchor="start" style="fill:var(--ohp-ink)">${esc(txt)}</text>`;
-    }
-
     // handles
     const active = this.drag && this.drag.n === n ? this.drag.id : this.focused;
     const roName = (keys) => keys.filter((k) => !writable.has(k)).map((k) => I.t("r_" + k)).join(", ");
     let lines = "";
     let points = "";
+    const boxes = []; // label boxes the "now" label must avoid
     const handleAttrs = (id, keys, label, valuetext) => {
       const ro = keys.every((k) => !writable.has(k)) || ctx.disabled;
       const tip = ro && !ctx.disabled ? I.t("handle_readonly", { name: roName(keys) }) : label;
@@ -502,6 +484,7 @@ export class CurveEditor {
       const tw = txt.length * 5.8;
       const flip = x + 6 + tw > W - P.r;
       const ty = labelTop ? P.t + 9 : H - P.b - 6;
+      boxes.push([flip ? x - 8 - tw : x + 8, ty - 10, tw, 12], [x - 6, labelTop ? P.t - 2 : H - P.b - 18, 12, 20]);
       lines += `${a.open}<rect class="hit" x="${x - 11}" y="${P.t}" width="22" height="${ph}"/>`
         + `<line class="lineh" x1="${x}" x2="${x}" y1="${P.t}" y2="${H - P.b}" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 4" opacity=".85"/>`
         + (a.ro ? "" : `<rect class="ring" x="${x - 4}" y="${labelTop ? P.t - 2 : H - P.b - 18}" width="8" height="20" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
@@ -513,10 +496,12 @@ export class CurveEditor {
       const y = r1(Y(v));
       const txt = I.t("max_flow_label", { t: I.temp(v, 0) });
       const a = handleAttrs(id, [key], I.t("h_" + id), txt);
+      const tw = txt.length * 5.8;
+      boxes.push([W - P.r - tw, y - 15, tw, 12], [P.l, y - 6, 24, 12]);
       lines += `${a.open}<rect class="hit" x="${P.l}" y="${y - 11}" width="${pw}" height="22"/>`
         + `<line class="lineh" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.2" stroke-dasharray="6 4" opacity=".7"/>`
         + (a.ro ? "" : `<rect class="ring" x="${P.l + 2}" y="${y - 4}" width="20" height="8" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
-        + `<text class="axl" x="${P.l + 28}" y="${y - 5}">${esc(txt)}</text></g>`;
+        + `<text class="axl" x="${W - P.r}" y="${y - 5}" text-anchor="end">${esc(txt)}</text></g>`;
     };
     const point = (id, col) => {
       const h = HANDLES[id];
@@ -541,6 +526,49 @@ export class CurveEditor {
     if (cool) {
       point("cool_norm", "var(--ohp-cool)");
       point("cool_base", "var(--ohp-cool)");
+    }
+
+    // now point
+    let now = "";
+    let nowInLegend = false;
+    if (nowX !== undefined && nowFlow !== undefined && nowX >= ax.xmin && nowX <= ax.xmax) {
+      const nx = X(nowX), ny = Y(nowFlow);
+      now += `<line x1="${r1(nx)}" x2="${r1(nx)}" y1="${r1(ny)}" y2="${H - P.b}" stroke="var(--ohp-ink)" stroke-opacity=".35"/>`;
+      if (actual !== undefined) now += `<circle cx="${r1(nx)}" cy="${r1(Y(actual))}" r="4.5" fill="none" stroke="var(--ohp-ink)" stroke-width="1.5" opacity=".8"><title>${esc(I.t("flow_actual"))} ${I.temp(actual)}</title></circle>`;
+      now += `<circle cx="${r1(nx)}" cy="${r1(ny)}" r="5" fill="var(--ohp-ink)" stroke="var(--ohp-card)" stroke-width="2"/>`;
+      const full = I.t("now_label", { flow: I.temp(nowFlow), out: I.temp(nowX) });
+      const short = `${I.t("now")} ${I.temp(nowFlow)}`;
+      // Pick the label position that collides least with handles and curves.
+      const obstacles = [];
+      for (const id of ["heat_norm", "heat_base", "cool_norm", "cool_base"]) {
+        const h = HANDLES[id];
+        if (typeof vals[h.x] === "number" && typeof vals[h.y] === "number") obstacles.push([X(vals[h.x]), Y(vals[h.y]), 13]);
+      }
+      for (let px = P.l; px <= W - P.r; px += 6) {
+        const xv = Xi(px);
+        if (hasHeat) obstacles.push([px, Y(heatFlowAt(vals, xv)), 3]);
+        if (cool && (typeof vals.cool_limit !== "number" || xv >= vals.cool_limit)) obstacles.push([px, Y(coolFlowAt(vals, xv)), 3]);
+      }
+      const th = 12;
+      const cands = [];
+      for (const [txt, extra] of [[full, 0], [short, 5]]) {
+        const tw = txt.length * 5.9;
+        for (const [lx, ly] of [
+          [nx - 8 - tw, ny - 10 - th], [nx + 8, ny + 6], [nx - 8 - tw, ny + 6], [nx + 8, ny - 10 - th],
+          [nx - tw / 2, ny - 14 - th], [nx - tw / 2, ny + 10], [nx - 8 - tw, ny - 26 - th], [nx + 8, ny - 26 - th],
+        ]) cands.push([lx, ly, tw, txt, extra]);
+      }
+      let best = cands[0], bestScore = Infinity;
+      cands.forEach(([lx, ly, tw, , extra], i) => {
+        let score = extra + i * 0.01;
+        if (lx < P.l || lx + tw > W - P.r || ly < P.t || ly + th > H - P.b) score += 50;
+        for (const [ox, oy, rr] of obstacles) if (ox > lx - rr && ox < lx + tw + rr && oy > ly - rr && oy < ly + th + rr) score += rr > 5 ? 10 : 1;
+        for (const [bx, by, bw, bh] of boxes) if (bx < lx + tw && bx + bw > lx && by < ly + th && by + bh > ly) score += 10;
+        if (score < bestScore) { bestScore = score; best = cands[i]; }
+      });
+      // Crowded chart: the legend carries the value instead of an ambiguous label.
+      nowInLegend = bestScore >= 1;
+      if (!nowInLegend) now += `<text class="ax" x="${r1(best[0])}" y="${r1(best[1] + th - 2)}" text-anchor="start" style="fill:var(--ohp-ink)">${esc(best[3])}</text>`;
     }
 
     // floating value label next to the active handle
@@ -568,15 +596,16 @@ export class CurveEditor {
       }
     }
 
-    const cross = `<line class="cx" y1="${P.t}" y2="${H - P.b}" stroke="var(--ohp-ink2)" stroke-opacity=".6" style="display:none" pointer-events="none"/>`;
-    const svg = `<svg class="ch${this.drag ? " dragging" : ""}" data-curve="${n}" viewBox="0 0 ${W} ${H}" width="100%" role="group" aria-label="${esc(I.t("heating_curve"))}">${g}${curves}${now}${cross}${lines}${points}${flab}</svg>`;
+    const cross = `<line class="cx" y1="${P.t}" y2="${H - P.b}" stroke="var(--ohp-ink2)" stroke-opacity=".6" style="display:none" pointer-events="none"/>`
+      + `<circle class="cxd" r="4" fill="var(--ohp-heat)" stroke="var(--ohp-card)" stroke-width="1.5" style="display:none" pointer-events="none"/>`;
+    const svg = `<svg class="ch${this.drag ? " dragging" : ""}${this.pointerFocus ? " pf" : ""}" data-curve="${n}" viewBox="0 0 ${W} ${H}" width="100%" role="group" aria-label="${esc(I.t("heating_curve"))}">${g}${curves}${now}${cross}${lines}${points}${flab}</svg>`;
 
     // legend
     let legend = `<div class="legend">`;
     if (hasHeat) legend += `<span><i class="ln" style="background:var(--ohp-heat)"></i>${esc(I.t("heating_curve"))}</span>`;
     if (cool) legend += `<span><i class="ln" style="background:var(--ohp-cool)"></i>${esc(I.t("cooling_curve"))}</span>`;
     if (showShift) legend += `<span><i class="ln" style="background:var(--ohp-heat);opacity:.4"></i>${esc(I.t("effective"))}</span>`;
-    if (nowFlow !== undefined) legend += `<span><i style="background:var(--ohp-ink);border-radius:50%"></i>${esc(I.t("now"))}</span>`;
+    if (nowFlow !== undefined) legend += `<span><i style="background:var(--ohp-ink);border-radius:50%"></i>${esc(nowInLegend && nowX !== undefined ? I.t("now_label", { flow: I.temp(nowFlow), out: I.temp(nowX) }) : I.t("now"))}</span>`;
     if (actual !== undefined && nowFlow !== undefined) legend += `<span><i class="ring"></i>${esc(I.t("flow_actual"))}</span>`;
     legend += `</div>`;
 
@@ -584,7 +613,7 @@ export class CurveEditor {
     let readout = "";
     if (diff.length && nowX !== undefined && hasHeat) {
       const eff = effectAt(base, vals, nowX, nowFlow);
-      if (eff) readout = eff.aboveLimit ? esc(I.t("tip_above_limit", { out: I.temp(nowX) })) : I.t("effect_at_now", { out: `<b>${I.temp(nowX)}</b>`, from: `<b>${I.temp(eff.from)}</b>`, to: `<b>${I.temp(eff.to)}</b>` });
+      if (eff) readout = eff.aboveLimit ? I.t("effect_above_limit", { out: `<b>${I.temp(nowX)}</b>` }) : I.t("effect_at_now", { out: `<b>${I.temp(nowX)}</b>`, from: `<b>${I.temp(eff.from)}</b>`, to: `<b>${I.temp(eff.to)}</b>` });
     } else if (this.focused && !this.drag) readout = esc(I.t("kbd_hint"));
 
     // pending bar
@@ -602,8 +631,8 @@ export class CurveEditor {
         + (items ? `<ul>${items}</ul>` : "")
         + (s.error ? `<div class="note err" role="alert">${esc(s.error)}</div>` : "")
         + `<div class="row"><span class="cost">${busy ? esc(I.t("applying", { i: s.applying.i, n: s.applying.n })) : esc(cost)}</span>`
-        + `<button class="btn" data-cact="discard" data-c="${n}"${busy ? " disabled" : ""}>${esc(I.t("discard"))}</button>`
-        + `<button class="btn primary" data-cact="apply" data-c="${n}"${busy || !diff.length || ctx.disabled ? " disabled" : ""}>${esc(I.t("apply"))}</button></div></div>`;
+        + `<span class="btns"><button class="btn" data-cact="discard" data-c="${n}"${busy ? " disabled" : ""}>${esc(I.t("discard"))}</button>`
+        + `<button class="btn primary" data-cact="apply" data-c="${n}"${busy || !diff.length || ctx.disabled ? " disabled" : ""}>${esc(I.t("apply"))}</button></span></div></div>`;
     } else if (awaiting) {
       bar = `<div class="note wait" role="status">${esc(I.t("applied_wait"))}</div>`;
     }

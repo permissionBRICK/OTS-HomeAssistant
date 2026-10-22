@@ -311,7 +311,16 @@ export class FakePlant {
     const e = this.entities()[key];
     if (e && e.sup && e.sup.options) return { ...e.sup.options };
     if (!p) return null;
-    if (p.value_map) return lang === "en" && p.enum_labels_en ? { ...p.enum_labels_en } : { ...p.value_map };
+    if (p.value_map) {
+      if (lang !== "en" || !p.enum_labels_en) return { ...p.value_map };
+      if (Object.keys(p.enum_labels_en).every((k) => /^\d+$/.test(k))) return { ...p.enum_labels_en };
+      // token-keyed English labels: map raw → token via the enum descriptor
+      const desc = this.descriptors[descriptorId(this.ids[key])];
+      const tokens = typeof desc === "string" ? desc.split("*") : [];
+      const out = {};
+      for (const raw of Object.keys(p.value_map)) out[raw] = p.enum_labels_en[(tokens[raw] || "").toLowerCase()] || p.value_map[raw];
+      return out;
+    }
     if (p.options) {
       const desc = this.descriptors[descriptorId(this.ids[key])];
       const tokens = typeof desc === "string" ? desc.split("*") : null;

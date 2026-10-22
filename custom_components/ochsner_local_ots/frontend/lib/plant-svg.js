@@ -84,7 +84,7 @@ function row(rw, vm, x, y, w, h, narrow) {
  */
 export function plantSVG(vm, width) {
   const narrow = width < 520;
-  return narrow ? narrowLayout(vm, Math.max(300, Math.round(width))) : wideLayout(vm, Math.min(980, Math.max(600, Math.round(width))));
+  return narrow ? narrowLayout(vm, Math.max(300, Math.round(width))) : wideLayout(vm, Math.min(1600, Math.max(600, Math.round(width))));
 }
 
 function hpColor(vm) {
