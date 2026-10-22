@@ -247,6 +247,18 @@ export function toServiceValue(r, v) {
   return out === undefined ? null : round4(out);
 }
 
+/**
+ * toServiceValue, checked against the unit the entity is in right now (its
+ * state's unit_of_measurement). `stale`: the role's display_unit no longer
+ * matches the entity (HA's units changed after the payload was loaded), so
+ * the conversion would be wrong: reload the payload before writing.
+ */
+export function serviceValue(r, v, liveUnit) {
+  if (!r || !TEMP_UNITS[r.unit]) return { value: v, stale: false };
+  if (liveUnit !== (r.display_unit || r.unit)) return { value: null, stale: true };
+  return { value: toServiceValue(r, v), stale: false };
+}
+
 /** HA's temperature unit (climate / water_heater attributes are in it). */
 export function haTempUnit(hass) {
   const u = hass && hass.config && hass.config.unit_system && hass.config.unit_system.temperature;

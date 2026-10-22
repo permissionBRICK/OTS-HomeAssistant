@@ -205,3 +205,42 @@ test("Fahrenheit HA: steppers and the DHW gauge work in HA's unit", { skip }, as
     "water_heater.set_temperature water_heater.warmwasser 126",
   ]);
 });
+
+const toFahrenheit = (page) => page.eval("harness.plant.fahrenheit = true; harness.fake.rebuild(); true");
+const plantFetches = (page) => page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length");
+
+test("HA switched to °F after the payload loaded: Apply refuses, reloads, then converts", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=30");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_norm"]', "ArrowLeft"); // norm outdoor −15 → −15.1 (native)
+  assert.deepEqual((await curveState(page)).pending, { heat_curve_norm_outdoor: -15.1 });
+  const fetched = await plantFetches(page);
+  // the entities now report °F; the loaded role metadata still says °C only
+  await toFahrenheit(page);
+  await sleep(60);
+  await c.click('[data-cact="apply"]');
+  await sleep(200);
+  assert.deepEqual(await writes(page), [], "−15.1 must not go to a °F entity");
+  assert.match(await c.text(".pendbar .err"), /Nicht übernommen: Norm-Außentemp\. wird inzwischen in °F angezeigt/);
+  assert.deepEqual((await curveState(page)).pending, { heat_curve_norm_outdoor: -15.1 }, "the edit is kept");
+  assert.ok((await plantFetches(page)) > fetched, "the payload was reloaded");
+  // with the fresh metadata the same edit is converted once
+  await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.writes().length === 1", 3000);
+  assert.deepEqual(await writes(page), ["number.set_value number.fussboden_norm_aussentemperatur 4.82"]);
+  assert.equal(await page.eval("harness.plant.values['hc1.heat_curve_norm_outdoor']"), -15.1);
+});
+
+test("a unit change during Apply stops before the next write", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=300");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_max"]', "ArrowUp");
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.plant.calls.length === 1", 2000);
+  await toFahrenheit(page);
+  await sleep(900);
+  assert.deepEqual(await writes(page), ["number.set_value number.fussboden_maximale_vorlauftemperatur 41"]);
+  assert.match(await c.text(".pendbar .err"), /Heizgrenze wird inzwischen in °F angezeigt/);
+  assert.deepEqual((await curveState(page)).pending, { heat_limit: 16.8 });
+});

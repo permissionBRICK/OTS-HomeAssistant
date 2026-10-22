@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, convertDelta, convertTemp, enumLabel, haTempUnit, hpMode, isProducing, layoutSignature, liveCop, parseBadge, pickPlant, sections, toServiceValue, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
+import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, convertDelta, convertTemp, enumLabel, haTempUnit, hpMode, isProducing, layoutSignature, liveCop, parseBadge, pickPlant, sections, serviceValue, toServiceValue, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
 import { BADGES, FakePlant } from "./harness/fake-backend.js";
 import { fixtures } from "./helpers.mjs";
 
@@ -128,6 +128,13 @@ test("units: native values are converted only at the service call", () => {
   assert.equal(toServiceValue({ unit: "°C", min: 20 }, 36.1), 36.1, "no display unit → native");
   assert.equal(toServiceValue({ unit: "K", display_unit: "°F" }, 1.5), 1.5, "offsets (K) are not converted");
   assert.equal(toServiceValue({ unit: "°C", display_unit: "bar" }, 2), null, "unconvertible → refuse");
+  // checked against the unit the entity's state is in right now
+  assert.deepEqual(serviceValue(flow, 36.1, "°F"), { value: 96.98, stale: false });
+  assert.deepEqual(serviceValue({ unit: "°C" }, -15.1, "°C"), { value: -15.1, stale: false });
+  assert.deepEqual(serviceValue({ unit: "°C" }, -15.1, "°F"), { value: null, stale: true }, "HA switched to °F after the payload");
+  assert.deepEqual(serviceValue(flow, 36.1, "°C"), { value: null, stale: true }, "HA switched back to °C");
+  assert.deepEqual(serviceValue(flow, 36.1, undefined), { value: null, stale: true }, "no state: unit unknown");
+  assert.deepEqual(serviceValue({ unit: "K" }, 1.5, "°F"), { value: 1.5, stale: false }, "deltas are never converted");
   assert.equal(haTempUnit({ config: { unit_system: { temperature: "°F" } } }), "°F");
   assert.equal(haTempUnit({}), "°C");
 });

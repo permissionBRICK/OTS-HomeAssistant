@@ -444,8 +444,8 @@ export class FakePlant {
   }
 
   /** HA display unit → native °C (what HA hands the integration). */
-  native(v) {
-    if (!this.fahrenheit) return Number(v);
+  native(v, fahrenheit = this.fahrenheit) {
+    if (!fahrenheit) return Number(v);
     return Math.round(((Number(v) - 32) * 5 / 9) * 100) / 100;
   }
 
@@ -552,6 +552,9 @@ export class FakePlant {
   async callService(domain, service, data = {}) {
     const call = { domain, service, data: { ...data }, at: Date.now() };
     this.calls.push(call);
+    // HA converts service data with the unit in effect when the call arrives.
+    const F = this.fahrenheit;
+    const native = (x) => this.native(x, F);
     await new Promise((r) => this.timers.setTimeout(r, this.latency));
     if (this.failNext) {
       const msg = this.failNext;
@@ -567,7 +570,7 @@ export class FakePlant {
       const key = this._keyFor(eid);
       if (!key) throw new Error(`unknown entity ${eid}`);
       const r = this.roles()[key];
-      const nv = r.display_unit ? this.native(data.value) : Number(data.value);
+      const nv = F && r.unit === "°C" ? native(data.value) : Number(data.value);
       // HA validates against the entity's (display-unit) range.
       if ((typeof r.min === "number" && nv < r.min - 1e-6) || (typeof r.max === "number" && nv > r.max + 1e-6)) {
         throw new Error(`Value ${data.value} for ${eid} is outside valid range ${this.disp(r.min)} - ${this.disp(r.max)}`);
@@ -589,7 +592,7 @@ export class FakePlant {
       if (service === "set_temperature") {
         const t = this._target(n);
         const off = Number(v[`hc${n}.room_offset`]) || 0;
-        const nw = clamp(Math.round((off + this.native(data.temperature) - t) * 2) / 2, -3, 3);
+        const nw = clamp(Math.round((off + native(data.temperature) - t) * 2) / 2, -3, 3);
         if (nw !== off) this._write(`hc${n}.room_offset`, nw);
         this._recomputeTarget(n);
       } else if (service === "set_hvac_mode") {
@@ -617,8 +620,8 @@ export class FakePlant {
       } else if (service === "set_temperature") {
         const m = this._dhwMode();
         const sp = m === "eco" ? "dhw.setpoint_eco" : m === "high_demand" ? "dhw.setpoint_boost" : "dhw.setpoint_comfort";
-        this._write(sp, this.native(data.temperature));
-        v["dhw.target"] = this.native(data.temperature);
+        this._write(sp, native(data.temperature));
+        v["dhw.target"] = native(data.temperature);
       }
     } else if (domain === "button" && service === "press") {
       if (Number(v["dhw.program"]) !== 0) this._write("dhw.program", 0);

@@ -9,7 +9,7 @@ import {
   aboveHeatLimit, axes, constrain, coolFlowAt, coolOrder, coolPointsOrdered, curveProblems, curveShift, dragStep,
   effectAt, hasCoolCurve, hasHeatCurve, heatFlowAt, nudge, pendingDiff, reflects, ticks, valueProblems, writeOrder,
 } from "../lib/curve.js";
-import { hcKey, num, role, toServiceValue, writableEntity } from "../lib/model.js";
+import { hcKey, num, role, serviceValue, writableEntity } from "../lib/model.js";
 
 const AWAIT_TIMEOUT = 90000;
 const P = { l: 34, r: 12, t: 14, b: 24 };
@@ -339,15 +339,23 @@ export class CurveEditor {
     }
     // Bind every write to this plant's entities now: whatever happens while
     // the writes run (tab switch, refetch), they go exactly here.
-    // Curve maths are native; the entity takes its display unit (e.g. °F).
+    // Curve maths are native; the entity takes the unit HA shows it in right
+    // now (e.g. °F), read from its live state, not from the one-shot payload.
     const plan = diff.map((d) => {
       const r = role(ctx.plant, hcKey(n, d.key));
-      return { ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key), "number"), value: toServiceValue(r, d.to), unit: r && r.display_unit };
+      const entity = writableEntity(ctx.plant, hcKey(n, d.key), "number");
+      const liveUnit = this._unitNow(entity);
+      return { ...d, entity, liveUnit, ...serviceValue(r, d.to, liveUnit), unit: liveUnit || (r && r.display_unit) };
     });
     const ro = plan.find((d) => !d.entity);
     if (ro) {
       s.error = I.t("handle_readonly", { name: I.t("r_" + ro.key) });
       this.card.requestRender();
+      return;
+    }
+    const stale = plan.find((d) => d.stale);
+    if (stale) {
+      this._unitChanged(I, s, stale);
       return;
     }
     const nounit = plan.find((d) => d.value === null);
@@ -376,6 +384,11 @@ export class CurveEditor {
         s.error = I.t("apply_refused", { why: I.t("invalid_changed") });
         break;
       }
+      // HA's unit may have changed meanwhile: the value was converted for the old one.
+      if (this._unitNow(d.entity) !== d.liveUnit) {
+        this._unitChanged(I, s, d);
+        break;
+      }
       s.applying.i++;
       this.card.requestRender();
       try {
@@ -388,6 +401,20 @@ export class CurveEditor {
       }
     }
     s.applying = null;
+    this.card.requestRender();
+  }
+
+  /** Unit the entity's state is shown in now (undefined without a state). */
+  _unitNow(entityId) {
+    const st = entityId ? this.card.stateOf(entityId) : undefined;
+    return st && st.attributes ? st.attributes.unit_of_measurement : undefined;
+  }
+
+  /** Units changed under the payload: keep pending, reload the metadata, refuse. */
+  _unitChanged(I, s, d) {
+    const store = this.card.store;
+    if (store) store.refetch(true);
+    s.error = I.t("apply_refused", { why: I.t("unit_changed", { name: I.t("r_" + d.key), unit: this._unitNow(d.entity) || "–" }) });
     this.card.requestRender();
   }
 
