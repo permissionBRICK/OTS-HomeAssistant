@@ -6,6 +6,13 @@ const STORES = new WeakMap();
 const STOP_DELAY = 10000; // keep the subscription briefly when cards re-mount
 const REFETCH_MIN_INTERVAL = 5000;
 const RETRY_DELAY = 30000;
+// Structure change seen in the feed: re-fetch after these delays while the
+// mismatch persists (the backend reloads the entry after a section change,
+// so the first answer may still be the old structure). Then give up until
+// the feed's structure changes again.
+const STRUCTURE_REFETCH = [1000, 10000, 60000];
+// availability bits per circuit: present, heat, cool, room sensor, humidity
+const HC_BITS = [1, 2, 4, 32, 64];
 
 export function getStore(hass) {
   const conn = hass && hass.connection;
@@ -37,7 +44,7 @@ export class PlantStore {
     this._lastFetch = 0;
     this._fetchPromise = null;
     this._refetchQueued = null;
-    this._refetchedFor = new Map();
+    this._mismatch = new Map(); // plant_id → { sig, tries, timer }
     this._onReady = () => {
       this.refetch(true);
     };
@@ -98,6 +105,8 @@ export class PlantStore {
 
   _stop() {
     this._started = false;
+    for (const m of this._mismatch.values()) if (m.timer) this.timers.clearTimeout(m.timer);
+    this._mismatch.clear();
     if (this.conn.removeEventListener) this.conn.removeEventListener("ready", this._onReady);
     if (this._retryTimer) this.timers.clearTimeout(this._retryTimer);
     this._retryTimer = null;
@@ -195,40 +204,61 @@ export class PlantStore {
     if (!ev || !ev.plant_id) return;
     this.live.set(ev.plant_id, ev);
     const sig = this._structureMismatch(ev);
-    // Re-fetch once per distinct mismatch (no loop if the backend stays inconsistent).
-    if (sig && this._refetchedFor.get(ev.plant_id) !== sig) {
-      this._refetchedFor.set(ev.plant_id, sig);
-      this.refetch(false);
-    }
+    if (sig) this._structureChanged(ev.plant_id, sig);
+    else this._clearMismatch(ev.plant_id);
     this._emit();
   }
 
+  _clearMismatch(plantId) {
+    const m = this._mismatch.get(plantId);
+    if (m && m.timer) this.timers.clearTimeout(m.timer);
+    this._mismatch.delete(plantId);
+  }
+
+  /** Debounced re-fetch while the feed's structure differs from the payload. */
+  _structureChanged(plantId, sig) {
+    let m = this._mismatch.get(plantId);
+    if (!m || m.sig !== sig) {
+      if (m && m.timer) this.timers.clearTimeout(m.timer);
+      m = { sig, tries: 0, timer: null };
+      this._mismatch.set(plantId, m);
+    }
+    if (m.timer || m.tries >= STRUCTURE_REFETCH.length) return;
+    m.timer = this.timers.setTimeout(() => {
+      m.timer = null;
+      m.tries++;
+      if (this._started) this.refetch(true);
+    }, STRUCTURE_REFETCH[m.tries]);
+  }
+
   /**
-   * Circuit/DHW presence in the feed differs from the loaded payload → the
-   * plants payload must be re-fetched. Returns a signature of the feed's
-   * structure when it mismatches, else null.
+   * What decides the layout: present circuits with their capability bits,
+   * DHW, BMS, pool and buffer. Returns the feed's structure signature when
+   * it differs from the loaded payload, else null.
    */
   _structureMismatch(ev) {
     if (!this.plants) return null;
     const plant = this.plant(ev.plant_id);
     const caps = ev.capabilities || {};
     const vals = ev.values || {};
-    const present = [];
+    const pcaps = (plant && plant.capabilities) || {};
+    const have = new Map(((plant && plant.circuits) || []).map((c) => [Number(c.index), c]));
+    const flags = (c) => (c ? [true, !!c.heat, !!c.cool, !!c.room_sensor, !!c.humidity] : [false, false, false, false, false]);
+    const feedCircuits = [], payloadCircuits = [];
     for (let n = 1; n <= 4; n++) {
       const av = vals[`hc${n}.availability`];
-      if (av === undefined || av === null) continue;
-      if ((Number(av) & 1) === 1 && !caps.bms) present.push(n);
+      const p = flags(have.get(n));
+      payloadCircuits.push(p);
+      if (av === undefined || av === null || caps.bms) feedCircuits.push(caps.bms ? flags(null) : p); // unknown → as loaded
+      else feedCircuits.push(HC_BITS.map((bit, i) => (i === 0 || (Number(av) & 1) === 1) && (Number(av) & bit) === bit));
     }
-    const sig = JSON.stringify([!!caps.dhw, !!caps.bms, present]);
-    if (!plant) return sig;
-    if ("dhw" in caps && !!caps.dhw !== !!plant.dhw) return sig;
-    if ("bms" in caps && plant.capabilities && !!caps.bms !== !!plant.capabilities.bms) return sig;
-    const have = new Set((plant.circuits || []).map((c) => Number(c.index)));
-    for (let n = 1; n <= 4; n++) {
-      const av = vals[`hc${n}.availability`];
-      if (av === undefined || av === null) continue;
-      if (present.includes(n) !== have.has(n)) return sig;
-    }
-    return null;
+    const pick = (src, key, fallback) => (key in src ? !!src[key] : fallback);
+    const feed = JSON.stringify([
+      pick(caps, "bms", !!pcaps.bms), pick(caps, "dhw", !!pcaps.dhw),
+      pick(caps, "pool", !!pcaps.pool), pick(caps, "buffer", !!pcaps.buffer), feedCircuits,
+    ]);
+    if (!plant) return feed;
+    const loaded = JSON.stringify([!!pcaps.bms, !!pcaps.dhw, !!pcaps.pool, !!pcaps.buffer, payloadCircuits]);
+    return feed === loaded ? null : feed;
   }
 }

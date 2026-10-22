@@ -97,3 +97,56 @@ test("missing integration (unknown command) is reported, not thrown", async (t) 
   assert.equal(store.plants, null);
   assert.equal(store.error.code, "unknown_command");
 });
+
+const plantsCalls = (conn) => conn.sent.filter((m) => m.type === "ochsner_local_ots/plants").length;
+
+for (const [what, change] of [
+  ["a circuit gains cooling", (p) => { p.values["hc2.availability"] = 27 | 4; }],
+  ["a room sensor appears", (p) => { p.values["hc1.availability"] = 27 | 32; }],
+  ["humidity appears", (p) => { p.values["hc3.availability"] = 27 | 64; }],
+  ["a pool appears", (p) => { p.values["avail.pool"] = 1; }],
+  ["the buffer disappears", (p) => { p.values["avail.buffer"] = 0; }],
+  ["DHW appears", (p) => { p.values["avail.dhw"] = 256; }],
+]) {
+  test(`capability change re-fetches plants: ${what}`, async (t) => {
+    const { conn, store, plant } = setup(t);
+    store.addListener(() => {});
+    await flush();
+    assert.equal(plantsCalls(conn), 1);
+    change(plant);
+    plant.push();
+    plant.push();
+    plant.push();
+    await flush();
+    assert.equal(plantsCalls(conn), 1, "debounced");
+    t.mock.timers.tick(1000);
+    await flush();
+    assert.equal(plantsCalls(conn), 2, "one refetch for the burst");
+    plant.push();
+    t.mock.timers.tick(70000);
+    await flush();
+    assert.equal(plantsCalls(conn), 2, "payload matches again → no more refetches");
+  });
+}
+
+test("a mismatch the backend has not caught up with is retried a bounded number of times", async (t) => {
+  const { conn, store, plant } = setup(t);
+  const stale = plant.plantPayload("de");
+  plant.plantPayload = () => JSON.parse(JSON.stringify(stale)); // backend keeps the old structure
+  store.addListener(() => {});
+  await flush();
+  plant.values["hc2.availability"] = 27 | 4;
+  for (let i = 0; i < 12; i++) {
+    plant.push();
+    await flush();
+    t.mock.timers.tick(30000);
+    await flush();
+  }
+  assert.equal(plantsCalls(conn), 1 + 3, "1 s, 10 s, 60 s, then stop");
+  plant.values["hc3.availability"] = 27 | 4; // a different change starts over
+  plant.push();
+  await flush();
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(plantsCalls(conn), 5);
+});
