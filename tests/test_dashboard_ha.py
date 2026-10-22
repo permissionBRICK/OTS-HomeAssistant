@@ -551,6 +551,28 @@ async def test_pool_roles(hass, monkeypatch, fake_controller):
 
 
 @pytest.mark.asyncio
+async def test_bundle_bounds_migration_does_not_reload(hass, monkeypatch, fake_controller):
+    # The DHW setpoints come from the catalog with min/max but no bundle
+    # bounds: the first setup stores them, and setup goes on with them.
+    reload = AsyncMock()
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=dhw_plant)
+    try:
+        await hass.async_block_till_done()
+        reload.assert_not_awaited()
+        (stored,) = plant.entry.data[CONF_CONTROLLERS]
+        comfort = next(n for n in stored["numbers"] if n["read_id"] == "ASMv1XXZAAE=")
+        assert (comfort["bundle_min"], comfort["bundle_max"]) == (5.0, 75.0)
+        assert not hass.data[DOMAIN].get("_address_updates")
+        # An options change still reloads.
+        hass.config_entries.async_update_entry(plant.entry, options={**plant.entry.options, "color_scheme": "ochsner"})
+        await hass.async_block_till_done()
+        reload.assert_awaited_once_with(plant.entry.entry_id)
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
 async def test_number_roles_are_native_with_display_unit(hass, monkeypatch, fake_controller):
     from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 

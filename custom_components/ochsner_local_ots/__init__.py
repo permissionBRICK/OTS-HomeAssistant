@@ -570,11 +570,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         migrated_controllers.append(ctrl_d)
 
     if migrated:
+        # Always store in multi-controller format going forward. Setup goes
+        # on with the migrated controllers, so the update listener (started
+        # eagerly by the update) must not reload the entry.
+        pending = hass.data[DOMAIN].setdefault("_address_updates", {})
+        pending[entry.entry_id] = pending.get(entry.entry_id, 0) + 1
+        changed = False
         try:
-            # Always store in multi-controller format going forward.
-            hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: migrated_controllers})
+            changed = hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: migrated_controllers})
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to persist migrated bundle bounds: %s", err)
+        finally:
+            if not changed and pending.get(entry.entry_id):
+                pending[entry.entry_id] -= 1
+                if not pending[entry.entry_id]:
+                    pending.pop(entry.entry_id)
         controllers = migrated_controllers
 
     # Freeze old entity/device namespaces before any address may change.

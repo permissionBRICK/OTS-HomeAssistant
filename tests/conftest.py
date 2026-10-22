@@ -3,7 +3,9 @@ package __init__ (which requires Home Assistant)."""
 
 from __future__ import annotations
 
+import gc
 import importlib.util
+import logging
 import sys
 import types
 from pathlib import Path
@@ -120,3 +122,29 @@ def snapshot() -> dict:
 @pytest.fixture
 def fake_controller():
     return FakeController
+
+
+class _AsyncioErrors(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.ERROR)
+        self.messages: list = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+@pytest.fixture(autouse=True)
+def no_unretrieved_task_exceptions(request):
+    """Fail a test whose background tasks die with an exception nobody sees
+    (asyncio logs "Task exception was never retrieved" when they are freed)."""
+    handler = _AsyncioErrors()
+    logger = logging.getLogger("asyncio")
+    logger.addHandler(handler)
+    try:
+        yield
+        if "hass" in request.fixturenames:
+            gc.collect()
+    finally:
+        logger.removeHandler(handler)
+    leaked = [m for m in handler.messages if "never retrieved" in m]
+    assert not leaked, leaked
