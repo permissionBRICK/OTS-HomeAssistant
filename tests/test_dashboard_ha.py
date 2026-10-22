@@ -1267,6 +1267,88 @@ async def test_reread_omitting_a_dependent_marks_it_unknown(hass, monkeypatch, f
         await teardown(hass, plant)
 
 
+def gated_controller(fake_controller):
+    """A recomputing fake whose next read (before answering) or next write
+    (after applying it) waits for ``gate``, so a command can be cancelled there."""
+
+    class Gated(recomputing_controller(fake_controller)):
+        gate_read = False
+        gate_write = False
+
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.gate = asyncio.Event()
+            self.parked = asyncio.Event()
+
+        async def _park(self):
+            self.parked.set()
+            await self.gate.wait()
+
+        async def read(self, ids, *, on_http_request=None):
+            if self.gate_read:
+                self.gate_read = False
+                self.reads.append(list(ids))
+                await self._park()
+            return await super().read(ids, on_http_request=on_http_request)
+
+        async def write(self, oid, value):
+            out = await super().write(oid, value)
+            if self.gate_write:
+                self.gate_write = False
+                await self._park()
+            return out
+
+    return Gated
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("where", ["write", "reread", "preread", "write_outside_session"])
+async def test_cancelled_command_leaves_no_stale_values(hass, monkeypatch, fake_controller, where):
+    plant = await setup_plant(hass, monkeypatch, gated_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        assert c.target_temperature == 21.5 and coordinator.data["values"][OFF1] == [0, 0]
+        if where == "preread":
+            _forget(coordinator, OFF1)  # read once before planning
+        fake.gate_read = where in ("reread", "preread")
+        fake.gate_write = where in ("write", "write_outside_session")
+        fake.reads.clear()
+        fake.writes.clear()
+        if where == "write_outside_session":
+            task = hass.async_create_task(plant.ctrl["api"].write(OFF1, 1.0))
+        else:
+            task = hass.async_create_task(c.async_set_temperature(temperature=22.5))
+        await asyncio.wait_for(fake.parked.wait(), 1)
+        reads_before_cancel = len(fake.reads)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert not coordinator.write_lock.locked()
+        assert len(fake.reads) == reads_before_cancel  # nothing more read while cancelled
+        fake.gate.set()
+
+        values = coordinator.data["values"]
+        if where == "preread":
+            assert fake.writes == [] and fake.values[TARGET1] == [21.5, 21.5]
+        else:
+            # The controller reached 22.5 °C; HA keeps no 21.5 °C / +0 K.
+            assert fake.writes == [(OFF1, 1.0)] and fake.values[TARGET1] == [22.5, 22.5]
+            assert OFF1 not in values and TARGET1 not in values and BADGE1 not in values
+            assert c.target_temperature is None
+
+        # The next relative command reads first and gets the controller there.
+        goal = 22.5 if where == "preread" else 21.5
+        fake.reads.clear()
+        fake.writes.clear()
+        await c.async_set_temperature(temperature=goal)
+        assert OFF1 in fake.reads[0]
+        assert fake.writes == [(OFF1, 1.0 if where == "preread" else 0.0)]
+        assert fake.values[TARGET1] == [goal, goal] and c.target_temperature == goal
+    finally:
+        await teardown(hass, plant)
+
+
 @pytest.mark.asyncio
 async def test_dhw_writes_reread_the_dhw_target(hass, monkeypatch, fake_controller):
     plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller), mutate=dhw_plant)

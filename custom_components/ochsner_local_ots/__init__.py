@@ -955,8 +955,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug("Re-reading after a write failed: %s", type(err).__name__)
 
+        def _write_interrupted(written_id: str, target: Dict[str, Any] = write_target) -> None:
+            coordinator_ = target.get("coordinator")
+            if coordinator_ is not None:
+                coordinator_.async_abandon(_stale_ids(written_id))
+
         api: Any = ClimatixGenericApiWriteHook(
             inner_api, on_write=_on_write, before_write=_before_write, after_write=_after_write,
+            write_interrupted=_write_interrupted,
         )
 
         # Plant capabilities (which circuits/DHW/... exist) come from a few

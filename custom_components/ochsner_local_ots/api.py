@@ -225,6 +225,8 @@ class ClimatixGenericApiWriteHook:
     ``before_write(id)`` runs before every write attempt, ``after_write(id,
     ok)`` after it (also when it failed: the controller may have applied a
     write whose response was lost), ``on_write(id)`` after a successful one.
+    ``write_interrupted(id)`` (not awaited) replaces ``after_write`` when the
+    write is cancelled: it may or may not have been applied.
     """
 
     def __init__(
@@ -234,11 +236,13 @@ class ClimatixGenericApiWriteHook:
         on_write: Callable[[str], Awaitable[None]],
         before_write: Callable[[str], None] | None = None,
         after_write: Callable[[str, bool], Awaitable[None]] | None = None,
+        write_interrupted: Callable[[str], None] | None = None,
     ) -> None:
         self._inner = inner
         self._on_write = on_write
         self._before_write = before_write
         self._after_write = after_write
+        self._write_interrupted = write_interrupted
 
     @property
     def base_url(self) -> str:
@@ -268,6 +272,10 @@ class ClimatixGenericApiWriteHook:
         except Exception:
             if self._after_write is not None:
                 await self._after_write(generic_id, False)
+            raise
+        except BaseException:
+            if self._write_interrupted is not None:
+                self._write_interrupted(generic_id)
             raise
         if self._after_write is not None:
             await self._after_write(generic_id, True)

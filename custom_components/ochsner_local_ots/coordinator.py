@@ -413,15 +413,23 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         the session, so an overlapping command sees the result (writes and
         re-reads) of the one before it. Ids marked with ``session.refresh``
         are re-read once when the session ends, also after a failed write.
+        A session interrupted by cancellation re-reads nothing: its ids
+        become unknown before the lock is released.
         """
         async with self.write_lock:
             session = WriteSession()
             self._write_session = session
+            interrupted = False
             try:
                 yield session
+            except BaseException as err:
+                interrupted = not isinstance(err, Exception)
+                raise
             finally:
                 self._write_session = None
-                if session.refresh_ids:
+                if interrupted:
+                    self.async_abandon(session.refresh_ids)
+                elif session.refresh_ids:
                     await self._async_refresh_after_write(list(session.refresh_ids))
 
     def queue_refresh_after_write(self, ids: Iterable[str]) -> None:
@@ -449,6 +457,17 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         new_data["values"] = {k: v for k, v in values.items() if k not in ids}
         self.async_set_updated_data(new_data)
 
+    def async_abandon(self, ids: Iterable[str]) -> None:
+        """A write or its re-read was interrupted (cancelled): what the
+        controller holds now is unknown. Reads already in flight must not
+        publish these ids, and the cached values are forgotten (no await:
+        safe while a cancellation unwinds)."""
+        ids = [str(i) for i in ids if i]
+        if not ids:
+            return
+        self.note_write(ids)
+        self.async_invalidate(ids)
+
     async def async_refresh_after_write(self, ids: Iterable[str]) -> None:
         """Re-read ids a write made stale: at the end of the running write
         session (one read for the whole command), else right away."""
@@ -468,4 +487,8 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             self.async_invalidate(ids)
             await self.async_request_refresh()
             return
+        except BaseException:
+            # Cancelled mid-read: the cached values predate the write.
+            self.async_abandon(ids)
+            raise
         self.async_invalidate([oid for oid in ids if oid not in answered])
