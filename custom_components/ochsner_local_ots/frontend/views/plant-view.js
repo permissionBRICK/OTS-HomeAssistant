@@ -74,8 +74,11 @@ export class PlantView {
   vm(ctx) {
     const { I, plant, live, sec, mode } = ctx;
     const t = I.t;
-    const flowRate = num(live, "hp.flow_rate");
-    const moving = flowRate !== undefined ? flowRate > 0.05 : isProducing(mode) || mode === "defrost";
+    // The heat pump's pipes move only while it exchanges heat (heating,
+    // cooling, hot water, defrost). The primary pump also circulates in
+    // standby and pump overrun, so the flow rate alone doesn't tell. Water
+    // flows the same way in every mode; defrost and cooling show by colour.
+    const moving = isProducing(mode) || mode === "defrost";
     const auxRaw = num(live, "hp.aux_status");
     const auxOn = auxRaw !== undefined && AUX_ON.has(auxRaw);
     const rows = sec.circuits.map((c) => {

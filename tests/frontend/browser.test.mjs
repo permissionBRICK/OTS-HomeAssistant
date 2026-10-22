@@ -294,6 +294,42 @@ test("DHW + cooling plant: season chips, water heater modes, boost, −/+ on DHW
   ]);
 });
 
+test("schematic: the heat pump loop moves only while the heat pump runs, a circuit's pipe only while its pump runs", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=house&view=plant&latency=30", { width: 1280, height: 900 });
+  const set = (vals) => page.eval(`(() => { Object.assign(harness.plant.values, ${JSON.stringify(vals)}); harness.plant.push(); return true; })()`);
+  // wide layout: the heat pump's flow/return pipes start at x 140, the circuit branches run from the trunk (336) to the rows (372)
+  const state = () => page.eval(`(() => { const ps = [...${sr}.querySelectorAll("svg.plant path")];
+    const lit = (p) => p.classList.contains("flow");
+    const hp = ps.filter((p) => /^M140 /.test(p.getAttribute("d")) && p.getAttribute("stroke") !== "var(--ohp-pipe)");
+    const rows = ps.filter((p) => /^M336 [\\d.]+ H372$/.test(p.getAttribute("d")) && p.getAttribute("stroke") !== "var(--ohp-pipe)");
+    return { hp: hp.map(lit), hpStroke: hp.map((p) => p.getAttribute("stroke")), rows: rows.map(lit) }; })()`);
+  // standby (12) while the primary pump circulates: the loop stands still and is grey
+  await set({ "hp.status": 12, "hp.flow_rate": 1.3, "hc1.pump": 1, "hc2.pump": 1, "hc3.pump": 0 });
+  await sleep(60);
+  let s = await state();
+  assert.deepEqual(s.hp, [false, false], "standby: no motion between heat pump and buffer");
+  assert.ok(s.hpStroke.every((c) => c === "var(--ohp-pipe-off)"), "standby: grey");
+  assert.deepEqual(s.rows, [true, true, false], "Wintergarten pump off: its pipe stands still");
+  for (const code of [11, 13]) { // pump pre-run / overrun: water moves, no heat
+    await set({ "hp.status": code });
+    await sleep(40);
+    assert.deepEqual((await state()).hp, [false, false], `status ${code}`);
+  }
+  await set({ "hp.status": 1, "hc3.pump": 1 });
+  await sleep(60);
+  s = await state();
+  assert.deepEqual(s.hp, [true, true], "heating: flow and return move");
+  assert.deepEqual(s.rows, [true, true, true]);
+  // defrost: same direction (the return keeps its reverse animation), defrost colour
+  await set({ "hp.status": 4 });
+  await sleep(60);
+  s = await state();
+  assert.deepEqual(s.hp, [true, true]);
+  assert.ok(s.hpStroke.every((c) => c === "var(--ohp-defrost)"), "defrost colour");
+  assert.equal(await page.eval(`${sr}.querySelectorAll("svg.plant path.flow.rev").length`), 1, "only the return runs backwards");
+  assert.deepEqual(page.errors, []);
+});
+
 test("tapping the schematic opens more-info for the related entity", { skip: !CHROME && "no chromium" }, async () => {
   const page = await open("variant=house&view=plant");
   await click(page, 'svg.plant [data-more="climate.radiatoren"] rect');
