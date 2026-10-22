@@ -491,29 +491,34 @@ export class ControlView {
       const tip = legacy && v !== "off" ? ` title="${esc(I.t("program_replace", { program: legacy, choice: label }))}"` : "";
       return `<button class="mc${pShown === v ? " on " + cls : ""}${this.busy.has(`p${n}`) && this.busy.get(`p${n}`).target === v ? " busy" : ""}" data-act="preset" data-c="${n}" data-v="${v}" aria-pressed="${pShown === v}"${tip}${chipDis}>${esc(label)}</button>`;
     };
-    let chips = `<div class="modechips" role="group">${chip("comfort", I.t("comfort"), "")}${chip("eco", I.t("eco"), "eco")}${chip("off", I.t("off"), "offc")}</div>`;
+    const chips = `<div class="modechips preset" role="group">${chip("comfort", I.t("comfort"), "")}${chip("eco", I.t("eco"), "eco")}${chip("off", I.t("off"), "offc")}</div>`;
+    let season = "";
     if (c.cool) {
       const st = c.climate ? ctx.state(c.climate) : null;
       const hv = st ? st.state : null;
       const sShown = this._busyTarget(`s${n}`, hv) ?? hv;
       const sc = (v, label, cls) =>
         `<button class="mc${sShown === v ? " on " + cls : ""}" data-act="season" data-c="${n}" data-v="${v}" aria-pressed="${sShown === v}"${chipDis}>${esc(label)}</button>`;
-      chips += `<div class="modechips" role="group">${sc("heat", I.t("heating"), "")}${sc("heat_cool", I.t("auto"), "auto")}${sc("cool", I.t("cooling"), "cool")}</div>`;
+      season = `<div class="modechips season" role="group">${sc("heat", I.t("heating"), "")}${sc("heat_cool", I.t("auto"), "auto")}${sc("cool", I.t("cooling"), "cool")}</div>`;
     }
     const more = c.climate || displayEntity(ctx.plant, hcKey(n, "status"));
     const notes = this._noteHtml(`hc${n}`) + SETPOINTS.map((s) => this._noteHtml(hcKey(n, s.key))).join("");
     const sp = this._setpoints(ctx, c, name);
-    // Room readings, flow and the correction chip sit left of the small
-    // setpoint row, so the tile needs no extra lines for them.
+    // Room readings, flow and the correction chip need no line of their own:
+    // they sit under the name or next to the small setpoint row.
     const room = this._roomLine(ctx, c);
     const info = room || flow || corr
       ? `<div class="hcinfo">${room}${flow ? `<span class="sub" title="${esc(I.t("flow"))}">${esc(flow)}</span>` : ""}${corr}</div>`
-      : "<div></div>";
-    return `<div class="hc" data-key="hc${n}"><div class="hcrow">
+      : `<div class="hcinfo"></div>`;
+    // One grid per tile; the tile's own width picks the arrangement (styles.js):
+    // tiny = name|main, info|alt, chips; phone = name+info|main, chips|alt;
+    // wide = name|main, chips|info|alt.
+    return `<div class="hc circuit" data-key="hc${n}"><div class="hcg"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
         ${sp.main}</div>
-      ${sp.alt || info !== "<div></div>" ? `<div class="hcrow2">${info}${sp.alt}</div>` : ""}
-      ${chips}${notes}</div>`;
+      ${info}
+      <div class="hcrow2">${chips}${sp.alt}</div>
+      ${season}${notes}</div></div>`;
   }
 
   /**

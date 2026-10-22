@@ -52,9 +52,6 @@ ha-card, .card {
 @media (max-width: 420px) {
   ha-card, .card { padding: 12px; }
   .hc { padding: 10px; }
-  .stepper { gap: 4px; }
-  .stepper button { width: 32px; height: 32px; }
-  .stepper .v { min-width: 50px; font-size: 16px; }
 }
 
 /* plant schematic */
@@ -118,8 +115,52 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .spbadge { font-size: 11px; line-height: 1.6; padding: 0 6px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); white-space: nowrap; }
 .sptag { display: block; margin-top: 1px; font-size: 9.5px; font-weight: 500; line-height: 1.3; letter-spacing: .2px; padding: 0 6px; border-radius: 999px; white-space: nowrap; color: var(--ohp-on-heat); background: var(--ohp-heat); }
 .sptag.cool { color: var(--ohp-on-cool); background: var(--ohp-cool); }
-.hcrow2 { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px; }
-.hcrow2 .sp.alt { margin-top: 0; }
+/* circuit tile: one grid, its own width picks the arrangement */
+.hc.circuit { container: hc / inline-size; }
+.hcg { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 4px; align-items: center;
+  grid-template-areas: "name main" "info alt" "chips chips" "season season"; }
+.hcg > .hcrow, .hcg > .hcrow2 { display: contents; }
+.hcg .hcname { grid-area: name; }
+.hcg .sp.main { grid-area: main; }
+.hcg .hcinfo { grid-area: info; }
+.hcg .sp.alt { grid-area: alt; margin-top: 0; }
+.hcg .modechips.preset { grid-area: chips; margin-top: 4px; }
+.hcg .modechips.season { grid-area: season; margin-top: 2px; }
+.hcg .note { grid-column: 1 / -1; margin-top: 2px; }
+/* The Nacht/Normal badge only fits on wide tiles; elsewhere the stepper's
+   tooltip and label name the setpoint. */
+.hcg .sp.alt .spbadge { display: none; }
+/* tiny tiles: three rows, both steppers a size smaller so the name keeps its room */
+@container hc (width < 285px) {
+  .hcg .sp.main .stepper { gap: 4px; }
+  .hcg .sp.main .stepper button { width: 32px; height: 32px; }
+  .hcg .sp.main .stepper .v { min-width: 50px; font-size: 16px; }
+  .hcg .sp.alt .spbox { width: 122px; }
+}
+/* phones: two rows. Flow sits under the status (the main stepper makes that row
+   tall anyway); the buttons share the second row with the small stepper, which
+   may give up a few px of its centring box but never pushes a button onto a new line. */
+@container hc (min-width: 285px) {
+  .hcg { grid-template-areas: "name main" "info main" "row row" "season season"; row-gap: 2px; }
+  .hcg .hcinfo { align-self: start; padding-left: 41px; }
+  .hcg > .hcrow2 { grid-area: row; display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+  .hcg .modechips.preset { margin-top: 0; gap: 5px; flex: none; }
+  .hcg .modechips.preset .mc { padding-left: 8px; padding-right: 8px; }
+  .hcg .sp.alt { flex: 0 1 auto; min-width: 0; }
+  .hcg .sp.alt .spbox { flex: 0 1 auto; min-width: min-content; }
+}
+/* wide tiles: buttons move up next to the small stepper, flow at the bottom right */
+@container hc (min-width: 500px) {
+  .hcg { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px;
+    grid-template-areas: "name name main" "chips info alt" "season season season"; }
+  .hcg > .hcrow2 { display: contents; }
+  .hcg .hcinfo { justify-self: end; align-items: flex-end; text-align: right; align-self: center; padding-left: 0; }
+  .hcg .sp.alt { flex: none; }
+  .hcg .sp.alt .spbadge { display: inline-block; }
+  .hcg .sp.alt .spbox { flex: none; }
+  .hcg .modechips.preset .mc { padding-left: 11px; padding-right: 11px; }
+  .hcg .hcinfo .room { justify-content: flex-end; }
+}
 .hcinfo { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .hcinfo .sub { white-space: nowrap; font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .hcinfo .room { margin: 0; font-size: 12.5px; }

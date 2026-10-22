@@ -239,6 +239,37 @@ test("the main stepper is labelled with its setpoint", { skip }, async () => {
   assert.equal(await attr(page, c, `${main(1)} .stepper`, "title"), "Room setpoint Normal (Comfort, day)");
 });
 
+/** Boxes of a circuit tile's parts, rounded: [left, top, right, bottom]. */
+const tileBoxes = (page, c, n) => page.eval(`(() => { const t = ${c.root}.querySelector(${JSON.stringify(tile(n))});
+  const box = (e) => { const r = e.getBoundingClientRect(); return r.width ? [r.left, r.top, r.right, r.bottom].map(Math.round) : null; };
+  const q = (s) => { const e = t.querySelector(s); return e ? box(e) : null; };
+  return { grid: q(".hcg"), main: q(".sp.main .stepper"), alt: q(".sp.alt .stepper"), badge: q(".sp.alt .spbadge"), info: q(".hcinfo .sub"),
+    chips: [...t.querySelectorAll(".modechips.preset .mc")].map(box) }; })()`);
+const sameRow = (a, b) => a[1] < b[3] && b[1] < a[3];
+
+test("circuit tiles: the tile's width picks one, two or three rows; the preset buttons never wrap", { skip }, async () => {
+  for (const [width, rows] of [[320, 3], [360, 2], [412, 2], [1280, 2]]) {
+    const page = await b.open("variant=house&view=controls&latency=30", { width, height: 1400, mobile: width < 500 });
+    const c = on(page);
+    for (const n of [1, 2, 3]) {
+      const t = await tileBoxes(page, c, n);
+      const at = `${width} px, hc${n}`;
+      assert.ok(t.chips.every((b) => b[1] === t.chips[0][1]), `${at}: buttons on one line`);
+      assert.ok(t.alt[2] <= t.grid[2] + 1 && t.chips[0][0] >= t.grid[0], `${at}: nothing sticks out of the tile`);
+      assert.ok(sameRow(t.chips[0], t.alt) === (rows === 2), `${at}: buttons ${rows === 2 ? "next to" : "below"} the small stepper`);
+      // the small stepper stays centred under the big one (a few px of slack on phones)
+      assert.ok(Math.abs((t.main[0] + t.main[2]) - (t.alt[0] + t.alt[2])) / 2 <= 4, `${at}: steppers aligned`);
+      if (width >= 1280) {
+        assert.ok(t.badge && t.info[2] <= t.badge[0] && sameRow(t.info, t.alt), `${at}: flow, badge and small stepper in one row`);
+      } else {
+        assert.equal(t.badge, null, `${at}: no Nacht/Normal badge`);
+        if (rows === 2) assert.ok(t.info[3] <= t.chips[0][1], `${at}: flow under the name`);
+      }
+    }
+    assert.deepEqual(page.errors, []);
+  }
+});
+
 test("rendering writes nothing", { skip }, async () => {
   for (const q of ["variant=house&view=all", "variant=full&view=all", "variant=full&view=all&fahrenheit=1&lang=en", "variant=house&view=controls&unavailable=1", "variant=house&view=all&set=hc1.room_offset:1"]) {
     const page = await b.open(`${q}&latency=30`, { width: 1280, height: 1600 });
