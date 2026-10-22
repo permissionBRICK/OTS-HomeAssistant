@@ -64,6 +64,11 @@ const [catalog, snapshot] = await Promise.all([
 const variants = variant === "multi" ? ["house", "full"] : [variant];
 const plants = variants.map((v, i) => new FakePlant({ catalog, snapshot, variant: v, lang, host: `192.0.2.${80 + i}`, entryId: `01JFAKEENTRY00000000000${i}`, latency: Number(q.get("latency") || 250) }));
 if (q.get("unavailable")) plants[0].available = false;
+// e.g. ?disable=hc1.heat_limit,hc1.heat_curve_max_flow → registry-disabled role entities
+for (const key of (q.get("disable") || "").split(",").filter(Boolean)) {
+  const e = plants[0].entities()[key];
+  if (e) e.enabled = false;
+}
 
 const stage = document.getElementById("stage");
 if (width) stage.style.width = `${width}px`;

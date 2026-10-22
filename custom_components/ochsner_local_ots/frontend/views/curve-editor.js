@@ -88,6 +88,15 @@ export class CurveEditor {
       if (e.pointerType === "mouse" && !this.drag) this._hideCross();
     });
     el.addEventListener("keydown", (e) => this._key(e));
+    // touch-action on SVG children is not honoured everywhere: block the
+    // page scroll explicitly for touches that start on a draggable handle.
+    const stopScroll = (e) => {
+      if (this.drag || (e.target.closest && e.target.closest("svg.ch .h[data-h]:not(.ro)"))) {
+        if (e.cancelable) e.preventDefault();
+      }
+    };
+    el.addEventListener("touchstart", stopScroll, { passive: false });
+    el.addEventListener("touchmove", stopScroll, { passive: false });
     el.addEventListener("focusin", (e) => {
       const h = e.target.closest && e.target.closest("svg.ch .h[data-h]");
       const id = h ? h.getAttribute("data-h") : null;
