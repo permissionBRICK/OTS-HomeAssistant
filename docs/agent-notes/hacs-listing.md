@@ -3,8 +3,9 @@
 Rechecked 2026-09-06 for `permissionBRICK/OTS-HomeAssistant`, after publishing
 v2.1.0 with PRs #17 and #18 merged.
 
-Inclusion requested in [hacs/default #10695](https://github.com/hacs/default/pull/10695).
-Repository prerequisites are satisfied; inclusion awaits HACS maintainer review.
+Inclusion requested in [hacs/default #10695](https://github.com/hacs/default/pull/10695),
+merged 2026-10-18 after the v2.1.2 brand-folder and v2.1.3 credential fixes.
+The integration is now listed in the default HACS repository.
 
 Sources:
 - [Default-list inclusion requirements](https://www.hacs.xyz/docs/publish/include/)
@@ -29,11 +30,12 @@ Sources:
 | Owner submission from a personal fork | `permissionBRICK/hacs-default`, branch `add-ochsner-local-ots` from upstream `master` |
 | Editable PR and complete template | Verified `maintainer_can_modify: true`; all checklist and evidence links supplied |
 | Alphabetical JSON entry | One-line addition only; upstream sorted check, JSON and repository-name schema passed locally |
-| Entry in `hacs/default` | Requested in #10695; not yet merged |
+| Entry in `hacs/default` | Merged in #10695 on 2026-10-18 |
 
-Current HACS also accepts bundled `custom_components/ochsner_local_ots/brand/icon.png`.
-Its validator falls back to the existing central brands entry, so new artwork
-or a new brands PR is unnecessary. The local protocol has no country-specific
+Since v2.1.2 the integration also bundles `custom_components/ochsner_local_ots/brand/`
+(`icon.png`, `icon@2x.png`, copied from the brands entry). The HACS validator
+falls back to the central brands entry, but the #10695 reviewer required the
+local folder. The local protocol has no country-specific
 service restriction; a country filter is not applicable.
 
 `.github/workflows/validate.yaml` runs both required validators for pushes,
@@ -59,4 +61,4 @@ Action references are pinned, with Dependabot configured to update them.
 
 The integration need not become a Home Assistant Core integration. HACS default
 listing is a separate submission/review process. Keep the validators enabled
-while the PR awaits review. Do not request reviewers or submit a duplicate PR.
+so every release still passes the HACS and Hassfest checks.
