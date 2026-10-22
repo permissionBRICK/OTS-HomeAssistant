@@ -1,6 +1,8 @@
 // UI strings (DE/EN) and locale-aware number formatting.
 // Enum labels (status texts, select options) come from the backend payload.
 
+import { haTempUnit } from "./model.js";
+
 export const STRINGS = {
   de: {
     heat_pump: "Wärmepumpe",
@@ -379,6 +381,9 @@ export function translate(lang, key, params) {
 /** Bundle of translate + number helpers for one hass locale. */
 export function makeI18n(hass) {
   const lang = langOf(hass);
+  // Feed values are native °C. A bare "°" means °C only while HA shows °C
+  // too; with HA in °F every native temperature says "°C".
+  const nativeC = haTempUnit(hass) === "°C" ? "°" : "°C";
   const [locale, grouping] = numberLocale(hass);
   const cache = new Map();
   const nf = (d) => {
@@ -413,7 +418,8 @@ export function makeI18n(hass) {
     for (let d = 0; d < max; d++) if (Math.abs(n * 10 ** d - Math.round(n * 10 ** d)) < 1e-6) return num(n, d);
     return num(n, max);
   };
-  const temp = (v, d = 1) => (Number.isFinite(Number(v)) ? num(v, d) + "°" : "–");
+  /** Temperature: native °C by default, or in `unit` (HA's unit for climate/water_heater values). */
+  const temp = (v, d = 1, unit = "°C") => (Number.isFinite(Number(v)) ? num(v, d) + (unit === "°F" ? "°F" : nativeC) : "–");
   return {
     lang,
     t: (key, params) => translate(lang, key, params),
@@ -421,6 +427,8 @@ export function makeI18n(hass) {
     signed,
     auto,
     temp,
+    /** Unit suffix of native temperatures ("°", or "°C" when HA is not in °C). */
+    deg: nativeC,
     int: (v) => num(v, 0),
   };
 }

@@ -13,8 +13,8 @@ const ARM_TIME = 2500;
 
 const errText = (err) => (err && (err.message || err.code)) || String(err);
 
-/** Temperature in HA's unit: "°" for °C (like the rest of the card), "°F" spelled out. */
-const tempIn = (I, v, unit, d) => (unit === "°F" && Number.isFinite(Number(v)) ? I.temp(v, d) + "F" : I.temp(v, d));
+/** Temperature in `unit` (HA's unit for climate/water_heater values; "°F" spelled out). */
+const tempIn = (I, v, unit, d) => I.temp(v, d, unit);
 
 /**
  * Current circuit mode for the Komfort | Eco | Aus chips; "program" while a
@@ -478,7 +478,7 @@ export class ControlView {
     if (hyst !== undefined && shown !== undefined) gauge += `<div title="${esc(I.t("charges_below", { t: T(shown - hyst) }))}" style="left:${X(shown - hyst)}%;width:${X(shown) - X(shown - hyst)}%;border-radius:0;background:color-mix(in srgb, var(--ohp-dhw) 35%, transparent)"></div>`;
     if (temp !== undefined) gauge += `<div style="left:0;width:${X(temp)}%;background:var(--ohp-dhw)"></div>`;
     if (shown !== undefined) gauge += `<div class="mark" style="left:calc(${X(shown)}% - 1px)"></div>`;
-    gauge += `</div><div class="gscale"><span>${Math.round(lo)}°</span><span>${hyst !== undefined && shown !== undefined ? esc(I.t("charges_below", { t: T(shown - hyst, 0) })) + " · " : ""}${esc(I.t("target"))} ${T(shown, 0)}</span><span>${Math.round(hi)}°</span></div>`;
+    gauge += `</div><div class="gscale"><span>${T(Math.round(lo), 0)}</span><span>${hyst !== undefined && shown !== undefined ? esc(I.t("charges_below", { t: T(shown - hyst, 0) })) + " · " : ""}${esc(I.t("target"))} ${T(shown, 0)}</span><span>${T(Math.round(hi), 0)}</span></div>`;
     const curMode = st ? st.state : null;
     const mShown = this._busyTarget("dhwmode", curMode) ?? curMode;
     const chipDis = !st || ctx.disabled ? " disabled" : "";

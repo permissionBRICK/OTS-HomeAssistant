@@ -363,6 +363,39 @@ test("Fahrenheit HA: steppers and the DHW gauge work in HA's unit", { skip }, as
   ]);
 });
 
+test("Fahrenheit HA: every native temperature says °C, HA-unit values say °F", { skip }, async () => {
+  const texts = (page, root, sel) => page.eval(`[...${root}.querySelectorAll(${JSON.stringify(sel)})].map((e) => e.textContent)`);
+  const page = await b.open("variant=house&view=all&latency=30&fahrenheit=1", { width: 1280, height: 1400 });
+  const c = on(page);
+  // schematic: flow/return/buffer labels and circuit rows (native feed values)
+  const svg = await page.eval(`${c.root}.querySelector("svg.plant").textContent`);
+  assert.match(svg, /VL 29,6°CRL 25,1°CPuffer26,3°C/);
+  assert.match(svg, /Vorlauf 25,9°C · Soll 26,8°C/);
+  assert.doesNotMatch(svg.replace(/°[CF]/g, ""), /°/, "no bare degree sign in the schematic");
+  // controls: climate stepper in °F, feed flow values in °C
+  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /°F$/);
+  assert.match(await c.text('.hc[data-key="hc1"]'), /Vorlauf 25,9°C \/ 26,8°C/);
+  assert.match(await c.text(".card-controls .hero .sub"), /Puffer 26,3°C · VL 29,6°C → RL 25,1°C/);
+  // curve: axis ticks, handles (label, slider text), now label, floating label, crosshair
+  const ticks = await texts(page, c.root, "svg.ch[data-curve] text.ax");
+  assert.ok(ticks.length > 8 && ticks.every((t) => /°C$|^jetzt .*°C$/.test(t)), JSON.stringify(ticks));
+  assert.match(await c.text('[data-h="heat_limit"] text'), /^Heizgrenze 16,7°C$/);
+  assert.equal(await page.eval(`${c.root}.querySelector('[data-h="heat_norm"]').getAttribute("aria-valuetext")`), "−15,0°C → 36,0°C");
+  await c.focusKey('[data-h="heat_norm"]', "ArrowUp");
+  assert.equal(await c.text(".flab text"), "−15,0°C → 36,1°C");
+  assert.match(await c.text(".readout"), /bei 12,2°C außen: Vorlauf 26,8°C → /);
+  const [x, y] = await c.center("svg.ch[data-curve] .plotbg");
+  await page.mouse("mouseMoved", x, y);
+  await sleep(60);
+  assert.match(await c.text(".tip.cur"), /^außen [−\d,]+°C → Vorlauf-Soll [\d,]+°C$/);
+  // the same plant in °C keeps the short "°"
+  const pc = await b.open("variant=house&view=all&latency=30", { width: 1280, height: 1400 });
+  assert.match(await pc.eval(`harness.el.shadowRoot.querySelector("svg.plant").textContent`), /VL 29,6°RL 25,1°Puffer26,3°off/);
+  const cTicks = await texts(pc, "harness.el.shadowRoot", "svg.ch[data-curve] text.ax");
+  assert.ok(cTicks.every((t) => !/°C/.test(t)), JSON.stringify(cTicks));
+  assert.deepEqual(page.errors, []);
+});
+
 const toFahrenheit = (page) => page.eval("harness.plant.fahrenheit = true; harness.fake.rebuild(); true");
 const plantFetches = (page) => page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length");
 

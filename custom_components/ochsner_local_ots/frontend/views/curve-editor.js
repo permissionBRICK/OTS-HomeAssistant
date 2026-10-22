@@ -560,9 +560,9 @@ export class CurveEditor {
 
     let g = "";
     // grid + axes
-    for (const v of ticks(ax.ymin, ax.ymax, 10)) g += `<line class="${v === ax.ymin ? "base" : "grid"}" x1="${P.l}" x2="${W - P.r}" y1="${r1(Y(v))}" y2="${r1(Y(v))}"/><text class="ax" x="${P.l - 6}" y="${r1(Y(v) + 3.5)}" text-anchor="end">${v}°</text>`;
+    for (const v of ticks(ax.ymin, ax.ymax, 10)) g += `<line class="${v === ax.ymin ? "base" : "grid"}" x1="${P.l}" x2="${W - P.r}" y1="${r1(Y(v))}" y2="${r1(Y(v))}"/><text class="ax" x="${P.l - 6}" y="${r1(Y(v) + 3.5)}" text-anchor="end">${v}${I.deg}</text>`;
     const xstep = pw / ((ax.xmax - ax.xmin) / 10) < 34 ? 20 : 10;
-    for (const v of ticks(ax.xmin, ax.xmax, xstep)) g += `<text class="ax" x="${r1(X(v))}" y="${H - 7}" text-anchor="middle">${I.num(v, 0)}°</text>`;
+    for (const v of ticks(ax.xmin, ax.xmax, xstep)) g += `<text class="ax" x="${r1(X(v))}" y="${H - 7}" text-anchor="middle">${I.num(v, 0)}${I.deg}</text>`;
     g += `<rect class="plotbg" x="${P.l}" y="${P.t}" width="${pw}" height="${ph}"/>`;
 
     const heatPath = (c, shift = 0) => {
