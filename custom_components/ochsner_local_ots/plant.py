@@ -729,18 +729,18 @@ def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
-def circuit_target(values: Mapping[str, Any], ids: Mapping[str, str]) -> Optional[float]:
-    """The circuit's displayed room target (B4)."""
+def circuit_target_id(values: Mapping[str, Any], ids: Mapping[str, str]) -> Optional[str]:
+    """The id the circuit's displayed room target is read from (B4)."""
     sel = as_int(first_value(values, ids.get("target_selector")))
-    if sel in (0, 2):
-        t = as_float(first_value(values, ids.get("room_target_heat")))
-    elif sel in (1, 3):
-        t = as_float(first_value(values, ids.get("room_target_cool")))
-    else:
-        t = None
-    if t is None:
-        t = as_float(first_value(values, ids.get("room_target_current")))
-    return t
+    key = "room_target_heat" if sel in (0, 2) else "room_target_cool" if sel in (1, 3) else None
+    if key and as_float(first_value(values, ids.get(key))) is not None:
+        return ids.get(key)
+    return ids.get("room_target_current")
+
+
+def circuit_target(values: Mapping[str, Any], ids: Mapping[str, str]) -> Optional[float]:
+    """The circuit's displayed room target (B4), as the controller computed it."""
+    return as_float(first_value(values, circuit_target_id(values, ids)))
 
 
 class UnknownValueError(ValueError):
@@ -762,7 +762,11 @@ def offset_bounds(target: Optional[float], offset: Optional[float]) -> Optional[
     """
     if target is None or offset is None:
         return None
-    base = target - offset
+    return base_bounds(target - offset)
+
+
+def base_bounds(base: float) -> Tuple[float, float]:
+    """(min_temp, max_temp) around the uncorrected target ``base``."""
     return (base - OFFSET_LIMIT, base + OFFSET_LIMIT)
 
 

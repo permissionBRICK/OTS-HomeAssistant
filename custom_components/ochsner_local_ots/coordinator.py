@@ -4,12 +4,14 @@ import asyncio
 from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
+from functools import partial
 import random
 import time
-from typing import Any, AsyncIterator, Dict, Iterable, List
+from typing import Any, AsyncIterator, Callable, Dict, Iterable, List, Optional
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ClimatixGenericApi, absent_ids, extract_first_value
@@ -17,7 +19,18 @@ from .const import (
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
     POLLING_MODE_SLOW,
+    SETTLE_SECONDS,
 )
+
+
+# Clock and sleep of the settle windows (tests replace them, and the
+# follow-up timer async_call_later).
+def _clock() -> float:
+    return time.monotonic()
+
+
+async def _sleep(seconds: float) -> None:
+    await asyncio.sleep(seconds)
 
 
 def _values_equal(a: Any, b: Any) -> bool:
@@ -96,6 +109,21 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # from old ones.
         self.last_read_ids: frozenset[str] = frozenset()
         self._next_read_ids: frozenset[str] = frozenset()
+        # When the read behind that update started (_clock()); None if it
+        # read nothing.
+        self.last_read_started: Optional[float] = None
+        self._next_read_started: Optional[float] = None
+        # Settling: the controller recomputes a section's targets some
+        # seconds after a write to it, so reads right after a write may
+        # still return the old ones. Per section: when each id was last
+        # written, the ids to re-read once the section has settled, the timer
+        # of that re-read and the re-reads running.
+        self._section_writes: Dict[str, Dict[str, float]] = {}
+        self._settle_ids: Dict[str, Dict[str, None]] = {}
+        self._settle_timers: Dict[str, CALLBACK_TYPE] = {}
+        self._settle_reads: set[asyncio.Task] = set()
+        # Called before the listeners on every update (no await).
+        self._update_hooks: List[Callable[[], None]] = []
 
         try:
             pt = int(poll_threshold)
@@ -198,7 +226,111 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     def async_set_updated_data(self, data: Dict[str, Any]) -> None:
         self.last_read_ids, self._next_read_ids = self._next_read_ids, frozenset()
+        self.last_read_started, self._next_read_started = self._next_read_started, None
         super().async_set_updated_data(data)
+
+    def add_update_hook(self, hook: Callable[[], None]) -> Callable[[], None]:
+        """Run ``hook`` on every update, before the listeners (also without
+        any listener, unlike async_add_listener: it never schedules polls).
+        Returns the remove function."""
+        self._update_hooks.append(hook)
+
+        def remove() -> None:
+            if hook in self._update_hooks:
+                self._update_hooks.remove(hook)
+
+        return remove
+
+    def async_update_listeners(self) -> None:
+        for hook in list(self._update_hooks):
+            try:
+                hook()
+            except Exception:  # noqa: BLE001
+                self.logger.exception("Update hook failed")
+        super().async_update_listeners()
+
+    # -- settling ----------------------------------------------------------
+
+    def section_written_at(self, section: Optional[str], ignore: Iterable[str] = ()) -> Optional[float]:
+        """When ``section`` was last written (ids in ``ignore`` left out)."""
+        writes = self._section_writes.get(section or "") or {}
+        skip = {str(i) for i in ignore}
+        times = [t for oid, t in writes.items() if oid not in skip]
+        return max(times) if times else None
+
+    def settle_remaining(self, section: Optional[str]) -> float:
+        """Seconds until reads of ``section`` show what its last write caused."""
+        written = self.section_written_at(section)
+        if written is None:
+            return 0.0
+        return max(0.0, written + SETTLE_SECONDS - _clock())
+
+    def read_settled(self, section: Optional[str], started: Optional[float]) -> bool:
+        """Whether a read that started at ``started`` saw ``section`` settled."""
+        if started is None:
+            return False
+        written = self.section_written_at(section)
+        return written is None or started - written >= SETTLE_SECONDS
+
+    async def async_wait_settled(self, section: Optional[str]) -> None:
+        """Wait until the section's last write has settled (call inside the
+        write session, before reading the values a decision depends on)."""
+        while (remaining := self.settle_remaining(section)) > 0:
+            await _sleep(remaining)
+
+    def note_section_write(self, section: Optional[str], written_id: str, followup_ids: Iterable[str]) -> None:
+        """A write to ``section`` (attempt): start its settle window, re-read
+        ``followup_ids`` once when it has settled and poll them normally
+        again (their adaptive counters restart)."""
+        if not section:
+            return
+        self._section_writes.setdefault(section, {})[str(written_id)] = _clock()
+        pending = self._settle_ids.setdefault(section, {})
+        for oid in followup_ids:
+            if oid:
+                pending[str(oid)] = None
+        self._restart_polling(pending)
+        # One re-read per settle window: a later write to the section moves
+        # it and adds its ids.
+        if (cancel := self._settle_timers.pop(section, None)) is not None:
+            cancel()
+        self._settle_timers[section] = async_call_later(
+            self.hass, self.settle_remaining(section), partial(self._settle_due, section)
+        )
+
+    @callback
+    def _settle_due(self, section: str, _now: datetime | None = None) -> None:
+        self._settle_timers.pop(section, None)
+        ids = list(self._settle_ids.pop(section, {}))
+        if not ids:
+            return
+        task = self.hass.async_create_background_task(
+            self._async_settle_followup(ids), f"{self.name} settle {section}", eager_start=False
+        )
+        self._settle_reads.add(task)
+        task.add_done_callback(self._settle_reads.discard)
+
+    async def _async_settle_followup(self, ids: List[str]) -> None:
+        await self._async_refresh_after_write(ids)
+        self._restart_polling(ids)
+
+    def _restart_polling(self, ids: Iterable[str]) -> None:
+        for oid in ids:
+            if self._get_mode(str(oid)) == POLLING_MODE_AUTOMATIC:
+                self._poll_state.setdefault(str(oid), _PollState()).counter = 0
+
+    def async_cancel_settle(self) -> None:
+        """Drop pending follow-up re-reads (unload)."""
+        timers, self._settle_timers = self._settle_timers, {}
+        self._settle_ids.clear()
+        for cancel in timers.values():
+            cancel()
+        for task in list(self._settle_reads):
+            task.cancel()
+
+    async def async_shutdown(self) -> None:
+        self.async_cancel_settle()
+        await super().async_shutdown()
 
     def request_poll(self, ids: Iterable[str]) -> None:
         """Poll these ids on the next cycle whatever their polling mode."""
@@ -268,6 +400,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         try:
+            started = _clock()
             # First refresh: poll everything to seed values.
             if not isinstance(self.data, dict) or "values" not in self.data:
                 if self.ids:
@@ -283,6 +416,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 self.last_read_ids = frozenset(
                     {str(k) for k in values} | absent_ids(payload, self.ids)
                 )
+                self.last_read_started = started
                 return {"values": values}
 
             current = self.data if isinstance(self.data, dict) else {}
@@ -302,6 +436,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     state = self._poll_state.setdefault(oid_s, _PollState())
                     state.counter = int(state.counter) + 1
                 self.last_read_ids = frozenset()
+                self.last_read_started = None
                 return current
 
             ticket = self._ticket()
@@ -366,9 +501,11 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     state.counter = 0
 
             self.last_read_ids = frozenset(published)
+            self.last_read_started = started
             return out
         except Exception as err:  # noqa: BLE001
             self.last_read_ids = frozenset()
+            self.last_read_started = None
             raise UpdateFailed(str(err)) from err
 
     async def async_refresh_ids(self, ids: List[str]) -> set[str]:
@@ -385,6 +522,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             return set()
 
         ticket = self._ticket()
+        started = _clock()
         self._note_read_values(len(ids))
         payload = await self.api.read(ids, on_http_request=self._note_http_request)
         values = payload.get("values") if isinstance(payload, dict) else None
@@ -399,6 +537,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         new_data = dict(current)
         new_data["values"] = merged_values
         self._next_read_ids = frozenset(published)
+        self._next_read_started = started
         self.async_set_updated_data(new_data)
 
         # Treat targeted refreshes as real polls for counter tracking.
@@ -505,6 +644,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # stay as the last poll left them) nor reschedule the next poll.
         self.data = new_data
         self.last_read_ids = frozenset()
+        self.last_read_started = None
         self.async_update_listeners()
 
     def async_abandon(self, ids: Iterable[str]) -> None:

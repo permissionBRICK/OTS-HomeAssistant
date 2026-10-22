@@ -293,6 +293,16 @@ def test_circuit_target_follows_target_selector(plant_mod, selector, expected):
         plant_mod, target_selector=selector, room_target_heat=21.0, room_target_cool=24.0, room_target_current=20.5
     )
     assert plant_mod.circuit_target(values, ids) == expected
+    heat, cool, current = (ids[k] for k in ("room_target_heat", "room_target_cool", "room_target_current"))
+    expected_id = {21.0: heat, 24.0: cool, 20.5: current}[expected]
+    assert plant_mod.circuit_target_id(values, ids) == expected_id
+
+
+def test_circuit_target_id_falls_back_when_the_selected_target_is_unread(plant_mod):
+    values, ids = _circuit(plant_mod, target_selector=1, room_target_heat=21.0, room_target_current=20.5)
+    assert plant_mod.circuit_target_id(values, ids) == ids["room_target_current"]
+    assert plant_mod.circuit_target(values, ids) == 20.5
+    assert plant_mod.base_bounds(21.0) == (18.0, 24.0)
 
 
 def test_offset_math(plant_mod):

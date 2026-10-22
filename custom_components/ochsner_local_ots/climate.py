@@ -5,6 +5,11 @@ is the operating-program selection (0/1), heat/cool/auto is the
 summer/winter changeover (3/2/4) on cool-capable circuits, comfort/eco is
 the comfort/eco program (0/1) and the target is moved with the ±3 K room
 setpoint correction, like the app's −/+ buttons.
+
+The controller recomputes the room target only seconds after a correction
+is written (SETTLE_SECONDS), so the shown target is the uncorrected base
+(target − correction from a settled read) plus the current correction, and
+a new target is planned only once the circuit's last write has settled.
 """
 
 from __future__ import annotations
@@ -75,6 +80,19 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
             | ClimateEntityFeature.TURN_ON
             | ClimateEntityFeature.TURN_OFF
         )
+        self._section = f"hc{self._n}"
+        # Room target without the correction, from a read that saw target
+        # and correction together after the circuit had settled; the id it
+        # was read from and when that read started.
+        self._base: Optional[float] = None
+        self._base_id: Optional[str] = None
+        self._base_read_at: float = 0.0
+        self._remove_hook = self.coordinator.add_update_hook(self._capture_base)
+        self._capture_base()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._remove_hook()
+        await super().async_will_remove_from_hass()
 
     # -- helpers -----------------------------------------------------------
 
@@ -93,6 +111,45 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
             return None
         labels = (self._plant.get("labels") or {}).get(f"hc{self._n}.{key}") or {}
         return labels.get(str(v), str(v))
+
+    def _capture_base(self) -> None:
+        """Update the base from a settled read of the target (update hook).
+
+        Reads in a settle window are ignored: they may pair a new correction
+        with the old target. A correction read alone keeps the base (the
+        target follows it). A target read alone that does not match the
+        base (changed elsewhere, the correction not polled with it) drops
+        the base until both are read together.
+        """
+        coordinator = self.coordinator
+        off_id = self._ids.get("room_offset")
+        target_id = P.circuit_target_id(self._values, self._ids)
+        read = coordinator.last_read_ids
+        if not off_id or not target_id or target_id not in read:
+            return
+        started = coordinator.last_read_started
+        if started is None or not coordinator.read_settled(self._section, started):
+            return
+        target = P.as_float(P.first_value(self._values, target_id))
+        offset = P.as_float(self._get("room_offset"))
+        if target is None or offset is None:
+            return
+        if off_id in read:
+            self._base, self._base_id, self._base_read_at = target - offset, target_id, started
+            return
+        base = self._settled_base()
+        if base is None or abs(target - offset - base) > 1e-6:
+            self._base = None
+            coordinator.request_poll([off_id, target_id])
+
+    def _settled_base(self) -> Optional[float]:
+        if self._base is None or self._base_id != P.circuit_target_id(self._values, self._ids):
+            return None
+        # A setpoint, program, preset or season write since may move it.
+        moved = self.coordinator.section_written_at(self._section, ignore=(self._ids.get("room_offset"),))
+        if moved is not None and moved >= self._base_read_at:
+            return None
+        return self._base
 
     async def _write(self, plan) -> None:
         """Run ``plan(values)`` on op_program / comfort_eco / season read
@@ -117,6 +174,10 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
 
     @property
     def target_temperature(self) -> Optional[float]:
+        base = self._settled_base()
+        offset = P.as_float(self._get("room_offset"))
+        if base is not None and offset is not None:
+            return round(base + offset, 2)
         return P.circuit_target(self._values, self._ids)
 
     @property
@@ -132,7 +193,12 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         return P.as_float(self._get("humidity"))
 
     def _bounds(self):
-        return P.offset_bounds(self.target_temperature, P.as_float(self._get("room_offset")))
+        base = self._settled_base()
+        if base is not None:
+            return P.base_bounds(base)
+        return P.offset_bounds(
+            P.circuit_target(self._values, self._ids), P.as_float(self._get("room_offset"))
+        )
 
     @property
     def min_temp(self) -> float:
@@ -181,10 +247,13 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
             return
         requested = float(temperature)
         # The correction is relative: it is computed from the offset and
-        # target read right before the write; if they cannot be read nothing
-        # is written (never from cached values).
+        # target read right before the write, once the circuit's last write
+        # (a correction, preset, mode, ...) has settled and the controller's
+        # target includes it; if they cannot be read nothing is written
+        # (never from cached values).
         await async_write_planned(
             self._ctrl,
             lambda values: P.plan_temperature(requested, values, self._ids),
             P.temperature_input_ids(self._ids),
+            settle=self._section,
         )

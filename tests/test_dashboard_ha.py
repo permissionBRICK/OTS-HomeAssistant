@@ -26,6 +26,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import slugify
 
 from custom_components import ochsner_local_ots as integration
+from custom_components.ochsner_local_ots import coordinator as coordinator_mod
 from custom_components.ochsner_local_ots import dashboard, plant_api
 from custom_components.ochsner_local_ots import plant as P
 from custom_components.ochsner_local_ots.catalog import load_catalog
@@ -48,6 +49,85 @@ KEY = "192.0.2.10"
 OP1, CE1, SEASON1, OFF1 = "AiIQvY58IgE=", "AiPKUI58AAE=", "AiMN7I58AAE=", "ACNZw458AAE="
 SEASON2, OP2 = "AiMN7O1MAAE=", "AiIQve1MIgE="
 PROG, CE, BOOST = "AiIQvXXZIgE=", "AiPKUHXZAAE=", "AiOzyHXZAAE="
+
+
+class VirtualClock:
+    """Time of the coordinator's settle windows (never real seconds).
+
+    ``auto``: a command waiting for a settle moves the clock on at once; the
+    follow-up re-read timers stay real HA timers that no test outlives.
+    Manual (``manual_clock``): time moves only in ``advance``, which wakes
+    sleepers and fires the follow-up timers in deadline order.
+    """
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+        self.auto = True
+        self._seq = 0
+        self._due: list = []  # [deadline, seq, wake or None]
+
+    def clock(self) -> float:
+        return self.now
+
+    def _add(self, delay, wake):
+        self._seq += 1
+        entry = [self.now + max(0.0, float(delay)), self._seq, wake]
+        self._due.append(entry)
+        return entry
+
+    async def sleep(self, seconds):
+        if self.auto:
+            self.now += max(0.0, float(seconds))
+            await asyncio.sleep(0)
+            return
+        fut = asyncio.get_running_loop().create_future()
+        self._add(seconds, lambda: fut.done() or fut.set_result(None))
+        await fut
+
+    def call_later(self, hass, delay, action):
+        entry = self._add(delay, lambda: action(None))
+
+        def cancel():
+            entry[2] = None
+
+        return cancel
+
+    @property
+    def pending(self) -> int:
+        return sum(1 for e in self._due if e[2] is not None)
+
+    async def advance(self, seconds):
+        target = self.now + seconds
+        while due := [e for e in self._due if e[0] <= target]:
+            entry = min(due, key=lambda e: (e[0], e[1]))
+            self._due.remove(entry)
+            self.now = max(self.now, entry[0])
+            if entry[2] is not None:
+                entry[2]()
+            await run_loop()
+        self.now = target
+        await run_loop()
+
+
+async def run_loop(turns=20):
+    """Let woken tasks run (the fakes answer without real I/O)."""
+    for _ in range(turns):
+        await asyncio.sleep(0)
+
+
+@pytest.fixture(autouse=True)
+def settle_clock(monkeypatch):
+    clock = VirtualClock()
+    monkeypatch.setattr(coordinator_mod, "_clock", clock.clock)
+    monkeypatch.setattr(coordinator_mod, "_sleep", clock.sleep)
+    return clock
+
+
+@pytest.fixture
+def manual_clock(settle_clock, monkeypatch):
+    settle_clock.auto = False
+    monkeypatch.setattr(coordinator_mod, "async_call_later", settle_clock.call_later)
+    return settle_clock
 
 
 @pytest_asyncio.fixture
@@ -315,7 +395,8 @@ async def test_climate_write_sequences(hass, monkeypatch, fake_controller):
         # −/+ semantics: the room setpoint correction, ±3 K in 0.5 steps.
         await c.async_set_temperature(temperature=22.5)
         assert fake.writes == [(OFF1, 1.0)]
-        assert c.target_temperature == 21.5  # the fake does not recompute targets
+        # Shown at once as base 21.5 + 1 K (this fake never recomputes targets).
+        assert c.target_temperature == 22.5
         fake.set("CiPcW458AAE=", 22.5)  # the controller applies the correction
         await plant.ctrl["coordinator"].async_refresh_ids(["CiPcW458AAE="])
         assert (c.min_temp, c.max_temp) == (18.5, 24.5)  # base stays 21.5
@@ -1191,14 +1272,20 @@ def recomputing_controller(fake_controller):
             v = self.values.get(oid)
             return v[0] if isinstance(v, list) else v
 
-        async def write(self, oid, value):
-            out = await super().write(oid, value)
+        def recompute(self):
             eco = self._first(CE1) == 1
             base = self._first(SP_REDUCED1 if eco else SP_NORMAL1)
             self.set(TARGET1, float(base) + float(self._first(OFF1) or 0))
             self.set(BADGE1, 6 if eco else 3)
             if DHW_TARGET in self.values:
                 self.set(DHW_TARGET, float(self._first(DHW_COMFORT_SP)) + float(self._first(DHW_OFFSET) or 0))
+
+        def after_write(self):
+            self.recompute()
+
+        async def write(self, oid, value):
+            out = await super().write(oid, value)
+            self.after_write()
             return out
 
     return Recomputing
@@ -1502,6 +1589,235 @@ async def test_dhw_writes_reread_the_dhw_target(hass, monkeypatch, fake_controll
         assert wh.extra_state_attributes["effective_target"] == 53.0
         await wh.async_set_temperature(temperature=52)
         assert wh.extra_state_attributes["effective_target"] == 55.0
+    finally:
+        await teardown(hass, plant)
+
+
+# --- settling: the controller recomputes targets seconds after a write --------
+
+SETTLE = coordinator_mod.SETTLE_SECONDS
+
+
+def lagging_controller(fake_controller, clock, lag):
+    """A recomputing fake whose targets follow a write only ``lag`` seconds
+    later on ``clock`` (live AirHawk 518: an immediate re-read still returns
+    the old room target, the new one shows within ~4 s)."""
+
+    class Lagging(recomputing_controller(fake_controller)):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.recompute_at: list = []
+
+        def after_write(self):
+            self.recompute_at.append(clock.now + lag)
+
+        async def read(self, ids, *, on_http_request=None):
+            if any(t <= clock.now for t in self.recompute_at):
+                self.recompute_at = [t for t in self.recompute_at if t > clock.now]
+                self.recompute()
+            return await super().read(ids, on_http_request=on_http_request)
+
+    return Lagging
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lag", [3.0, 6.0])
+async def test_plus_then_minus_lands_back_on_zero(hass, monkeypatch, fake_controller, manual_clock, lag):
+    """Live repro: card + (22.0), 5 s later − (21.5) must write +0.5 K, then 0 K."""
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, lag))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        assert c.target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+        fake.writes.clear()
+        await c.async_set_temperature(temperature=22.0)  # nothing written before: no wait
+        assert fake.writes == [(OFF1, 0.5)]
+        # The re-read still has the old target; the entity is consistent anyway.
+        assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
+        assert c.target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+
+        await manual_clock.advance(5)
+        task = hass.async_create_task(c.async_set_temperature(temperature=21.5))
+        await run_loop()
+        assert not task.done() and fake.writes == [(OFF1, 0.5)]  # waits for the settle
+        await manual_clock.advance(SETTLE - 5)
+        await task
+        assert fake.writes == [(OFF1, 0.5), (OFF1, 0.0)]
+        assert c.target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+
+        await manual_clock.advance(SETTLE)
+        assert fake.values[OFF1] == [0.0, 0.0] and fake.values[TARGET1] == [21.5, 21.5]
+        assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
+        assert c.target_temperature == 21.5
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_settle_wait_holds_the_lock_and_can_be_cancelled(hass, monkeypatch, fake_controller, manual_clock):
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, 3.0))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        await c.async_set_temperature(temperature=22.5)
+        fake.writes.clear()
+        fake.reads.clear()
+        task = hass.async_create_task(c.async_set_temperature(temperature=23.0))
+        await manual_clock.advance(2)
+        assert coordinator.write_lock.locked() and fake.reads == []  # nothing read yet
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert not coordinator.write_lock.locked() and fake.writes == []
+        assert c.target_temperature == 22.5
+
+        # The next command still waits for the rest of the window, then plans
+        # from the recomputed target (22.5 = base 21.5 + 1 K).
+        task = hass.async_create_task(c.async_set_temperature(temperature=23.0))
+        await manual_clock.advance(SETTLE - 2 - 0.5)
+        assert not task.done()
+        await manual_clock.advance(0.5)
+        await task
+        assert fake.writes == [(OFF1, 1.5)] and c.target_temperature == 23.0
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_preset_change_then_temperature_plans_from_the_new_target(
+    hass, monkeypatch, fake_controller, manual_clock
+):
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, 3.0))
+    fake = plant.fake
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        assert c.target_temperature == 21.5  # comfort: normal setpoint 21.5
+        await c.async_set_preset_mode("eco")
+        assert c.preset_mode == "eco"
+        # The preset moved the base: no base until a settled read (the
+        # controller's target is shown meanwhile).
+        assert c._settled_base() is None
+
+        fake.writes.clear()
+        task = hass.async_create_task(c.async_set_temperature(temperature=20.0))
+        await manual_clock.advance(SETTLE - 0.5)
+        assert not task.done() and fake.writes == []
+        await manual_clock.advance(0.5)
+        await task
+        # Eco target 19 °C (reduced setpoint): +1 K. Planned from the old
+        # comfort target it would have been −1.5 K.
+        assert fake.writes == [(OFF1, 1.0)]
+        assert c.target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_follow_up_reread_once_after_the_settle(hass, monkeypatch, fake_controller, manual_clock):
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, 3.0))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        offset = plant.entities[f"{KEY}:number:ACNZw458AAE"]  # supplement correction
+        for oid in (TARGET1, BADGE1, OFF1):
+            coordinator._poll_state[oid].counter = 15  # adaptive polling skips them
+        updates = []
+        coordinator.add_update_hook(lambda: updates.append(coordinator.last_read_ids))
+
+        await offset.async_set_native_value(1.0)  # t = 0
+        await manual_clock.advance(2)
+        await c.async_set_preset_mode("eco")  # t = 2: one window, moved to t = 10
+        fake.reads.clear()
+        updates.clear()
+        assert manual_clock.pending == 1
+        await manual_clock.advance(SETTLE - 0.1)
+        assert fake.reads == []
+        await manual_clock.advance(0.1)
+        assert len(fake.reads) == 1 and {OFF1, TARGET1, BADGE1, CE1} <= set(fake.reads[0])
+        # HA got the recomputed values (eco: 19 + 1 K) ...
+        assert coordinator.data["values"][TARGET1] == [20.0, 20.0]
+        assert updates and TARGET1 in updates[-1]
+        assert c.target_temperature == 20.0 and c.extra_state_attributes["badge"] == "auto_eco_red"
+        # ... and polls them normally again.
+        assert all(coordinator._poll_state[oid].counter == 0 for oid in (TARGET1, BADGE1, OFF1))
+        assert coordinator._should_poll(TARGET1)
+
+        await manual_clock.advance(10 * SETTLE)
+        assert len(fake.reads) == 1  # once
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_unload_cancels_the_follow_up(hass, monkeypatch, fake_controller, manual_clock):
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, 3.0))
+    fake = plant.fake
+    c = plant.entities[f"{KEY}:climate:hc1"]
+    await c.async_set_temperature(temperature=22.5)
+    assert manual_clock.pending == 1
+    await teardown(hass, plant)
+    assert manual_clock.pending == 0
+    fake.reads.clear()
+    await manual_clock.advance(2 * SETTLE)
+    assert fake.reads == []
+
+
+@pytest.mark.asyncio
+async def test_base_ignores_reads_in_the_settle_window(hass, monkeypatch, fake_controller, manual_clock):
+    plant = await setup_plant(hass, monkeypatch, lagging_controller(fake_controller, manual_clock, 6.0))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        await c.async_set_temperature(temperature=22.0)  # +0.5 K at t = 0
+        # A poll at t = 4 reads both: new correction, old target.
+        await manual_clock.advance(4)
+        await coordinator.async_refresh_ids([OFF1, TARGET1])
+        assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
+        assert c.target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+
+        # Settled reads update it: the follow-up, then a change made elsewhere.
+        await manual_clock.advance(SETTLE - 4)
+        assert coordinator.data["values"][TARGET1] == [22.0, 22.0] and c.target_temperature == 22.0
+        fake.set(SP_NORMAL1, 22.0)
+        fake.set(TARGET1, 22.5)
+        await coordinator.async_refresh_ids([OFF1, TARGET1])
+        assert c.target_temperature == 22.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+        # The correction changed in the app: read alone, it moves the shown
+        # target with it; the target read alone then matches.
+        fake.set(OFF1, 1.0)
+        await coordinator.async_refresh_ids([OFF1])
+        assert c.target_temperature == 23.0
+        fake.set(TARGET1, 23.0)
+        await coordinator.async_refresh_ids([TARGET1])
+        assert c.target_temperature == 23.0 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+        # A target read alone that does not match (e.g. the preset changed in
+        # the app, the unchanged correction not polled with it): the
+        # controller's target is shown and both are polled next.
+        fake.set(TARGET1, 20.0)
+        await coordinator.async_refresh_ids([TARGET1])
+        assert c.target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
+        assert {OFF1, TARGET1} <= coordinator._force_poll
+        await coordinator.async_refresh()
+        assert c._settled_base() == 19.0 and c.target_temperature == 20.0
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_dhw_target_is_the_stored_setpoint_and_follows_up(hass, monkeypatch, fake_controller, manual_clock):
+    plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller), mutate=dhw_plant)
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        wh = plant.entities[f"{KEY}:water_heater:dhw"]
+        await wh.async_set_temperature(temperature=52)  # absolute setpoint: no settle wait
+        assert fake.writes[-1] == (DHW_COMFORT_SP, 52.0) and wh.target_temperature == 52.0
+        await wh.async_set_temperature(temperature=53)  # right away, still no wait
+        assert fake.writes[-1] == (DHW_COMFORT_SP, 53.0) and wh.target_temperature == 53.0
+        # The computed DHW target is re-read once more after the settle.
+        fake.reads.clear()
+        await manual_clock.advance(SETTLE)
+        assert len(fake.reads) == 1 and DHW_TARGET in fake.reads[0]
+        assert wh.extra_state_attributes["effective_target"] == 53.0
     finally:
         await teardown(hass, plant)
 

@@ -947,10 +947,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             polled = set(coordinator_.ids)
             return [oid for oid in plant_lib.write_dependents(written_id) if oid in polled]
 
+        def _note_settle(coordinator_: ClimatixCoordinator, written_id: str) -> None:
+            # The controller recomputes the section's targets only seconds
+            # later: re-read them once more when that has happened.
+            coordinator_.note_section_write(
+                plant_lib.write_section(written_id), written_id, _reread_ids(coordinator_, written_id)
+            )
+
         def _before_write(written_id: str, target: Dict[str, Any] = write_target) -> None:
             coordinator_ = target.get("coordinator")
             if coordinator_ is not None:
                 coordinator_.note_write(_stale_ids(written_id))
+                _note_settle(coordinator_, written_id)
                 # Queued before the attempt: a write the controller applied
                 # but whose response was lost changed them too.
                 coordinator_.queue_refresh_after_write(_reread_ids(coordinator_, written_id))
@@ -960,6 +968,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if coordinator_ is None:
                 return
             coordinator_.note_write(_stale_ids(written_id))
+            _note_settle(coordinator_, written_id)
             try:
                 await coordinator_.async_refresh_after_write(_reread_ids(coordinator_, written_id))
             except Exception as err:  # noqa: BLE001
@@ -969,6 +978,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coordinator_ = target.get("coordinator")
             if coordinator_ is not None:
                 coordinator_.async_abandon(_stale_ids(written_id))
+                _note_settle(coordinator_, written_id)
 
         api: Any = ClimatixGenericApiWriteHook(
             inner_api, on_write=_on_write, before_write=_before_write, after_write=_after_write,
@@ -1294,6 +1304,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        # No follow-up re-read after unload.
+        for ctrl in (store.get("controllers") or []) if isinstance(store, dict) else []:
+            if isinstance(ctrl, dict) and ctrl.get("coordinator") is not None:
+                ctrl["coordinator"].async_cancel_settle()
         for unsub in (store or {}).get("unsub", []) if isinstance(store, dict) else []:
             unsub()
         await _async_dashboard_changed(hass)
