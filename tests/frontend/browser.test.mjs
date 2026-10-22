@@ -296,3 +296,19 @@ test("changing the configured view keeps the theme variables", { skip: !CHROME &
   assert.ok(await heat(), "variables survive the skeleton rebuild");
   assert.match(await page.eval(`${sr}.querySelector("style.vars").textContent`), /--ohp-heat/);
 });
+
+test("controller recovery re-enables the controls from the live feed alone", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=house&view=controls&unavailable=1&latency=30");
+  assert.ok(await page.eval(`!!${sr}.querySelector(".banner")`), "unavailable banner");
+  assert.ok(await page.eval(`${sr}.querySelector('.hc[data-key="hc1"] [data-d="1"]').disabled`));
+  const fetches = await page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length");
+  await page.eval("harness.plant.available = true; harness.plant.push()");
+  await sleep(120);
+  assert.ok(await page.eval(`!${sr}.querySelector(".banner")`), "banner gone");
+  assert.ok(await page.eval(`!${sr}.querySelector('.hc[data-key="hc1"] [data-d="1"]').disabled`), "controls enabled");
+  assert.equal(await page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length"), fetches, "without a refetch");
+  // and the other way round: the feed reports the outage
+  await page.eval("harness.plant.available = false; harness.plant.push()");
+  await sleep(120);
+  assert.ok(await page.eval(`!!${sr}.querySelector(".banner")`));
+});

@@ -276,10 +276,13 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       const all = this.shadowRoot.querySelector(".all");
       if (all) all.hidden = false;
     }
-    const live = store.liveFor(plant.plant_id) || { values: {}, available: plant.available };
+    const ev = store.liveFor(plant.plant_id);
+    const live = ev || { values: {}, available: plant.available };
     const circuitsFilter = this._config.circuits || circuitsForDevice(plant, this._config.device_id);
     const sec = sections(plant, live, { circuits: circuitsFilter });
-    const available = live.available !== false && plant.available !== false;
+    // The feed is current; the one-shot payload only counts until it arrives
+    // (a controller that recovered must not stay disabled until a refetch).
+    const available = ev ? ev.available !== false : plant.available !== false;
     const watch = new Map();
     const hass = this._hass;
     const ctx = {
