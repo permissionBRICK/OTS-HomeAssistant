@@ -612,6 +612,82 @@ def test_number_settings_match_the_entity():
     assert (unbounded["min"], unbounded["max"], unbounded["step"], unbounded["mode"]) == (-1e9, 1e9, None, "box")
 
 
+async def _controller_strings(values):
+    """What the real api sends to the controller for each written value."""
+    from custom_components.ochsner_local_ots.api import ClimatixGenericApi, ClimatixGenericConnection
+
+    api = ClimatixGenericApi(None, ClimatixGenericConnection("h", 80, "u", "p", ""))
+    api._get_json = AsyncMock(return_value={"values": {}})
+    out = []
+    for value in values:
+        await api.write("x", value)
+        params = dict(api._get_json.call_args.args[0])
+        out.append(params["OA"].split(";", 1)[1])
+    return out
+
+
+@pytest.mark.asyncio
+async def test_number_writes_drop_unit_conversion_noise(hass, monkeypatch, fake_controller):
+    from homeassistant.components.number import SERVICE_SET_VALUE
+    from homeassistant.components.number.services import _async_set_value
+    from homeassistant.core import ServiceCall
+    from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
+
+    flow_id = "ACO38I58AAE="  # °C, step 0.1
+    overrides = {f"{KEY}:number:{flow_id}".replace("=", ""): {"device_class": "temperature"}}
+    options = {"sidebar_panel": True, "color_scheme": "ha", "entity_overrides": overrides}
+    hass.config.units = US_CUSTOMARY_SYSTEM
+    plant = await setup_plant(hass, monkeypatch, fake_controller, options=options)
+    fake = plant.fake
+    try:
+        flow = plant.entities[f"{KEY}:number:ACO38I58AAE"]
+        flow.hass = hass
+        assert (flow.native_unit_of_measurement, flow.unit_of_measurement, flow.native_step) == ("°C", "°F", 0.1)
+
+        async def set_value(fahrenheit):  # what number.set_value runs
+            call = ServiceCall(hass, "number", SERVICE_SET_VALUE, {"value": fahrenheit})
+            await _async_set_value(flow, call)
+
+        # HA turns these °F inputs into noisy °C (30.300000000000004, ...).
+        assert flow.convert_to_native_value(86.54) != 30.3
+        fake.writes.clear()
+        for fahrenheit in (96.98, 86.54, 87.8):
+            await set_value(fahrenheit)
+        assert fake.writes == [(flow_id, 36.1), (flow_id, 30.3), (flow_id, 31.0)]
+        assert await _controller_strings(v for _, v in fake.writes) == ["36.1", "30.3", "31"]
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_metric_number_writes_are_unchanged(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, fake_controller)
+    fake = plant.fake
+    try:
+        flow = plant.entities[f"{KEY}:number:ACO38I58AAE"]
+        fake.writes.clear()
+        await flow.async_set_native_value(36.1)
+        await flow.async_set_native_value(45.0)
+        assert fake.writes == [("ACO38I58AAE=", 36.1), ("ACO38I58AAE=", 45.0)]
+        assert await _controller_strings(v for _, v in fake.writes) == ["36.1", "45"]
+    finally:
+        await teardown(hass, plant)
+
+
+def test_clean_number_only_removes_noise():
+    from custom_components.ochsner_local_ots.api import clean_number
+
+    assert clean_number(36.099999999999994, 0.1) == 36.1
+    assert clean_number(30.999999999999996, 0.5) == 31.0
+    assert clean_number(36.0000001, 1) == 36.0
+    assert clean_number(-2.9999999999999996, 0.5) == -3.0
+    # Off the step grid (or no step): exact values stay, noise beyond 6 decimals goes.
+    assert clean_number(36.15, 0.1) == 36.15
+    assert clean_number(21.5) == 21.5
+    assert clean_number(1 / 3) == 0.333333
+    assert clean_number(36.1, None) == 36.1
+
+
 class FakeConnection:
     def __init__(self, user=None):
         self.user = user

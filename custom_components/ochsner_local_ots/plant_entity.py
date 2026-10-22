@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 
+from .api import clean_number
 from .const import DOMAIN
 from .plant import UnknownValueError
 
@@ -90,6 +91,8 @@ async def async_write_planned(
         session.refresh([oid for oid, _ in writes] + [i for i in refresh_ids if i])
         try:
             for oid, value in writes:
+                if isinstance(value, float):
+                    value = clean_number(value)
                 await api.write(oid, value)
         except Exception as err:  # noqa: BLE001
             raise HomeAssistantError(f"Writing to the heat pump failed: {type(err).__name__}") from err

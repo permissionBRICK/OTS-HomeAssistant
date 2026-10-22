@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 import json
 import logging
+import math
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Tuple
 
 from aiohttp import ClientSession, BasicAuth
@@ -290,6 +292,30 @@ class ClimatixGenericApiWriteHook:
             await self._after_write(generic_id, True)
         await self._on_write(generic_id)
         return resp
+
+
+def clean_number(value: Any, step: Any = None) -> float:
+    """``value`` without float noise from a unit conversion.
+
+    Home Assistant converts a °F input back to the native °C with noise
+    (30.3 -> 30.300000000000004). A value within a tiny tolerance of a
+    multiple of ``step`` snaps to it; anything else is only rounded to six
+    decimals, so an exact input is written unchanged.
+    """
+    v = float(value)
+    if not math.isfinite(v):
+        return v
+    try:
+        s = abs(float(step)) if step is not None else 0.0
+    except (TypeError, ValueError):
+        s = 0.0
+    if s > 0 and math.isfinite(s):
+        snapped = round(v / s) * s
+        if abs(v - snapped) < 1e-6 * max(1.0, abs(v)):
+            exponent = Decimal(repr(s)).as_tuple().exponent
+            decimals = -exponent if isinstance(exponent, int) and exponent < 0 else 0
+            return round(snapped, min(decimals, 6))
+    return round(v, 6)
 
 
 def absent_ids(payload: Any, requested: Iterable[str]) -> set:

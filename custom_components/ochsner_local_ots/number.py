@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.config_entries import ConfigEntry
 
-from .api import ClimatixGenericApi, extract_first_numeric_value
+from .api import ClimatixGenericApi, clean_number, extract_first_numeric_value
 from .const import (
     CONF_DIAGNOSTIC,
     CONF_ENABLED_DEFAULT,
@@ -289,7 +289,8 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         return extract_first_numeric_value(data, self._read_id)
 
     async def async_set_native_value(self, value: float) -> None:
-        desired = float(value)
+        # HA's °F -> °C conversion adds float noise: write the intended step.
+        desired = clean_number(value, self.native_step)
 
         async with self.coordinator.async_write_session() as session:
             data = self.coordinator.data or {}
