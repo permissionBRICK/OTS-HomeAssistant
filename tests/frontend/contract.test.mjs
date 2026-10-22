@@ -3,21 +3,30 @@
 // ws_subscribe) inside Home Assistant against tests/fixtures/airhawk518_snapshot.json
 // ("house" = the snapshot as is, "dhw_cool_pool" = DHW + cooling HC2 + pool).
 // The harness fake must emit exactly those payloads, and every role the
-// frontend reads must exist there (or be an agreed, not yet shipped role).
+// frontend reads must exist there (or be an agreed, optional role).
+// `_source` records the backend commit the fixture was generated from
+// (/root/work/design/backend-snapshot/gen.sh <backend worktree> <out>).
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { FakePlant, PENDING_ROLES, computeCapabilities, fakeHass, retag, variantValues } from "./harness/fake-backend.js";
+import { FakePlant, computeCapabilities, fakeHass, retag, variantValues } from "./harness/fake-backend.js";
 import { CURVE_KEYS } from "../../custom_components/ochsner_local_ots/frontend/lib/curve.js";
 import { FRONTEND, fixtures } from "./helpers.mjs";
 
 const CAP_KEYS = ["bms", "dhw", "buffer", "buffer_temp", "aux", "aux_temp", "buffer_aux_heater", "pool", "silent", "emergency", "power", "cooling"].sort();
-// Agreed in the contract, optional or not sent by the backend yet.
-const OPTIONAL_ROLES = [...PENDING_ROLES, "dhw.hysteresis", "pool.temp"];
+// Agreed in the contract as optional (the backend sends it only when the plant has the point).
+const OPTIONAL_ROLES = ["dhw.hysteresis"];
 
-const withoutIds = (roles) => Object.fromEntries(Object.entries(roles).filter(([k]) => !PENDING_ROLES.includes(k)).map(([k, r]) => [k, { ...r, entity_id: !!r.entity_id }]));
+const withoutIds = (roles) => Object.fromEntries(Object.entries(roles).map(([k, r]) => [k, { ...r, entity_id: !!r.entity_id }]));
 const circuitShape = (cs) => cs.map(({ climate, device_id, ...c }) => ({ ...c, climate: !!climate }));
+
+test("the fixture records the backend commit it was generated from", () => {
+  const { backend } = fixtures();
+  assert.equal(backend._source.branch, "feat/heatpump-dashboard-backend");
+  assert.match(backend._source.commit, /^[0-9a-f]{40}$/);
+  assert.deepEqual(Object.keys(backend).filter((k) => !k.startsWith("_")).sort(), ["dhw_cool_pool", "house"]);
+});
 
 for (const variant of ["house", "dhw_cool_pool"]) {
   test(`fake payload and event equal the backend's (${variant})`, () => {
@@ -39,9 +48,7 @@ for (const variant of ["house", "dhw_cool_pool"]) {
     const ev = fp.event();
     assert.deepEqual(Object.keys(ev).sort(), Object.keys(real.event).sort());
     assert.deepEqual(ev.capabilities, real.event.capabilities);
-    const values = { ...ev.values };
-    for (const k of PENDING_ROLES) delete values[k];
-    assert.deepEqual(values, real.event.values);
+    assert.deepEqual(ev.values, real.event.values);
     assert.ok(!Object.values(real.event.values).some(Array.isArray), "values are first elements, not [v, v]");
     assert.equal(typeof real.event.values["hc1.name"], "string");
     // English labels too
@@ -72,13 +79,19 @@ function frontendRoles() {
 
 test("every role the frontend reads exists in the backend payload", () => {
   const { backend } = fixtures();
-  const have = new Set(Object.values(backend).flatMap((v) => Object.keys(v.plants.plants[0].roles)));
+  const have = new Set(["house", "dhw_cool_pool"].flatMap((v) => Object.keys(backend[v].plants.plants[0].roles)));
   const used = frontendRoles();
   assert.ok(used.length > 40, `found ${used.length} role keys`);
   const missing = used.filter((k) => !have.has(k) && !OPTIONAL_ROLES.includes(k));
   assert.deepEqual(missing, []);
-  // the agreed emergency/pool roles are what the frontend reads
-  for (const k of ["hp.emergency_status", "dhw.emergency_status", "pool.mode", "pool.setpoint", "pool.status"]) assert.ok(used.includes(k), k);
+  // the agreed emergency/pool roles are what the frontend reads, with the backend's labels
+  for (const k of ["hp.emergency_status", "dhw.emergency_status", "pool.mode", "pool.setpoint", "pool.status", "pool.temp"]) {
+    assert.ok(used.includes(k), k);
+    assert.ok(have.has(k), `${k} in the backend payload`);
+  }
+  const pool = backend.dhw_cool_pool.plants.plants[0].roles;
+  assert.equal(pool["hp.emergency_status"].labels["1"], "Reduziert, nicht bestätigt");
+  assert.equal(pool["dhw.emergency_status"].labels["4"], "Anlagenstörung");
   assert.ok(!used.includes("hp.emergency") && !used.includes("pool.program") && !used.includes("pool.target"));
 });
 

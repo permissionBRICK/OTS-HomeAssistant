@@ -1,4 +1,9 @@
 {
+"_source": {
+"branch": "feat/heatpump-dashboard-backend",
+"commit": "b96158eeaded1e44a1a51c4937f055b3af356002",
+"generator": "backend-snapshot/test_dump_payload.py"
+},
 "dhw_cool_pool": {
 "event": {
 "available": true,
@@ -16,7 +21,7 @@
 "power": true,
 "silent": true
 },
-"plant_id": "01M5HN53VQJG8ETC7169KQPC9V:192.0.2.10",
+"plant_id": "01M5HQPHEZCVWAA4GZ953DTAWZ:192.0.2.10",
 "updated": "2026-10-22T10:00:00+00:00",
 "values": {
 "avail.aux": 3901,
@@ -31,6 +36,7 @@
 "avail.silent": 1,
 "dhw.boost": 0,
 "dhw.comfort_eco": 2,
+"dhw.emergency_status": 0,
 "dhw.offset": 0,
 "dhw.program": 0,
 "dhw.setpoint_boost": 60.0,
@@ -169,6 +175,7 @@
 "hp.defrosts_total": 1585,
 "hp.dhw_valve": false,
 "hp.el_power": 0.704157,
+"hp.emergency_status": 0,
 "hp.energy_el_prev_year": 3259,
 "hp.energy_el_year": 2322,
 "hp.energy_heat_prev_year": 14301,
@@ -191,7 +198,8 @@
 "hp.system_status": 1,
 "pool.mode": 0,
 "pool.setpoint": 28.0,
-"pool.status": 1
+"pool.status": 1,
+"pool.temp": 26.3472
 }
 },
 "labels_en": {
@@ -202,6 +210,13 @@
 "dhw.comfort_eco": {
 "1": "Eco",
 "2": "Comfort"
+},
+"dhw.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
 },
 "dhw.program": {
 "0": "On",
@@ -461,6 +476,13 @@
 "8": "Locked externally",
 "9": "DHW"
 },
+"hp.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
+},
 "hp.program": {
 "0": "Automatic",
 "1": "Manual heating",
@@ -570,7 +592,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc1",
 "cool": false,
-"device_id": "984e5a834f10affb642fdb0419bfc405",
+"device_id": "0cb936d3c85e1612e412942ed7436a64",
 "heat": true,
 "humidity": false,
 "index": 1,
@@ -580,7 +602,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc2",
 "cool": true,
-"device_id": "6cf019ace7b826e97f86bda93deec955",
+"device_id": "5551745bdbc55af425ee594d0246e8fc",
 "heat": true,
 "humidity": false,
 "index": 2,
@@ -590,7 +612,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc3",
 "cool": false,
-"device_id": "af4010bd9e0a6e7f0c2283003649e584",
+"device_id": "572f47dff67fd25c1e02f600e190ff28",
 "heat": true,
 "humidity": false,
 "index": 3,
@@ -598,16 +620,16 @@
 "room_sensor": false
 }
 ],
-"device_id": "a4bfd0f7165365113462ab891f0abc2e",
+"device_id": "e7d3de87b2364cb86eba795ec611307e",
 "dhw": {
 "boost_button": "button.192_0_2_10_button_dhw_boost",
 "water_heater": "water_heater.192_0_2_10_water_heater_dhw"
 },
-"entry_id": "01M5HN53VQJG8ETC7169KQPC9V",
+"entry_id": "01M5HQPHEZCVWAA4GZ953DTAWZ",
 "flash_writes": "sensor.192_0_2_10_flash_writes",
 "host": "192.0.2.10",
 "model": "AIRHAWK518C11A",
-"plant_id": "01M5HN53VQJG8ETC7169KQPC9V:192.0.2.10",
+"plant_id": "01M5HQPHEZCVWAA4GZ953DTAWZ:192.0.2.10",
 "roles": {
 "avail.aux": {
 "enabled": false,
@@ -663,6 +685,17 @@
 "2": "Komfort"
 },
 "writable": true
+},
+"dhw.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynbrfswaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
 },
 "dhw.offset": {
 "entity_id": "number.192_0_2_10_number_acpownxzaae",
@@ -1837,6 +1870,17 @@
 "entity_id": "sensor.192_0_2_10_sensor_cipahcijaae",
 "unit": "kW"
 },
+"hp.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynfylwvaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
+},
 "hp.energy_el_prev_year": {
 "entity_id": "sensor.192_0_2_10_sensor_dcm2oyijaae",
 "unit": "kWh"
@@ -2009,6 +2053,10 @@
 },
 "pool.status": {
 "entity_id": "sensor.192_0_2_10_sensor_cymogklcaae"
+},
+"pool.temp": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjn4iijaae",
+"unit": "°C"
 }
 },
 "title": "AIRHAWK518C11A (192.0.2.10)"
@@ -2037,7 +2085,7 @@
 "power": true,
 "silent": true
 },
-"plant_id": "01M5HN53RGTGA1DFNWWK15QD8K:192.0.2.10",
+"plant_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV:192.0.2.10",
 "updated": "2026-10-22T10:00:00+00:00",
 "values": {
 "avail.aux": 3901,
@@ -2179,6 +2227,7 @@
 "hp.defrosts_total": 1585,
 "hp.dhw_valve": false,
 "hp.el_power": 0.704157,
+"hp.emergency_status": 0,
 "hp.energy_el_prev_year": 3259,
 "hp.energy_el_year": 2322,
 "hp.energy_heat_prev_year": 14301,
@@ -2456,6 +2505,13 @@
 "8": "Locked externally",
 "9": "DHW"
 },
+"hp.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
+},
 "hp.program": {
 "0": "Automatic",
 "1": "Manual heating",
@@ -2559,7 +2615,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc1",
 "cool": false,
-"device_id": "99a1ad0f9b8fe53edd169ceb1e0cd640",
+"device_id": "e56d88d704ef0a3b0377023f8fe00ea7",
 "heat": true,
 "humidity": false,
 "index": 1,
@@ -2569,7 +2625,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc2",
 "cool": false,
-"device_id": "4e6f5a1bdde925c40d4bf30e4e7cfdb9",
+"device_id": "49273a3331388fe6f7e5a425c2a2acb8",
 "heat": true,
 "humidity": false,
 "index": 2,
@@ -2579,7 +2635,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc3",
 "cool": false,
-"device_id": "efdf5a8e3a2dcc8146aaa8325d9afcfc",
+"device_id": "23dc6bbdfb61ee2538c7a17102c84c39",
 "heat": true,
 "humidity": false,
 "index": 3,
@@ -2587,13 +2643,13 @@
 "room_sensor": false
 }
 ],
-"device_id": "801652deb7bcf4d248baf2cdbdb3b02e",
+"device_id": "f32c0496cd404c832335b2542cd7e7c3",
 "dhw": null,
-"entry_id": "01M5HN53RGTGA1DFNWWK15QD8K",
+"entry_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV",
 "flash_writes": "sensor.192_0_2_10_flash_writes",
 "host": "192.0.2.10",
 "model": "AIRHAWK518C11A",
-"plant_id": "01M5HN53RGTGA1DFNWWK15QD8K:192.0.2.10",
+"plant_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV:192.0.2.10",
 "roles": {
 "avail.aux": {
 "enabled": false,
@@ -3745,6 +3801,17 @@
 "hp.el_power": {
 "entity_id": "sensor.192_0_2_10_sensor_cipahcijaae",
 "unit": "kW"
+},
+"hp.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynfylwvaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
 },
 "hp.energy_el_prev_year": {
 "entity_id": "sensor.192_0_2_10_sensor_dcm2oyijaae",

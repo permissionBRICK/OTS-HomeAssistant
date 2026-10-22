@@ -51,6 +51,7 @@ const HP = {
   "hp.energy_heat_prev_year": "DCPOmiiJAAE=", "hp.energy_el_prev_year": "DCM2oyiJAAE=",
   "hp.jaz_year": "CiMUVyiJAAE=", "hp.jaz_prev_year": "CiM6siiJAAE=",
   "hp.sum_fault": "BSLZ1IwCAAE=", "hp.dhw_valve": "ByIDxCiJAAE=", "hp.capability": "ESO6g8dZAAE=",
+  "hp.emergency_status": "CyNfYLWVAAE=",
 };
 const AVAIL = {
   "avail.bms": "ESNHDAAAAAE=", "avail.dhw": "ESMSIwAAAAE=", "avail.buffer": "AiPN8gAAAAE=",
@@ -63,16 +64,12 @@ const DHW = {
   "dhw.program": "AiIQvXXZIgE=", "dhw.comfort_eco": "AiPKUHXZAAE=", "dhw.boost": "AiOzyHXZAAE=",
   "dhw.offset": "ACPOwnXZAAE=", "dhw.setpoint_comfort": "ASMv1XXZAAE=", "dhw.setpoint_eco": "ASOp1XXZAAE=",
   "dhw.setpoint_reduced": "ASOXCHXZAAE=", "dhw.setpoint_boost": "ASPuhXXZAAE=",
+  "dhw.emergency_status": "CyNBRFsWAAE=",
 };
-const POOL = { "pool.mode": "AiIQvULcIgE=", "pool.setpoint": "ASPmx0LcAAE=", "pool.status": "CyMogkLcAAE=" };
-
-// Roles agreed in the contract that the backend does not send yet (no
-// datapoint id here; values only come from variant overrides).
-const EMERGENCY_LABELS = {
-  de: { 0: "Passiv", 1: "Reduziert, unbestätigt", 2: "Reduziert, bestätigt", 3: "Standard, bestätigt", 4: "Anlagenfehler" },
-  en: { 0: "Passive", 1: "Reduced, unconfirmed", 2: "Reduced, confirmed", 3: "Standard, confirmed", 4: "Plant fault" },
+const POOL = {
+  "pool.mode": "AiIQvULcIgE=", "pool.setpoint": "ASPmx0LcAAE=", "pool.status": "CyMogkLcAAE=",
+  "pool.temp": "AyJn4iiJAAE=",
 };
-export const PENDING_ROLES = ["hp.emergency_status", "dhw.emergency_status"];
 
 export const BADGES = [
   "off_grey", "fault_orange", "auto_comfort_grey", "auto_comfort_red", "auto_comfort_blue",
@@ -125,7 +122,7 @@ const SUPPLEMENT_NAMES = {
  * Circuit roles missing for a circuit fall back to HC1's metadata.
  */
 export function backendRoleMeta(backend, key, lang = "de") {
-  const variants = Object.values(backend);
+  const variants = Object.entries(backend).filter(([k]) => !k.startsWith("_")).map(([, v]) => v);
   const find = (k) => {
     for (const v of variants) {
       const r = v.plants.plants[0].roles[k];
@@ -306,7 +303,7 @@ export class FakePlant {
   /** Present sections' role keys. */
   roleKeys() {
     const caps = this.capabilities;
-    const keys = [...Object.keys(this.ids), ...PENDING_ROLES].filter((k) => {
+    const keys = Object.keys(this.ids).filter((k) => {
       if (k.startsWith("hp.") || k.startsWith("avail.")) return true;
       if (k.startsWith("dhw.")) return caps.dhw;
       if (k.startsWith("pool.")) return caps.pool;
@@ -355,10 +352,6 @@ export class FakePlant {
   roles(lang = this.lang) {
     const out = {};
     for (const key of this.roleKeys()) {
-      if (PENDING_ROLES.includes(key)) {
-        out[key] = { entity_id: null, labels: { ...EMERGENCY_LABELS[lang === "en" ? "en" : "de"] } };
-        continue;
-      }
       const meta = backendRoleMeta(this.backend, key, lang) || { entity_id: null };
       const e = this.entities()[key];
       const r = { ...meta, entity_id: e ? e.entity_id : null };
