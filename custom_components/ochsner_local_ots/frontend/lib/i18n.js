@@ -1,0 +1,412 @@
+// UI strings (DE/EN) and locale-aware number formatting.
+// Enum labels (status texts, select options) come from the backend payload.
+
+export const STRINGS = {
+  de: {
+    heat_pump: "Wärmepumpe",
+    outdoor: "außen",
+    outdoor_temp: "Außentemperatur",
+    kw_heat: "kW Wärme",
+    kw_cool: "kW Kälte",
+    cop: "COP",
+    flow_short: "VL",
+    return_short: "RL",
+    buffer: "Puffer",
+    dhw: "Warmwasser",
+    pool: "Pool",
+    flow: "Vorlauf",
+    target: "Soll",
+    water: "Wasser",
+    healthy: "Störungsfrei",
+    fault: "Störung",
+    aux_heater: "Zusatzheizung",
+    silent: "Silent",
+    emergency_hp: "Notbetrieb Wärmepumpe",
+    emergency_dhw: "Notbetrieb Warmwasser",
+    cycles_today: "Takte heute",
+    defrosts_today: "Abtauungen heute",
+    flow_rate: "Volumenstrom",
+    pressure: "Anlagendruck",
+    dew_point: "Taupunkt",
+    unavailable: "Anlage nicht erreichbar – Werte sind veraltet.",
+    no_plant: "Keine Ochsner-Anlage gefunden.",
+    loading: "Lade Anlagendaten …",
+    not_loaded: "Die Integration Ochsner Local OTS antwortet nicht (noch nicht geladen oder veraltet).",
+    // card B
+    section_hp: "Wärmepumpe",
+    section_circuits: "Heizkreise",
+    section_dhw: "Warmwasser",
+    section_pool: "Pool",
+    auto: "Auto",
+    off: "Aus",
+    really_off: "Wirklich aus?",
+    manual: "Hand",
+    comfort: "Komfort",
+    eco: "Eco",
+    heating: "Heizen",
+    cooling: "Kühlen",
+    ready: "Bereit",
+    frost: "Frostschutz",
+    party: "Party",
+    vacation: "Urlaub",
+    defrost: "Abtauen",
+    standby: "Standby",
+    unknown: "Unbekannt",
+    correction: "Korrektur",
+    boost: "Boost",
+    boost_running: "Boost läuft",
+    charges_below: "lädt unter {t}",
+    dropped_ctx: "Änderung verworfen – Modus oder Sollwert hat sich inzwischen geändert.",
+    dropped_gone: "Änderung verworfen – dieser Regler ist nicht mehr verfügbar oder gehört inzwischen zu einer anderen Entität.",
+    pending_wait: "wird gesendet, sobald du aufhörst (nur der letzte Wert, 1 Schreibvorgang)",
+    sending: "wird gesendet …",
+    saved: "gespeichert",
+    error: "Fehler",
+    read_only: "nur lesbar",
+    entity_missing: "Keine aktive Entität – in Home Assistant aktivieren, um hier zu ändern.",
+    lower: "Senken",
+    raise: "Erhöhen",
+    // card C
+    heating_curve: "Heizkurve",
+    cooling_curve: "Kühlkurve",
+    drag_hint: "Ziehen zum Anpassen",
+    now: "jetzt",
+    effective: "wirksam",
+    flow_actual: "Ist-Vorlauf",
+    now_label: "jetzt {flow} bei {out}",
+    heat_limit_label: "Heizgrenze {t}",
+    cool_limit_label: "Kühlgrenze {t}",
+    max_flow_label: "max. {t}",
+    tip_curve: "außen {out} → Vorlauf-Soll {flow}",
+    tip_above_limit: "außen {out} → über Heizgrenze, Kreis aus",
+    tip_cool: "Kühlen: Vorlauf-Soll {flow}",
+    effect_at_now: "bei {out} außen: Vorlauf {from} → {to}",
+    effect_above_limit: "bei {out} außen: über der Heizgrenze (Kreis aus)",
+    pending_title: "Nicht übernommene Änderungen",
+    writes_count: "{n} Schreibzugriff",
+    writes_count_plural: "{n} Schreibzugriffe",
+    apply: "Übernehmen",
+    discard: "Verwerfen",
+    applying: "Übertrage {i}/{n} …",
+    applied_wait: "Übertragen – warte auf Bestätigung der Anlage …",
+    apply_refused: "Nicht übernommen: {why}",
+    invalid_bounds: "{name} muss zwischen {min} und {max} liegen.",
+    invalid_step: "{name} passt nicht zur Schrittweite {step}.",
+    invalid_min_flow: "{name} muss mindestens {min} °C sein.",
+    invalid_value: "{name} hat keinen gültigen Wert.",
+    invalid_heat_order: "Die Norm-Außentemperatur muss mindestens 1 K unter der Fußpunkt-Außentemperatur liegen.",
+    invalid_cool_order: "Die beiden Kühlkurven-Punkte müssen mindestens 1 K auseinander liegen und ihre Reihenfolge behalten.",
+    invalid_changed: "Die Anlage meldet inzwischen andere Kurvenwerte – bitte prüfen und erneut übernehmen.",
+    handle_frozen: "Wird gerade übernommen …",
+    invalid_unit: "{name}: die Einheit der Entität ({unit}) lässt sich nicht umrechnen.",
+    unit_changed: "{name} wird inzwischen in {unit} angezeigt – die Daten werden neu geladen, bitte erneut übernehmen.",
+    apply_error: "Fehler beim Schreiben: {msg}",
+    handle_readonly: "Nicht änderbar: {name} hat keine aktive Entität.",
+    kbd_hint: "Pfeiltasten verschieben, Umschalt = ×5, Enter übernimmt, Esc verwirft",
+    r_heat_curve_norm_outdoor: "Norm-Außentemp.",
+    r_heat_curve_norm_flow: "Norm-Vorlauf",
+    r_heat_curve_base_outdoor: "Fußpunkt außen",
+    r_heat_curve_base_flow: "Fußpunkt-Vorlauf",
+    r_heat_curve_max_flow: "Max. Vorlauf",
+    r_heat_limit: "Heizgrenze",
+    r_cool_curve_norm_outdoor: "Kühl-Normpunkt außen",
+    r_cool_curve_norm_flow: "Kühl-Normpunkt Vorlauf",
+    r_cool_curve_base_outdoor: "Kühl-Fußpunkt außen",
+    r_cool_curve_base_flow: "Kühl-Fußpunkt Vorlauf",
+    r_cool_limit: "Kühlgrenze",
+    h_heat_norm: "Normpunkt der Heizkurve",
+    h_heat_base: "Fußpunkt der Heizkurve",
+    h_heat_limit: "Heizgrenze",
+    h_heat_max: "Maximale Vorlauftemperatur",
+    h_cool_norm: "Normpunkt der Kühlkurve",
+    h_cool_base: "Fußpunkt der Kühlkurve",
+    h_cool_limit: "Kühlgrenze",
+    last_24h: "Letzte 24 h",
+    electricity: "Strom",
+    ambient: "Umweltwärme",
+    heat_kwh: "Wärme kWh/h",
+    bars_hint: "Balken = Wärme gesamt, kWh/h",
+    no_history: "Kein Verlauf verfügbar (Entitäten deaktiviert oder nicht aufgezeichnet).",
+    history_loading: "Lade Verlauf …",
+    kwh_heat: "kWh Wärme",
+    kwh_el: "kWh Strom",
+    from_ambient: "aus Umwelt",
+    cop_24h: "COP 24 h",
+    cycles: "Takte",
+    avg_runtime: "Ø Laufzeit",
+    jaz_year: "JAZ {y}",
+    jaz_prev: "JAZ Vorjahr",
+    cop_live_title: "* Momentan-COP = Wärmeleistung / elektr. Verdichterleistung. Nur Verdichterstrom – Lüfter und Pumpen fehlen, der echte COP liegt darunter.",
+    cop_footnote: "* nur Verdichterstrom (Sensor „elektr. Verdichterleistung“); Lüfter und Pumpen fehlen, der echte COP liegt darunter.",
+    bar_tip: "{from}–{to} · Wärme {heat} kWh",
+    bar_tip_power: " = Strom {el} + Umwelt {amb}",
+    bar_tip_cop: " · COP {cop}",
+    hp_strip: "WP",
+    flash_writes: "Schreibzugriffe: {n}",
+    min: "min",
+    h: "h",
+    // panel
+    all_values: "Alle Werte",
+    integration_settings: "Integrationseinstellungen",
+    menu: "Menü",
+    // picker
+    card_all_name: "Ochsner Wärmepumpe",
+    card_all_desc: "Komplettes Wärmepumpen-Dashboard: Anlagenschema, Bedienung, Heizkurve und Effizienz.",
+    card_plant_name: "Ochsner Anlagenschema",
+    card_plant_desc: "Lebendes Anlagenschema mit Wärmepumpe, Puffer, Warmwasser und Heizkreisen.",
+    card_control_name: "Ochsner Bedienung",
+    card_control_desc: "Bedienung wie in der Ochsner-App: Betriebsart, Raumsollwerte, Komfort/Eco, Warmwasser.",
+    card_eff_name: "Ochsner Heizkurve & Effizienz",
+    card_eff_desc: "Heizkurve per Ziehen anpassen und Wärme/Strom der letzten 24 Stunden.",
+    cfg_device: "Anlage (Gerät)",
+    cfg_view: "Ansicht",
+    cfg_colors: "Farben",
+    view_all: "Alles",
+    view_plant: "Anlagenschema",
+    view_controls: "Bedienung",
+    view_efficiency: "Heizkurve & Effizienz",
+    colors_auto: "Wie Integration eingestellt",
+    colors_ha: "Home-Assistant-Design",
+    colors_ochsner: "Ochsner-Farben",
+  },
+  en: {
+    heat_pump: "Heat pump",
+    outdoor: "outdoor",
+    outdoor_temp: "Outdoor temperature",
+    kw_heat: "kW heat",
+    kw_cool: "kW cooling",
+    cop: "COP",
+    flow_short: "Flow",
+    return_short: "Ret",
+    buffer: "Buffer",
+    dhw: "Hot water",
+    pool: "Pool",
+    flow: "Flow",
+    target: "target",
+    water: "Water",
+    healthy: "No faults",
+    fault: "Fault",
+    aux_heater: "Aux heater",
+    silent: "Silent",
+    emergency_hp: "Heat pump emergency mode",
+    emergency_dhw: "Hot water emergency mode",
+    cycles_today: "Cycles today",
+    defrosts_today: "Defrosts today",
+    flow_rate: "Flow rate",
+    pressure: "System pressure",
+    dew_point: "Dew point",
+    unavailable: "Plant not reachable – values are stale.",
+    no_plant: "No Ochsner plant found.",
+    loading: "Loading plant data …",
+    not_loaded: "The Ochsner Local OTS integration does not respond (not loaded yet or outdated).",
+    section_hp: "Heat pump",
+    section_circuits: "Heating circuits",
+    section_dhw: "Hot water",
+    section_pool: "Pool",
+    auto: "Auto",
+    off: "Off",
+    really_off: "Really off?",
+    manual: "Manual",
+    comfort: "Comfort",
+    eco: "Eco",
+    heating: "Heating",
+    cooling: "Cooling",
+    ready: "Ready",
+    frost: "Frost protection",
+    party: "Party",
+    vacation: "Holiday",
+    defrost: "Defrost",
+    standby: "Standby",
+    unknown: "Unknown",
+    correction: "Offset",
+    boost: "Boost",
+    boost_running: "Boost running",
+    charges_below: "charges below {t}",
+    dropped_ctx: "Change discarded – the mode or setpoint changed in the meantime.",
+    dropped_gone: "Change discarded – this control is no longer available or now belongs to another entity.",
+    pending_wait: "sent once you stop (only the last value, 1 write)",
+    sending: "sending …",
+    saved: "saved",
+    error: "Error",
+    read_only: "read-only",
+    entity_missing: "No enabled entity – enable it in Home Assistant to change it here.",
+    lower: "Lower",
+    raise: "Raise",
+    heating_curve: "Heating curve",
+    cooling_curve: "Cooling curve",
+    drag_hint: "Drag to adjust",
+    now: "now",
+    effective: "effective",
+    flow_actual: "Actual flow",
+    now_label: "now {flow} at {out}",
+    heat_limit_label: "Heating limit {t}",
+    cool_limit_label: "Cooling limit {t}",
+    max_flow_label: "max {t}",
+    tip_curve: "outdoor {out} → flow target {flow}",
+    tip_above_limit: "outdoor {out} → above heating limit, circuit off",
+    tip_cool: "Cooling: flow target {flow}",
+    effect_at_now: "at {out} outdoor: flow {from} → {to}",
+    effect_above_limit: "at {out} outdoor: above the heating limit (circuit off)",
+    pending_title: "Changes not applied yet",
+    writes_count: "{n} controller write",
+    writes_count_plural: "{n} controller writes",
+    apply: "Apply",
+    discard: "Discard",
+    applying: "Writing {i}/{n} …",
+    applied_wait: "Written – waiting for the controller to confirm …",
+    apply_refused: "Not applied: {why}",
+    invalid_bounds: "{name} must be between {min} and {max}.",
+    invalid_step: "{name} does not match the step {step}.",
+    invalid_min_flow: "{name} must be at least {min} °C.",
+    invalid_value: "{name} has no valid value.",
+    invalid_heat_order: "The design outdoor temperature must be at least 1 K below the base point outdoor temperature.",
+    invalid_cool_order: "The two cooling curve points must stay at least 1 K apart and keep their order.",
+    invalid_changed: "The plant now reports different curve values – please check and apply again.",
+    handle_frozen: "Being applied …",
+    invalid_unit: "{name}: the entity's unit ({unit}) cannot be converted.",
+    unit_changed: "{name} is now shown in {unit} – reloading the data, please apply again.",
+    apply_error: "Write failed: {msg}",
+    handle_readonly: "Not adjustable: {name} has no enabled entity.",
+    kbd_hint: "Arrow keys move, Shift = ×5, Enter applies, Esc discards",
+    r_heat_curve_norm_outdoor: "Design outdoor temp.",
+    r_heat_curve_norm_flow: "Design flow",
+    r_heat_curve_base_outdoor: "Base point outdoor",
+    r_heat_curve_base_flow: "Base point flow",
+    r_heat_curve_max_flow: "Max. flow",
+    r_heat_limit: "Heating limit",
+    r_cool_curve_norm_outdoor: "Cooling design outdoor",
+    r_cool_curve_norm_flow: "Cooling design flow",
+    r_cool_curve_base_outdoor: "Cooling base outdoor",
+    r_cool_curve_base_flow: "Cooling base flow",
+    r_cool_limit: "Cooling limit",
+    h_heat_norm: "Heating curve design point",
+    h_heat_base: "Heating curve base point",
+    h_heat_limit: "Heating limit",
+    h_heat_max: "Maximum flow temperature",
+    h_cool_norm: "Cooling curve design point",
+    h_cool_base: "Cooling curve base point",
+    h_cool_limit: "Cooling limit",
+    last_24h: "Last 24 h",
+    electricity: "Electricity",
+    ambient: "Ambient heat",
+    heat_kwh: "Heat kWh/h",
+    bars_hint: "Bar = total heat, kWh/h",
+    no_history: "No history available (entities disabled or not recorded).",
+    history_loading: "Loading history …",
+    kwh_heat: "kWh heat",
+    kwh_el: "kWh electricity",
+    from_ambient: "from ambient",
+    cop_24h: "COP 24 h",
+    cycles: "Cycles",
+    avg_runtime: "Avg. runtime",
+    jaz_year: "SPF {y}",
+    jaz_prev: "SPF last year",
+    cop_live_title: "* Live COP = heat output / electric compressor power. Compressor power only – fan and pumps are missing, the real COP is lower.",
+    cop_footnote: "* compressor power only (sensor “electric compressor power”); fan and pumps are missing, the real COP is lower.",
+    bar_tip: "{from}–{to} · heat {heat} kWh",
+    bar_tip_power: " = electricity {el} + ambient {amb}",
+    bar_tip_cop: " · COP {cop}",
+    hp_strip: "HP",
+    flash_writes: "Controller writes: {n}",
+    min: "min",
+    h: "h",
+    all_values: "All values",
+    integration_settings: "Integration settings",
+    menu: "Menu",
+    card_all_name: "Ochsner heat pump",
+    card_all_desc: "Complete heat pump dashboard: plant schematic, controls, heating curve and efficiency.",
+    card_plant_name: "Ochsner plant schematic",
+    card_plant_desc: "Live plant schematic with heat pump, buffer, hot water and heating circuits.",
+    card_control_name: "Ochsner controls",
+    card_control_desc: "Controls like the Ochsner app: operating mode, room setpoints, comfort/eco, hot water.",
+    card_eff_name: "Ochsner heating curve & efficiency",
+    card_eff_desc: "Drag the heating curve and see heat/electricity of the last 24 hours.",
+    cfg_device: "Plant (device)",
+    cfg_view: "View",
+    cfg_colors: "Colours",
+    view_all: "Everything",
+    view_plant: "Plant schematic",
+    view_controls: "Controls",
+    view_efficiency: "Heating curve & efficiency",
+    colors_auto: "As set in the integration",
+    colors_ha: "Home Assistant theme",
+    colors_ochsner: "Ochsner colours",
+  },
+};
+
+export function langOf(hass) {
+  const l = (hass && hass.locale && hass.locale.language) || (hass && hass.language) || "en";
+  return String(l).toLowerCase().startsWith("de") ? "de" : "en";
+}
+
+/** Locale for Intl.NumberFormat, honouring HA's number_format user setting. */
+export function numberLocale(hass) {
+  const loc = (hass && hass.locale) || {};
+  const lang = loc.language || (hass && hass.language) || "en";
+  switch (loc.number_format) {
+    case "comma_decimal": return ["en-US", true];
+    case "decimal_comma": return ["de", true];
+    case "space_comma": return ["fr", true];
+    case "none": return [lang, false];
+    case "system": return [undefined, true];
+    default: return [lang, true];
+  }
+}
+
+export function translate(lang, key, params) {
+  const table = STRINGS[lang] || STRINGS.en;
+  let s = table[key];
+  if (s === undefined) s = STRINGS.en[key];
+  if (s === undefined) return key;
+  if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] !== undefined ? params[k] : m));
+  return s;
+}
+
+/** Bundle of translate + number helpers for one hass locale. */
+export function makeI18n(hass) {
+  const lang = langOf(hass);
+  const [locale, grouping] = numberLocale(hass);
+  const cache = new Map();
+  const nf = (d) => {
+    let f = cache.get(d);
+    if (!f) {
+      try {
+        f = new Intl.NumberFormat(locale, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: grouping });
+      } catch (_e) {
+        f = new Intl.NumberFormat("en", { minimumFractionDigits: d, maximumFractionDigits: d });
+      }
+      cache.set(d, f);
+    }
+    return f;
+  };
+  const num = (v, d = 1) => {
+    if (v === null || v === undefined || v === "" || !Number.isFinite(Number(v))) return "–";
+    // Intl renders "-0,0" for tiny negatives; normalise and use a real minus sign.
+    let n = Number(v);
+    if (Math.abs(n) < 0.5 * 10 ** -d) n = 0;
+    return nf(d).format(n).replace("-", "−");
+  };
+  const signed = (v, d = 1) => {
+    if (!Number.isFinite(Number(v))) return "–";
+    const n = Number(v);
+    if (Math.abs(n) < 0.5 * 10 ** -d) return "±" + nf(d).format(0);
+    return (n > 0 ? "+" : "−") + nf(d).format(Math.abs(n));
+  };
+  // Show the decimals a value actually has (up to max): 36 → "36", 16.7 → "16,7".
+  const auto = (v, max = 1) => {
+    if (!Number.isFinite(Number(v))) return "–";
+    const n = Number(v);
+    for (let d = 0; d < max; d++) if (Math.abs(n * 10 ** d - Math.round(n * 10 ** d)) < 1e-6) return num(n, d);
+    return num(n, max);
+  };
+  const temp = (v, d = 1) => (Number.isFinite(Number(v)) ? num(v, d) + "°" : "–");
+  return {
+    lang,
+    t: (key, params) => translate(lang, key, params),
+    num,
+    signed,
+    auto,
+    temp,
+    int: (v) => num(v, 0),
+  };
+}

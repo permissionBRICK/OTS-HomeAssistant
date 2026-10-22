@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ochsner heat-pump frontend harness</title>
+<style>
+  /* Approximation of HA's default theme variables (light / dark). */
+  body { margin: 0; font-family: Roboto, system-ui, sans-serif; }
+  body.light {
+    --primary-color: #03a9f4; --text-primary-color: #fff;
+    --primary-text-color: #212121; --secondary-text-color: #727272; --disabled-text-color: #bdbdbd;
+    --primary-background-color: #fafafa; --secondary-background-color: #e5e5e5;
+    --card-background-color: #ffffff; --divider-color: rgba(0, 0, 0, 0.12);
+    --app-header-background-color: #fafafa; --app-header-text-color: #212121;
+    --ha-card-border-color: #e0e0e0; --ha-card-border-radius: 12px;
+    --deep-orange-color: #ff6f22; --blue-color: #2196f3; --amber-color: #ffc107; --green-color: #4caf50;
+    --cyan-color: #00bcd4; --purple-color: #926bc7; --teal-color: #009688; --grey-color: #9e9e9e;
+    --state-climate-heat-color: var(--deep-orange-color); --state-climate-cool-color: var(--blue-color);
+    --state-climate-heat-cool-color: var(--amber-color); --state-water_heater-eco-color: var(--green-color);
+    --success-color: #43a047; --warning-color: #ffa600; --error-color: #db4437;
+    --state-inactive-color: var(--grey-color); --disabled-color: #bdbdbd;
+    background: var(--primary-background-color); color: var(--primary-text-color);
+  }
+  body.dark {
+    --primary-color: #03a9f4; --text-primary-color: #fff;
+    --primary-text-color: #e1e1e1; --secondary-text-color: #9b9b9b; --disabled-text-color: #6f6f6f;
+    --primary-background-color: #111111; --secondary-background-color: #282828;
+    --card-background-color: #1c1c1c; --divider-color: rgba(225, 225, 225, 0.12);
+    --app-header-background-color: #111111; --app-header-text-color: #e1e1e1;
+    --ha-card-border-color: rgba(225, 225, 225, 0.12); --ha-card-border-radius: 12px;
+    --deep-orange-color: #ff6f22; --blue-color: #2196f3; --amber-color: #ffc107; --green-color: #4caf50;
+    --cyan-color: #00bcd4; --purple-color: #926bc7; --teal-color: #009688; --grey-color: #9e9e9e;
+    --state-climate-heat-color: var(--deep-orange-color); --state-climate-cool-color: var(--blue-color);
+    --state-climate-heat-cool-color: var(--amber-color); --state-water_heater-eco-color: var(--green-color);
+    --success-color: #43a047; --warning-color: #ffa600; --error-color: #db4437;
+    --state-inactive-color: #6f6f6f; --disabled-color: #464646;
+    background: var(--primary-background-color); color: var(--primary-text-color);
+  }
+  #stage { margin: 0 auto; padding: 12px; box-sizing: border-box; }
+  #stage.panel { padding: 0; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+import "/custom_components/ochsner_local_ots/frontend/ochsner-heatpump.js";
+import { FakePlant, fakeHass } from "./fake-backend.js";
+
+const q = new URLSearchParams(location.search);
+const variant = q.get("variant") || "house";
+const theme = q.get("theme") || "dark";
+const scheme = q.get("scheme") || "ha";
+const lang = q.get("lang") || "de";
+const view = q.get("view") || "all";
+const width = Number(q.get("width") || 0);
+document.body.className = theme;
+document.documentElement.lang = lang;
+
+const [catalog, snapshot, backend] = await Promise.all([
+  fetch("/custom_components/ochsner_local_ots/data/discovery_catalog.json").then((r) => r.json()),
+  fetch("/tests/fixtures/airhawk518_snapshot.json").then((r) => r.json()),
+  fetch("/tests/frontend/fixtures/backend-payload.json").then((r) => r.json()),
+]);
+const variants = variant === "multi" ? ["house", "full"] : [variant];
+const plants = variants.map((v, i) => new FakePlant({
+  catalog, snapshot, backend, variant: v, lang, host: `192.0.2.${80 + i}`, entryId: `01JFAKEENTRY00000000000${i}`,
+  latency: Number(q.get("latency") || 250), prefix: i ? "wp2 " : "", fahrenheit: !!q.get("fahrenheit"),
+}));
+if (q.get("unavailable")) plants[0].available = false;
+// e.g. ?emergency=hp.emergency_status:1 → emergency mode values
+for (const kv of (q.get("emergency") || "").split(",").filter(Boolean)) {
+  const [k, v] = kv.split(":");
+  plants[0].values[k] = Number(v);
+}
+// e.g. ?disable=hc1.heat_limit,hc1.heat_curve_max_flow → registry-disabled role entities
+for (const key of (q.get("disable") || "").split(",").filter(Boolean)) {
+  const e = plants[0].entities()[key];
+  if (e) e.enabled = false;
+}
+
+const stage = document.getElementById("stage");
+if (width) stage.style.width = `${width}px`;
+let el;
+if (view === "panel") {
+  stage.classList.add("panel");
+  el = document.createElement("ochsner-heatpump-panel");
+  el.narrow = (width || innerWidth) < 870;
+  el.panel = { title: lang === "de" ? "Wärmepumpe" : "Heat pump" };
+} else {
+  el = document.createElement(q.get("tag") || "ochsner-heatpump-card");
+  const cfg = { type: "custom:ochsner-heatpump-card", color_scheme: q.get("cardscheme") || "auto" };
+  if (!q.get("tag")) cfg.view = view;
+  if (q.get("circuits")) cfg.circuits = q.get("circuits").split(",").map(Number);
+  el.setConfig(cfg);
+}
+const fake = fakeHass(plants, {
+  lang, dark: theme === "dark", noHistory: !!q.get("nohistory"), failPlants: !!q.get("fail"),
+  onUpdate: (h) => { if (!window.harness || !window.harness.detached) el.hass = h; },
+});
+fake.conn.colorScheme = scheme;
+el.hass = fake.hass;
+const events = [];
+for (const t of ["hass-more-info", "hass-toggle-menu", "location-changed"]) {
+  window.addEventListener(t, (e) => events.push({ type: t, detail: e.detail }));
+}
+stage.appendChild(el);
+// harness.fakeHass: a second connection (another HA instance); harness.detached stops feeding el.hass.
+window.harness = { plants, plant: plants[0], fake, el, events, fakeHass, detached: false, writes: () => plants.flatMap((p) => p.writes()) };
+// Ready once the store delivered data and a couple of frames rendered.
+const until = (fn) => new Promise((res) => { const tick = () => (fn() ? res() : setTimeout(tick, 30)); tick(); });
+await until(() => fake.conn.subscriptions > 0 || q.get("fail"));
+await new Promise((r) => setTimeout(r, 300));
+window.__ready = true;
+</script>
+</body>
+</html>
