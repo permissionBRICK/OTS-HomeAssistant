@@ -1631,6 +1631,50 @@ async def test_dhw_and_pool_flags_need_the_bms_point(hass, monkeypatch, fake_con
         await teardown(hass, plant)
 
 
+@pytest.mark.asyncio
+async def test_water_heater_only_user_gets_events(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=dhw_plant)
+    try:
+        (full,) = (await plant_api.async_build_plants(hass, "de"))["plants"]
+        water_heater = full["dhw"]["water_heater"]
+        user = policy_user(hass, {"entities": {"entity_ids": {water_heater: True}}})
+        (p,) = await ws_plants_as(hass, user)
+        assert p["dhw"]["water_heater"] == water_heater and p["capabilities"] == {"dhw": True}
+
+        conn = FakeConnection(user)
+        plant_api.ws_subscribe(hass, conn, {"id": 4, "type": f"{DOMAIN}/subscribe"})
+        coordinator = plant.ctrl["coordinator"]
+        coordinator.async_update_listeners()
+        assert len(conn.messages) == 2
+        for msg in conn.messages:
+            event = msg["event"]
+            assert event["plant_id"] == p["plant_id"] and event["available"] is True
+            assert event["capabilities"] == p["capabilities"]
+            assert set(event["values"]) <= set(p["roles"])
+        # Unavailability reaches them too.
+        coordinator.last_update_success = False
+        coordinator.async_update_listeners()
+        assert conn.messages[-1]["event"]["available"] is False
+        conn.subscriptions[4]()
+    finally:
+        await teardown(hass, plant)
+
+
+def test_section_anchor_roles_reach_the_event():
+    """Raw DHW roles (no entity) come with the readable water heater."""
+    values = {oid: [1, 1] for oid in P.DHW_ROLES.values()}
+    values["ESMSIwAAAAE="] = [256, 256]  # DHW present
+    ctrl = {"host": KEY, "coordinator": SimpleNamespace(data={"values": values}, last_update_success=True)}
+    entry = SimpleNamespace(entry_id="e1")
+    readable = {"dhw.boost", "dhw.program"}
+    event = plant_api.build_event(entry, ctrl, lambda c: (True, readable, lambda caps: {"dhw": caps["dhw"]}))
+    assert set(event["values"]) == readable and event["capabilities"] == {"dhw": True}
+    # Visible with nothing readable: still an event (availability).
+    event = plant_api.build_event(entry, ctrl, lambda c: (True, set(), lambda caps: {}))
+    assert event["values"] == {} and event["available"] is True
+    assert plant_api.build_event(entry, ctrl, lambda c: (False, set(), lambda caps: {})) is None
+
+
 def test_raw_roles_follow_their_section_anchor():
     roles = {
         "hp.status": "sensor.status", "hp.cycles_total": None, "avail.pool": None,

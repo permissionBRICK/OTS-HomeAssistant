@@ -20,7 +20,7 @@ the plant's name and model only with the plant anchor (else generic).
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 import voluptuous as vol
 
@@ -317,6 +317,13 @@ def visible_capabilities(
     return out
 
 
+def plant_visible(
+    roles: set, circuits: List[Dict[str, Any]], dhw_entities: Iterable[Optional[str]], flash: Optional[str], can_read: CanRead
+) -> bool:
+    """Whether a restricted user sees the plant at all (in ``plants`` and events)."""
+    return bool(roles or circuits or any(can_read(e) for e in dhw_entities) or can_read(flash))
+
+
 def plant_anchor(role_entities: Dict[str, Optional[str]], flash_writes: Optional[str]) -> Optional[str]:
     """The entity whose read permission covers the plant as a whole."""
     return role_entities.get("hp.status") or flash_writes
@@ -341,7 +348,7 @@ def filter_plant(plant: Dict[str, Any], can_read: CanRead, language: str) -> Opt
         if not any(new_dhw.values()) and not any(r.startswith("dhw.") for r in roles):
             new_dhw = None
     flash = visible(plant.get("flash_writes"))
-    if not roles and not circuits and new_dhw is None and flash is None:
+    if not plant_visible(roles, circuits, (new_dhw or {}).values(), flash, can_read):
         return None
     main = can_read(plant_anchor(role_entities, plant.get("flash_writes")))
     return {
@@ -359,11 +366,15 @@ def filter_plant(plant: Dict[str, Any], can_read: CanRead, language: str) -> Opt
     }
 
 
+EventView = Tuple[bool, set, Callable[[Dict[str, bool]], Dict[str, bool]]]
+
+
 def event_view(
     hass: HomeAssistant, ctrl: Dict[str, Any], caps: Dict[str, Any], can_read: CanRead
-) -> Tuple[set, Callable[[Dict[str, bool]], Dict[str, bool]]]:
-    """For a restricted user's subscription push: the roles they may read
-    and the capability filter (same rules as filter_plant)."""
+) -> EventView:
+    """For a restricted user's subscription push: whether they see the plant,
+    the roles they may read and the capability filter (same rules as
+    filter_plant)."""
     host = ctrl["host"]
     registry = er.async_get(hass)
     index = entity_index(ctrl)
@@ -376,11 +387,13 @@ def event_view(
         for c in caps["circuits"]
     }
     water_heater = _entity_id(hass, "water_heater", f"{host}:water_heater:dhw") if caps["dhw"] else None
+    boost_button = _entity_id(hass, "button", f"{host}:button:dhw_boost") if caps["dhw"] else None
     flash = _entity_id(hass, "sensor", f"{host}:flash_writes".replace("=", ""))
     roles = readable_roles(role_entities, climates, water_heater, flash, can_read)
     circuits = [c for c in caps["circuits"] if can_read(climates.get(int(c["index"])))]
     readable_heater = can_read(water_heater)
-    return roles, lambda capabilities: visible_capabilities(capabilities, roles, circuits, readable_heater)
+    visible = plant_visible(roles, circuits, (water_heater, boost_button), flash, can_read)
+    return visible, roles, lambda capabilities: visible_capabilities(capabilities, roles, circuits, readable_heater)
 
 
 def build_plant(
@@ -463,20 +476,22 @@ def build_plant(
 def build_event(
     entry: Any,
     ctrl: Dict[str, Any],
-    view: Optional[Callable[[Dict[str, Any]], Tuple[set, Callable[[Dict[str, bool]], Dict[str, bool]]]]] = None,
+    view: Optional[Callable[[Dict[str, Any]], EventView]] = None,
 ) -> Optional[Dict[str, Any]]:
     """The subscription event.
 
-    ``view(caps)`` returns the roles the user may read and their capability
-    filter (None = everything); a plant they may read nothing of gives None.
+    ``view(caps)`` returns whether the user sees the plant, the roles they
+    may read and their capability filter (None = everything). A plant they
+    do not see gives None; one they see (e.g. only its water heater) gives
+    an event with the readable values, possibly none.
     """
     values = _values(ctrl)
     caps = P.compute_capabilities(values)
     ids = P.role_ids(caps)
     capabilities = P.public_capabilities(caps)
     if view is not None:
-        readable, visible_caps = view(caps)
-        if not readable:
+        visible, readable, visible_caps = view(caps)
+        if not visible:
             return None
         ids = {r: oid for r, oid in ids.items() if r in readable}
         capabilities = visible_caps(capabilities)
