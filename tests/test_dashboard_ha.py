@@ -502,7 +502,8 @@ async def test_ws_plants_dhw_and_handler(hass, monkeypatch, fake_controller):
 
 
 class FakeConnection:
-    def __init__(self):
+    def __init__(self, user=None):
+        self.user = user
         self.results = []
         self.messages = []
         self.subscriptions = {}
@@ -965,3 +966,109 @@ async def test_dhw_writes_reread_the_dhw_target(hass, monkeypatch, fake_controll
         assert wh.extra_state_attributes["effective_target"] == 55.0
     finally:
         await teardown(hass, plant)
+
+
+# --- read permissions -----------------------------------------------------------
+
+
+def policy_user(hass, policy):
+    from homeassistant.auth.permissions import PolicyPermissions
+    from homeassistant.auth.permissions.models import PermissionLookup
+
+    lookup = PermissionLookup(er.async_get(hass), dr.async_get(hass))
+    return SimpleNamespace(permissions=PolicyPermissions(policy, lookup))
+
+
+async def ws_plants_as(hass, user):
+    conn = FakeConnection(user)
+    plant_api.ws_plants(hass, conn, {"id": 1, "type": f"{DOMAIN}/plants", "language": "de"})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    return conn.results[0][1]["plants"]
+
+
+@pytest.mark.asyncio
+async def test_ws_honours_entity_read_permissions(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, fake_controller)
+    try:
+        reg = er.async_get(hass)
+        climate1 = reg.async_get_entity_id("climate", DOMAIN, f"{KEY}:climate:hc1")
+        outdoor = reg.async_get_entity_id("sensor", DOMAIN, f"{KEY}:sensor:AyKWuiiJAAE")
+        status = reg.async_get_entity_id("sensor", DOMAIN, f"{KEY}:sensor:CyNmeMdZAAE")
+        (full,) = (await plant_api.async_build_plants(hass, "de"))["plants"]
+
+        # A non-admin user who may read all entities sees everything.
+        assert await ws_plants_as(hass, policy_user(hass, {"entities": True})) == [full]
+
+        # Restricted to the HC1 climate and the outdoor sensor.
+        user = policy_user(hass, {"entities": {"entity_ids": {climate1: True, outdoor: True}}})
+        (p,) = await ws_plants_as(hass, user)
+        roles = p["roles"]
+        assert roles["hp.outdoor"]["entity_id"] == outdoor
+        assert "hp.status" not in roles and "hp.program" not in roles
+        # Raw HC1 roles without an entity come with the readable climate ...
+        assert roles["hc1.badge"] == {"entity_id": None} and "hc1.target_selector" in roles
+        # ... roles with an entity the user may not read do not.
+        assert "hc1.heat_curve_norm_flow" not in roles and "hc1.room_offset" not in roles
+        assert not any(r.startswith(("hc2.", "hc3.", "avail.")) for r in roles)
+        assert "hc4.availability" not in roles  # plant anchor (status sensor) not readable
+        assert [(c["index"], c["climate"]) for c in p["circuits"]] == [(1, climate1)]
+        assert p["flash_writes"] is None
+        assert p["capabilities"] == full["capabilities"]
+
+        conn = FakeConnection(user)
+        plant_api.ws_subscribe(hass, conn, {"id": 5, "type": f"{DOMAIN}/subscribe"})
+        values = conn.messages[0]["event"]["values"]
+        assert set(values) <= set(roles)
+        assert values["hc1.badge"] == 3 and values["hp.outdoor"] == pytest.approx(12.1851)
+        assert "hp.status" not in values and "hc2.badge" not in values and "avail.dhw" not in values
+        coordinator = plant.ctrl["coordinator"]
+        data = dict(coordinator.data)
+        data["values"] = dict(data["values"], **{"CyNmeMdZAAE=": [3, 3], "CyPmL458AAE=": [5, 5]})
+        coordinator.async_set_updated_data(data)  # every push is filtered
+        pushed = conn.messages[-1]["event"]["values"]
+        assert len(conn.messages) == 2 and pushed["hc1.badge"] == 5 and "hp.status" not in pushed
+        conn.subscriptions[5]()
+
+        # The status sensor anchors the plant-level roles without an entity.
+        (p,) = await ws_plants_as(hass, policy_user(hass, {"entities": {"entity_ids": {status: True}}}))
+        anchored = {
+            r for r, v in full["roles"].items()
+            if v["entity_id"] is None and r.startswith(("hp.", "avail."))
+        }
+        assert "avail.bms" in anchored
+        assert set(p["roles"]) == {"hp.status"} | anchored and p["circuits"] == []
+
+        # Nothing of the plant readable: no plant, no events.
+        nobody = policy_user(hass, {"entities": {"entity_ids": {"light.kitchen": True}}})
+        assert await ws_plants_as(hass, nobody) == []
+        conn = FakeConnection(nobody)
+        plant_api.ws_subscribe(hass, conn, {"id": 6, "type": f"{DOMAIN}/subscribe"})
+        coordinator.async_set_updated_data(data)
+        assert conn.results == [(6, None)] and conn.messages == []
+        conn.subscriptions[6]()
+    finally:
+        await teardown(hass, plant)
+
+
+def test_raw_roles_follow_their_section_anchor():
+    roles = {
+        "hp.status": "sensor.status", "hp.cycles_total": None, "avail.pool": None,
+        "hc1.badge": None, "hc1.season": "select.season1", "hc2.badge": None,
+        "hc4.availability": None, "dhw.boost": None, "dhw.temp": "sensor.dhw_temp",
+    }
+    climates = {1: "climate.hc1", 2: None}
+
+    def readable(*allowed, flash=None, water_heater="water_heater.dhw"):
+        return plant_api.readable_roles(roles, climates, water_heater, flash, lambda e: bool(e) and e in allowed)
+
+    assert readable("climate.hc1") == {"hc1.badge"}
+    assert readable("select.season1") == {"hc1.season"}
+    assert readable("sensor.status") == {"hp.status", "hp.cycles_total", "avail.pool", "hc4.availability"}
+    assert readable("water_heater.dhw") == {"dhw.boost"}
+    assert readable("water_heater.dhw", water_heater=None) == set()
+    # Without a status entity, the flash write counter anchors the plant.
+    roles["hp.status"] = None
+    assert readable("sensor.flash", flash="sensor.flash") == {
+        "hp.status", "hp.cycles_total", "avail.pool", "hc4.availability",
+    }
+    assert readable("sensor.flash") == set()
