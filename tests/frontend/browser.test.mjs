@@ -259,5 +259,29 @@ test("tapping the schematic opens more-info for the related entity", { skip: !CH
   await click(page, 'svg.plant [data-more="sensor.puffertemperatur_1_top"] rect');
   const ev = await page.eval("harness.events.filter((e) => e.type === 'hass-more-info').map((e) => e.detail.entityId)");
   assert.deepEqual(ev, ["climate.radiatoren", "sensor.puffertemperatur_1_top"]);
+  const sent = await page.eval("harness.fake.conn.sent.map((m) => m.type + ':' + (m.language || ''))");
+  assert.deepEqual(sent, ["ochsner_local_ots/plants:de", "ochsner_local_ots/subscribe:"], "one plants call with language, one subscription");
+  assert.deepEqual(page.errors, []);
+});
+
+test("panel: menu button, plant tabs and footer links", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=multi&view=panel&theme=light", { width: 390, height: 900, mobile: true });
+  const psr = "harness.el.shadowRoot";
+  const pc = (sel) => page.eval(`(() => { const e = ${psr}.querySelector(${JSON.stringify(sel)}); e.scrollIntoView({ block: "center" }); const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  const tap = async (sel) => {
+    const c = await pc(sel);
+    await page.mouse("mousePressed", c[0], c[1], 1);
+    await page.mouse("mouseReleased", c[0], c[1]);
+    await sleep(120);
+  };
+  await tap(".menu");
+  assert.equal(await page.eval("harness.events.filter((e) => e.type === 'hass-toggle-menu').length"), 1);
+  const title = () => page.eval(`${psr}.querySelector("ochsner-heatpump-card").shadowRoot.querySelector(".card-plant .ttl").textContent`);
+  assert.equal(await title(), "AirHawk Wärmepumpe");
+  await tap('.tabs button[data-p$="192.0.2.81"]');
+  await page.waitFor(`${psr}.querySelector("ochsner-heatpump-card").shadowRoot.querySelector(".card-plant .ttl").textContent === "Ochsner Wärmepumpe"`, 2000);
+  await tap(".footer a");
+  assert.equal(await page.eval("location.pathname"), "/config/devices/device/dev_main_full");
+  assert.equal(await page.eval("harness.events.filter((e) => e.type === 'location-changed').length"), 1);
   assert.deepEqual(page.errors, []);
 });

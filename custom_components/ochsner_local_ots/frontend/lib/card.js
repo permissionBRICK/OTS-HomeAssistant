@@ -108,13 +108,14 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._hass = h;
     if (!h) return;
     const store = getStore(h);
+    // language first: the first plants request must already carry it
+    if (store) store.setLanguage(langOf(h));
     if (store !== this._store) {
       if (this._unlisten) this._unlisten();
       this._unlisten = null;
       this._store = store;
       if (this.isConnected && store) this._unlisten = store.addListener(this._onStore);
     }
-    if (store) store.setLanguage(langOf(h));
     if (this._relevantChange(prev, h)) this.requestRender();
   }
 

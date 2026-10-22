@@ -60,12 +60,13 @@ export class OchsnerHeatpumpPanel extends HTMLElement {
   set hass(h) {
     this._hass = h;
     const store = getStore(h);
+    // language first: the first plants request must already carry it
+    if (store) store.setLanguage(langOf(h));
     if (store !== this._store) {
       if (this._unlisten) this._unlisten();
       this._store = store;
       this._unlisten = this.isConnected && store ? store.addListener(this._onStore) : null;
     }
-    if (store) store.setLanguage(langOf(h));
     this._card.hass = h;
     if (!this._rendered || this._lastLocale !== h.locale || this._lastSidebar !== h.dockedSidebar) this.requestRender();
   }
