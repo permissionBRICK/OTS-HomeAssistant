@@ -657,11 +657,14 @@ export class CurveEditor {
       const txt = I.t("max_flow_label", { t: I.temp(v, 0) });
       const a = handleAttrs(id, [key], I.t("h_" + id), txt, key);
       const tw = txt.length * 5.8;
-      boxes.push([W - P.r - tw, y - 15, tw, 12], [P.l, y - 6, 24, 12]);
+      // The grip sits at the right end: on the left it would cover the curve's
+      // design point, which is usually close to the maximum flow temperature.
+      const gx = W - P.r - 22;
+      boxes.push([gx - 6 - tw, y - 15, tw, 12], [gx - 2, y - 6, 24, 12]);
       lines += `${a.open}<rect class="hit" x="${P.l}" y="${y - HIT_R}" width="${pw}" height="${2 * HIT_R}"/>`
         + `<line class="lineh" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.2" stroke-dasharray="6 4" opacity=".7"/>`
-        + (a.ro ? "" : `<rect class="ring" x="${P.l + 2}" y="${y - 4}" width="20" height="8" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
-        + `<text class="axl" x="${W - P.r}" y="${y - 5}" text-anchor="end">${esc(txt)}</text></g>`;
+        + (a.ro ? "" : `<rect class="ring" x="${gx}" y="${y - 4}" width="20" height="8" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
+        + `<text class="axl" x="${gx - 6}" y="${y - 5}" text-anchor="end">${esc(txt)}</text></g>`;
     };
     const point = (id, col) => {
       const h = HANDLES[id];
