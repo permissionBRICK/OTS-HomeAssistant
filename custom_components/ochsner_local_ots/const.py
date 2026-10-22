@@ -145,3 +145,7 @@ DEFAULT_SIDEBAR_PANEL = True
 
 # Dispatcher signal: a plant was set up or unloaded (websocket subscribers re-attach).
 SIGNAL_PLANTS_CHANGED = f"{DOMAIN}_plants_changed"
+
+# Seconds the controller needs to recompute a section's targets after a
+# write to it (live: under 4 s). Reads in that window may show old targets.
+SETTLE_SECONDS = 8

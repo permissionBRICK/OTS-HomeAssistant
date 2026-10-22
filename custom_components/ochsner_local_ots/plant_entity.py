@@ -51,6 +51,7 @@ async def async_write_planned(
     plan: Plan,
     reads: Iterable[str],
     refresh_ids: Iterable[str] = (),
+    settle: Optional[str] = None,
 ) -> List[Tuple[str, Any]]:
     """Decide and write (id, value) pairs under the controller's write lock.
 
@@ -62,10 +63,17 @@ async def async_write_planned(
     a write or drop a change. The pairs go through the counted write path
     in order; afterwards the touched and dependent ids are re-read once
     (also after a failure).
+
+    ``settle``: a plant section the plan depends on controller-computed
+    values of (a circuit's room target). The read then waits, still
+    holding the lock, until the section's last write has settled: right
+    after a write the controller still answers the old target.
     """
     api = ctrl["api"]
     coordinator = ctrl["coordinator"]
     async with coordinator.async_write_session() as session:
+        if settle:
+            await coordinator.async_wait_settled(settle)
         values = await coordinator.async_fresh_values(reads)
         try:
             writes = list(plan(values))
