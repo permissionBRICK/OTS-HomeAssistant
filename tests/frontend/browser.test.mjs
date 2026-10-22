@@ -353,3 +353,11 @@ test("efficiency tile labels are never cut off (DE/EN, 360/760/1280 px); live CO
     }
   }
 });
+
+test("heat pump Auto segment: theme heat-cool colour in the HA scheme, gradient in the Ochsner scheme", { skip: !CHROME && "no chromium" }, async () => {
+  const bg = (page) => page.eval(`(() => { const s = getComputedStyle(${sr}.querySelector('[data-act="hp"][data-v="0"]')); return [s.backgroundColor, s.backgroundImage]; })()`);
+  const ha = await bg(await open("variant=house&view=controls&theme=light&scheme=ha"));
+  assert.deepEqual(ha, ["rgb(255, 193, 7)", "none"]);
+  const och = await bg(await open("variant=house&view=controls&theme=dark&scheme=ochsner"));
+  assert.match(och[1], /linear-gradient/);
+});

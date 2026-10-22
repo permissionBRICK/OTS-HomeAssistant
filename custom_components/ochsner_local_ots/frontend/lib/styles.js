@@ -83,7 +83,8 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .heroicon { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .seg { display: flex; background: var(--ohp-card2); border-radius: 12px; padding: 3px; gap: 3px; }
 .seg button { flex: 1; font-size: 13px; color: var(--ohp-ink2); background: transparent; border: 0; border-radius: 9px; padding: 8px 4px; cursor: pointer; min-height: 36px; transition: background .15s; }
-.seg button.on { color: #fff; background: linear-gradient(90deg, var(--ohp-heat), var(--ohp-cool)); text-shadow: 0 0 3px rgba(0,0,0,.35); }
+.seg button.on { color: var(--ohp-on-auto); background: var(--ohp-auto-bg); }
+:host([scheme="ochsner"]) .seg button.on { text-shadow: 0 0 3px rgba(0,0,0,.35); }
 .seg button.on.off { background: var(--ohp-idle); color: var(--ohp-on-dhw); text-shadow: none; }
 .seg button.on.manual { background: var(--ohp-heat); color: var(--ohp-on-heat); text-shadow: none; }
 .seg button.on.manual.coolm { background: var(--ohp-cool); color: var(--ohp-on-cool); }
