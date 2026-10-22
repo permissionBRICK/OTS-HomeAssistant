@@ -28,6 +28,10 @@ export class Coalescer {
     this.error = null;
     this._value = undefined; // displayed optimistic value
     this._dirty = false;
+    // Bumped by cancel()/dispose(): a write or wait started under an older
+    // generation must not touch state or send anything afterwards.
+    this._gen = 0;
+    this.disposed = false;
   }
 
   /** Optimistic value to display, or undefined → show HA's value. */
@@ -41,6 +45,7 @@ export class Coalescer {
   }
 
   push(v) {
+    if (this.disposed) return;
     this._value = v;
     this._dirty = true;
     this.error = null;
@@ -63,6 +68,7 @@ export class Coalescer {
 
   /** Send now (e.g. on blur) instead of waiting. */
   flush() {
+    if (this.disposed) return Promise.resolve();
     if (this._timer) {
       this._timers.clearTimeout(this._timer);
       this._timer = null;
@@ -71,20 +77,28 @@ export class Coalescer {
     return this._inflight || Promise.resolve();
   }
 
+  /** Drop the queued value (a write already on the wire cannot be recalled). */
   cancel() {
+    if (this.disposed) return;
+    this._reset();
+    this._onChange();
+  }
+
+  /** Cancel everything for good (card removed, plant or connection changed). */
+  dispose() {
+    this.disposed = true;
+    this._reset();
+  }
+
+  _reset() {
+    this._gen++;
     if (this._timer) this._timers.clearTimeout(this._timer);
     this._timer = null;
     this._clearConfirm();
     this._value = undefined;
     this._dirty = false;
+    this.error = null;
     this.state = "idle";
-    this._onChange();
-  }
-
-  dispose() {
-    if (this._timer) this._timers.clearTimeout(this._timer);
-    this._clearConfirm();
-    this._timer = null;
   }
 
   _arm() {
@@ -101,9 +115,12 @@ export class Coalescer {
   }
 
   async _fire() {
+    if (this.disposed) return;
+    const gen = this._gen;
     if (this._inflight) {
       // A write is still running; re-check once it finished.
       await this._inflight.catch(() => {});
+      if (gen !== this._gen) return; // cancelled or disposed meanwhile
       if (this._timer) return; // newer input re-armed the timer
       if (!this._dirty) return;
     }
@@ -118,11 +135,14 @@ export class Coalescer {
     }
     this.state = "sending";
     this._onChange();
-    const p = Promise.resolve().then(() => this._send(v));
+    const p = Promise.resolve().then(() => {
+      if (gen !== this._gen) throw new Error("cancelled");
+      return this._send(v);
+    });
     this._inflight = p;
     try {
       await p;
-      if (this._inflight !== p) return;
+      if (gen !== this._gen || this._inflight !== p) return;
       if (this._dirty || this._timer) return; // user kept tapping meanwhile
       this.state = "sent";
       if (same(this._current(), v)) {
@@ -139,7 +159,7 @@ export class Coalescer {
         }, this.confirmTimeout);
       }
     } catch (err) {
-      if (this._inflight !== p) return;
+      if (gen !== this._gen || this._inflight !== p) return;
       this.error = (err && (err.message || err.code)) || String(err);
       this.state = "error";
       this._value = undefined; // revert to HA's value

@@ -56,9 +56,15 @@ export class ControlView {
   }
 
   dispose() {
-    for (const c of this.coal.values()) c.dispose();
+    this.cancelWrites();
     for (const t of this._timers) clearTimeout(t);
     this._timers.clear();
+  }
+
+  /** Drop every queued (not yet sent) stepper write. */
+  cancelWrites() {
+    for (const c of this.coal.values()) c.dispose();
+    this.coal.clear();
   }
 
   _later(ms, fn) {
@@ -83,16 +89,21 @@ export class ControlView {
     if (ms) this._later(ms + 20, () => this.card.requestRender());
   }
 
-  /** Coalescer for a stepper (circuit room target or DHW target). */
-  _coal(key, entityGetter, domain) {
+  /**
+   * Coalescer for a stepper (circuit room target or DHW target), bound to the
+   * entity the user acted on: a different entity for the same key (payload
+   * changed) gets a fresh coalescer and the old queued value is dropped.
+   */
+  _coal(key, entityId, domain) {
     let c = this.coal.get(key);
-    if (c) return c;
+    if (c && c.entityId === entityId) return c;
+    if (c) c.dispose();
     let lastState = "idle";
     c = new Coalescer({
       delay: this.card.writeDelay,
-      send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityGetter(), temperature: v }),
+      send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityId, temperature: v }),
       current: () => {
-        const st = this.card.stateOf(entityGetter());
+        const st = this.card.stateOf(entityId);
         return st && st.attributes ? st.attributes.temperature : undefined;
       },
       onChange: () => {
@@ -104,6 +115,7 @@ export class ControlView {
         this.card.requestRender();
       },
     });
+    c.entityId = entityId;
     this.coal.set(key, c);
     return c;
   }
@@ -156,7 +168,7 @@ export class ControlView {
         if (!circuit || !circuit.climate) return;
         const tg = circuitTarget(ctx, circuit);
         if (!tg.writable) return;
-        const c = this._coal(`hc${circuit.index}`, () => circuit.climate, "climate");
+        const c = this._coal(`hc${circuit.index}`, circuit.climate, "climate");
         const base = c.display();
         const next = Math.min(tg.max, Math.max(tg.min, Math.round(((base ?? tg.value) + Number(d.d) * tg.step) / tg.step) * tg.step));
         c.push(Number(next.toFixed(2)));
@@ -186,7 +198,7 @@ export class ControlView {
         if (!st || !st.attributes || typeof st.attributes.temperature !== "number") return;
         const a = st.attributes;
         const step = a.target_temp_step || 0.5;
-        const c = this._coal("dhw", () => wh, "water_heater");
+        const c = this._coal("dhw", wh, "water_heater");
         const base = c.display() ?? a.temperature;
         const lo = typeof a.min_temp === "number" ? a.min_temp : 5;
         const hi = typeof a.max_temp === "number" ? a.max_temp : 75;

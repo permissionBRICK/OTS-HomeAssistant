@@ -113,6 +113,8 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     if (store !== this._store) {
       if (this._unlisten) this._unlisten();
       this._unlisten = null;
+      // New connection: nothing queued on the old one may still be sent.
+      if (this._store) this._resetViews();
       this._store = store;
       if (this.isConnected && store) this._unlisten = store.addListener(this._onStore);
     }
@@ -141,6 +143,16 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     if (this._unlisten) this._unlisten();
     this._unlisten = null;
     if (this._ro) this._ro.disconnect();
+    // Removed from the page: queued −/+ writes the user can no longer see
+    // are dropped (an explicitly started curve Apply still completes).
+    for (const v of Object.values(this._views)) if (v.cancelWrites) v.cancelWrites();
+  }
+
+  /** Throw away all view state (queued writes, pending edits); rebuilt on the next render. */
+  _resetViews() {
+    for (const v of Object.values(this._views)) if (v.dispose) v.dispose();
+    this._views = {};
+    this._skeleton = null;
   }
 
   _resized(entries) {
@@ -201,6 +213,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     for (const v of Object.values(this._views)) if (v.dispose) v.dispose();
     this._views = {};
     this._containers = {};
+    this._widths = {};
     const box = (v) => `<ha-card class="card-${v}"><div class="v" data-v="${v}"></div></ha-card>`;
     const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc">${box("controls")}${box("efficiency")}</div></div>`;
     this.shadowRoot.innerHTML = `<style>${CSS}${TINTS}</style><style class="vars"></style><div class="msg" hidden></div>${body}`;

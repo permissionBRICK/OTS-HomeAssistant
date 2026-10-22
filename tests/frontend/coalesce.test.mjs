@@ -124,3 +124,49 @@ test("flush sends immediately, cancel drops the pending value", async (t) => {
   await flush();
   assert.deepEqual(sent, [23]);
 });
+
+test("dispose cancels a queued write for good", async (t) => {
+  const { c, sent } = setup(t);
+  c.push(23);
+  c.dispose();
+  t.mock.timers.tick(5000);
+  await flush();
+  assert.deepEqual(sent, []);
+  c.push(24); // a stale click handler after removal
+  t.mock.timers.tick(5000);
+  await flush();
+  assert.deepEqual(sent, [], "a disposed coalescer never writes again");
+  assert.equal(c.value, undefined);
+});
+
+test("dispose while an earlier write is in flight: the queued follow-up is never sent", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { current: 20 };
+  const sent = [];
+  let release;
+  const c = new Coalescer({
+    delay: 1500,
+    current: () => state.current,
+    send: (v) => new Promise((res) => { sent.push(v); release = () => { state.current = v; res(); }; }),
+  });
+  c.push(21);
+  t.mock.timers.tick(1500);
+  await flush();
+  c.push(22);
+  t.mock.timers.tick(1500); // _fire() now awaits the running write
+  await flush();
+  c.dispose();
+  release();
+  await flush();
+  await flush();
+  assert.deepEqual(sent, [21], "the follow-up was dropped");
+});
+
+test("cancel between the timer and the deferred send stops the write", async (t) => {
+  const { c, sent } = setup(t);
+  c.push(23);
+  t.mock.timers.tick(1500); // _fire() runs, the send is deferred by a microtask
+  c.cancel();
+  await flush();
+  assert.deepEqual(sent, []);
+});
