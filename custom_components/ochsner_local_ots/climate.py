@@ -26,7 +26,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import plant as P
 from .const import DOMAIN
 from .coordinator import ClimatixCoordinator
-from .plant_entity import async_write_sequence, circuit_device_info, plant_runtime
+from .plant_entity import async_write_planned, circuit_device_info, plant_runtime
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
@@ -97,8 +97,9 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
     def _dependents(self) -> List[str]:
         return [self._ids[k] for k in P.CIRCUIT_DEPENDENTS if k in self._ids]
 
-    async def _write(self, writes) -> None:
-        await async_write_sequence(self._ctrl, writes, self._dependents())
+    async def _write(self, plan) -> None:
+        """Run ``plan(values)`` on the values current under the write lock."""
+        await async_write_planned(self._ctrl, plan, self._dependents())
 
     # -- state -------------------------------------------------------------
 
@@ -162,26 +163,23 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         mode = str(hvac_mode)
         if mode not in P.hvac_modes(self._heat, self._cool):
             raise HomeAssistantError(f"Unsupported mode {mode} for this heating circuit")
-        await self._write(P.plan_hvac_mode(mode, self._values, self._ids, self._cool))
+        await self._write(lambda values: P.plan_hvac_mode(mode, values, self._ids, self._cool))
 
     async def async_turn_on(self) -> None:
-        await self._write(P.plan_turn_on(self._values, self._ids))
+        await self._write(lambda values: P.plan_turn_on(values, self._ids))
 
     async def async_turn_off(self) -> None:
-        await self._write(P.plan_hvac_mode(P.HVAC_OFF, self._values, self._ids, self._cool))
+        await self._write(lambda values: P.plan_hvac_mode(P.HVAC_OFF, values, self._ids, self._cool))
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode not in P.PRESET_VALUES:
             raise HomeAssistantError(f"Unsupported preset {preset_mode}")
-        await self._write(P.plan_preset(preset_mode, self._values, self._ids))
+        await self._write(lambda values: P.plan_preset(preset_mode, values, self._ids))
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         if (mode := kwargs.get("hvac_mode")) is not None:
             await self.async_set_hvac_mode(mode)
         if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
             return
-        try:
-            writes = P.plan_temperature(float(temperature), self._values, self._ids)
-        except ValueError as err:
-            raise HomeAssistantError(str(err)) from err
-        await self._write(writes)
+        requested = float(temperature)
+        await self._write(lambda values: P.plan_temperature(requested, values, self._ids))

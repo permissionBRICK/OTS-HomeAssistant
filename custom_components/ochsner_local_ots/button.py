@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import plant as P
 from .const import DOMAIN
 from .coordinator import ClimatixCoordinator
-from .plant_entity import async_write_sequence, main_device_info, plant_runtime
+from .plant_entity import async_write_planned, main_device_info, plant_runtime
 from .water_heater import dhw_dependents
 
 
@@ -37,6 +37,4 @@ class OchsnerDhwBoostButton(CoordinatorEntity[ClimatixCoordinator], ButtonEntity
         self._attr_device_info = main_device_info(ctrl)
 
     async def async_press(self) -> None:
-        data = self.coordinator.data or {}
-        values: Dict[str, Any] = data.get("values") if isinstance(data, dict) else {}
-        await async_write_sequence(self._ctrl, P.plan_dhw_boost(values or {}), dhw_dependents())
+        await async_write_planned(self._ctrl, P.plan_dhw_boost, dhw_dependents())

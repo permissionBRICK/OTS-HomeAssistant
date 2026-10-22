@@ -258,22 +258,18 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
     async def async_set_native_value(self, value: float) -> None:
         desired = float(value)
 
-        data = self.coordinator.data or {}
-        current = extract_first_numeric_value(data, self._read_id)
-        if current is not None:
-            try:
-                if abs(float(current) - desired) < 1e-6:
-                    return
-            except (TypeError, ValueError):
-                pass
+        async with self.coordinator.async_write_session() as session:
+            data = self.coordinator.data or {}
+            current = extract_first_numeric_value(data, self._read_id)
+            if current is not None:
+                try:
+                    if abs(float(current) - desired) < 1e-6:
+                        return
+                except (TypeError, ValueError):
+                    pass
 
-        await self._api.write(self._write_id, desired)
-        try:
-            await self.coordinator.async_refresh_ids([self._read_id])
-        except Exception:
-            # Fallback: refresh everything if the targeted read fails.
-            await self.coordinator.async_request_refresh()
-
+            session.refresh([self._read_id])
+            await self._api.write(self._write_id, desired)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]

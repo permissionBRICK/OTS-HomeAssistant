@@ -23,7 +23,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import plant as P
 from .const import DOMAIN
 from .coordinator import ClimatixCoordinator
-from .plant_entity import async_write_sequence, main_device_info, number_bounds, plant_runtime
+from .plant_entity import async_write_planned, main_device_info, number_bounds, plant_runtime
 
 # Setpoint bounds when the setpoint has no configured number entity
 # (docs/agent-notes/dhw-setpoints.md: 5-75 °C, boost 40-75 °C).
@@ -115,16 +115,16 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         if operation_mode not in P.DHW_OPERATIONS:
             raise HomeAssistantError(f"Unsupported operation {operation_mode}")
-        await async_write_sequence(
-            self._ctrl, P.plan_dhw_operation(operation_mode, self._values), dhw_dependents()
+        await async_write_planned(
+            self._ctrl, lambda values: P.plan_dhw_operation(operation_mode, values), dhw_dependents()
         )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await async_write_sequence(self._ctrl, P.plan_dhw_on(self._values), dhw_dependents())
+        await async_write_planned(self._ctrl, P.plan_dhw_on, dhw_dependents())
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await async_write_sequence(
-            self._ctrl, P.plan_dhw_operation(P.DHW_OFF, self._values), dhw_dependents()
+        await async_write_planned(
+            self._ctrl, lambda values: P.plan_dhw_operation(P.DHW_OFF, values), dhw_dependents()
         )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -133,11 +133,17 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        role = self._setpoint_role()
-        lo, hi = self._role_bounds(role)
-        value = P.clamp(P.round_half(float(temperature)), lo, hi)
-        oid = P.DHW_ROLES[role]
-        current = P.as_float(self._get(role))
-        if current is not None and abs(current - value) < 1e-6:
-            return
-        await async_write_sequence(self._ctrl, [(oid, value)], [P.DHW_ROLES["dhw.target"]])
+        requested = float(temperature)
+
+        def plan(values):
+            # The setpoint of the mode that is active once earlier writes are done.
+            role = P.dhw_setpoint_role(P.dhw_operation(values))
+            lo, hi = self._role_bounds(role)
+            value = P.clamp(P.round_half(requested), lo, hi)
+            oid = P.DHW_ROLES[role]
+            current = P.as_float(P.first_value(values, oid))
+            if current is not None and abs(current - value) < 1e-6:
+                return []
+            return [(oid, value)]
+
+        await async_write_planned(self._ctrl, plan, [P.DHW_ROLES["dhw.target"]])

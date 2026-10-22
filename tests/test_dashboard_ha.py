@@ -6,6 +6,7 @@ sanitized AirHawk 518 snapshot (tests/fixtures); nothing touches a network.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -737,5 +738,87 @@ async def test_write_failure_raises_and_rereads(hass, monkeypatch, fake_controll
         assert CE1 in plant.fake.reads[-1]  # state re-read after the failed write
         assert plant.runtime["write_counts"].get(KEY, 0) == 0  # nothing counted
         assert c.preset_mode == "comfort"
+    finally:
+        await teardown(hass, plant)
+
+
+# --- overlapping commands -----------------------------------------------------
+
+
+def yielding_controller(fake_controller):
+    """A fake whose reads and writes suspend, so overlapping commands interleave."""
+
+    class Yielding(fake_controller):
+        async def read(self, ids, *, on_http_request=None):
+            await asyncio.sleep(0)
+            return await super().read(ids, on_http_request=on_http_request)
+
+        async def write(self, oid, value):
+            await asyncio.sleep(0)
+            out = await super().write(oid, value)
+            await asyncio.sleep(0)
+            return out
+
+    return Yielding
+
+
+@pytest.mark.asyncio
+async def test_overlapping_commands_write_each_change_once(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, yielding_controller(fake_controller))
+    fake = plant.fake
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        sup_select = plant.entities[f"{KEY}:select:AiPKUI58AAE"]
+        sup_offset = plant.entities[f"{KEY}:number:ACNZw458AAE"]
+        assert c.preset_mode == "comfort"
+
+        # Two overlapping Eco requests from Comfort: one flash write.
+        fake.writes.clear()
+        await asyncio.gather(c.async_set_preset_mode("eco"), c.async_set_preset_mode("eco"))
+        assert fake.writes == [(CE1, 1)]
+
+        # Comfort right after Eco: the later command is not dropped as "unchanged".
+        fake.writes.clear()
+        await asyncio.gather(c.async_set_preset_mode("comfort"), c.async_set_preset_mode("eco"))
+        await asyncio.gather(c.async_set_preset_mode("comfort"))
+        assert fake.writes == [(CE1, 0), (CE1, 1), (CE1, 0)]
+        assert c.preset_mode == "comfort"
+
+        # Supplement entities share the same serialization.
+        fake.writes.clear()
+        await asyncio.gather(sup_select.async_select_option("Eco"), c.async_set_preset_mode("eco"))
+        assert fake.writes == [(CE1, 1)]
+        fake.writes.clear()
+        await asyncio.gather(c.async_set_preset_mode("comfort"), sup_select.async_select_option("Eco"))
+        assert fake.writes == [(CE1, 0), (CE1, 1)]
+        assert sup_select.current_option == "Eco"
+
+        fake.writes.clear()
+        await asyncio.gather(c.async_set_temperature(temperature=22.5), sup_offset.async_set_native_value(1.0))
+        assert fake.writes == [(OFF1, 1.0)]
+
+        # Off then on, overlapping: both happen, in order.
+        fake.writes.clear()
+        await asyncio.gather(c.async_turn_off(), c.async_turn_on(), c.async_turn_on())
+        assert fake.writes == [(OP1, 1), (OP1, 0)]
+        assert c.hvac_mode == "heat"
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_overlapping_dhw_commands(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, yielding_controller(fake_controller), mutate=dhw_plant)
+    fake = plant.fake
+    try:
+        wh = plant.entities[f"{KEY}:water_heater:dhw"]
+        button = plant.entities[f"{KEY}:button:dhw_boost"]
+        fake.writes.clear()
+        await asyncio.gather(button.async_press(), button.async_press(), wh.async_set_operation_mode("high_demand"))
+        assert fake.writes == [(BOOST, 1)]
+        fake.writes.clear()
+        # The setpoint follows the mode that is active when the write runs.
+        await asyncio.gather(wh.async_set_operation_mode("eco"), wh.async_set_temperature(temperature=44))
+        assert fake.writes == [(CE, 1), (BOOST, 0), ("ASOp1XXZAAE=", 44.0)]
     finally:
         await teardown(hass, plant)

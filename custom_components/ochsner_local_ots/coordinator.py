@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from collections import deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 import random
 import time
-from typing import Any, Dict, List
+from typing import Any, AsyncIterator, Dict, Iterable, List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -36,6 +38,18 @@ class _PollState:
     counter: int = 0
 
 
+class WriteSession:
+    """Ids to re-read once when a serialized write session ends."""
+
+    def __init__(self) -> None:
+        self.refresh_ids: Dict[str, None] = {}
+
+    def refresh(self, ids: Iterable[str]) -> None:
+        for oid in ids:
+            if oid:
+                self.refresh_ids[str(oid)] = None
+
+
 class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
     def __init__(
         self,
@@ -61,6 +75,9 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             str(k): str(v) for k, v in (id_modes or {}).items() if k
         }
         self._poll_state: Dict[str, _PollState] = {}
+        # One write at a time per controller (see async_write_session).
+        self.write_lock = asyncio.Lock()
+        self._write_session: WriteSession | None = None
 
         try:
             pt = int(poll_threshold)
@@ -319,3 +336,29 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         except Exception:
             # Never break state updates due to counter bookkeeping.
             pass
+
+    @asynccontextmanager
+    async def async_write_session(self) -> AsyncIterator[WriteSession]:
+        """Serialize read -> decide -> write -> re-read cycles per controller.
+
+        Callers read the current values and decide what to write only inside
+        the session, so an overlapping command sees the result (writes and
+        re-reads) of the one before it. Ids marked with ``session.refresh``
+        are re-read once when the session ends, also after a failed write.
+        """
+        async with self.write_lock:
+            session = WriteSession()
+            self._write_session = session
+            try:
+                yield session
+            finally:
+                self._write_session = None
+                if session.refresh_ids:
+                    await self._async_refresh_after_write(list(session.refresh_ids))
+
+    async def _async_refresh_after_write(self, ids: List[str]) -> None:
+        try:
+            await self.async_refresh_ids(ids)
+        except Exception:
+            # Fallback: refresh everything if the targeted read fails.
+            await self.async_request_refresh()
