@@ -6,10 +6,16 @@ import { hpMode } from "../../custom_components/ochsner_local_ots/frontend/lib/m
 const H = 3600 * 1000;
 const T0 = Date.UTC(2026, 9, 21, 12, 0, 0);
 
-test("window: 24 full hour buckets ending with the current hour", () => {
-  const w = windowFor(T0 + 23 * H + 30 * 60000);
-  assert.equal(w.start, T0);
+test("window: a full rolling 24 h (now − 24 h → now) in 24 one-hour buckets", () => {
+  const now = T0 + 23 * H + 30 * 60000;
+  const w = windowFor(now);
+  assert.equal(w.end, now);
+  assert.equal(w.start, now - 24 * H);
   assert.equal(w.hours, 24);
+  // a constant 1 kW over the whole window → 24 full buckets of 1 kWh
+  const e = hourlyEnergy(toSeries([{ s: "1", lu: (now - 30 * H) / 1000 }]), w);
+  assert.deepEqual(e.kwh, new Array(24).fill(1));
+  assert.ok(e.known.every(Boolean));
 });
 
 test("time-weighted hourly energy from a kW series", () => {

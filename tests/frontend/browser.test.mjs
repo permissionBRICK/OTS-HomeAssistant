@@ -327,3 +327,15 @@ test("curve handles expose native slider values and ≥ 44 px hit areas; Auto us
   const bg = await page.eval(`getComputedStyle(${sr}.querySelector('[data-act="season"][data-c="1"][data-v="heat_cool"]')).backgroundColor`);
   assert.equal(bg, "rgb(255, 193, 7)");
 });
+
+test("history covers a full rolling 24 h window", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=house&view=efficiency");
+  await page.waitFor(`!!${sr}.querySelector("svg.bars")`, 3000);
+  const [req] = await page.eval("harness.fake.conn.history");
+  const span = Date.parse(req.end_time) - Date.parse(req.start_time);
+  assert.equal(span, 24 * 3600 * 1000);
+  assert.ok(Math.abs(Date.parse(req.end_time) - Date.now()) < 60000, "ends now");
+  assert.equal(await page.eval(`${sr}.querySelectorAll("svg.bars .bh").length`), 24);
+  const labels = await page.eval(`[...${sr}.querySelectorAll("svg.bars text")].map((t) => t.textContent).filter((t) => /:00$/.test(t))`);
+  assert.ok(labels.length >= 3 && labels.every((l) => ["00:00", "06:00", "12:00", "18:00"].includes(l)), JSON.stringify(labels));
+});

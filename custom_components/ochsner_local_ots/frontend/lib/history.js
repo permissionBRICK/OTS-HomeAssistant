@@ -3,10 +3,9 @@
 
 const HOUR = 3600 * 1000;
 
+/** Rolling window of `hours` full hours ending now; bucket i = [start + i h, start + (i+1) h). */
 export function windowFor(now = Date.now(), hours = 24) {
-  const end = now;
-  const start = Math.floor(now / HOUR) * HOUR - (hours - 1) * HOUR;
-  return { start, end, hours };
+  return { start: now - hours * HOUR, end: now, hours };
 }
 
 export async function fetchHistory(hass, entityIds, win) {

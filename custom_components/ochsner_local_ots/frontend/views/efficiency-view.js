@@ -146,8 +146,15 @@ export class EfficiencyView {
         } else s += top(Y(0), Y(heat), "var(--ohp-heat)");
       }
       s += `<rect class="bh" data-i="${i}" x="${r1(P.l + i * bw)}" y="${P.t}" width="${r1(bw)}" height="${H - P.t - P.b + 12}" fill="transparent"/>`;
-      const t = new Date(data.win.start + i * HOUR);
-      if (t.getHours() % 6 === 0) s += `<text class="ax" x="${r1(x)}" y="${H - 4}" text-anchor="start">${String(t.getHours()).padStart(2, "0")}:00</text>`;
+    }
+    // Buckets are rolling hours (ending now); label the full hours 00/06/12/18 where they fall.
+    const span0 = data.win.hours * HOUR;
+    for (let t = Math.ceil(data.win.start / HOUR) * HOUR; t <= data.win.end; t += HOUR) {
+      const h = new Date(t).getHours();
+      if (h % 6) continue;
+      const x = P.l + ((t - data.win.start) / span0) * (W - P.l - P.r);
+      if (x > W - P.r - 28) continue;
+      s += `<line class="grid" x1="${r1(x)}" x2="${r1(x)}" y1="${H - P.b}" y2="${H - P.b + 3}"/><text class="ax" x="${r1(x)}" y="${H - 4}" text-anchor="middle">${String(h).padStart(2, "0")}:00</text>`;
     }
     // status strip (mode is also given as text in each segment's tooltip)
     const sy = Y(0) + 5;
@@ -176,7 +183,7 @@ export class EfficiencyView {
     const I = ctx.I;
     const i = Number(r.getAttribute("data-i"));
     const from = new Date(d.win.start + i * HOUR), to = new Date(d.win.start + (i + 1) * HOUR);
-    const hh = (t) => String(t.getHours()).padStart(2, "0") + ":00";
+    const hh = (t) => `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
     let txt = I.t("bar_tip", { from: hh(from), to: hh(to), heat: I.num(d.heat[i], 2) });
     if (d.el) {
       txt += I.t("bar_tip_power", { el: I.num(d.el[i], 2), amb: I.num(Math.max(0, d.heat[i] - d.el[i]), 2) });

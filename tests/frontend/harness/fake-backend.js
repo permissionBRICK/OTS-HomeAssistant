@@ -747,6 +747,7 @@ export function fakeHass(plants, { lang = "de", dark = false, onUpdate, noHistor
       },
       callWS: (msg) => {
         if (msg.type === "history/history_during_period") {
+          (conn.history = conn.history || []).push(msg);
           if (noHistory) return Promise.resolve({});
           return Promise.resolve(makeHistory(plants[0], msg));
         }
