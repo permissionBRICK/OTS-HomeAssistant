@@ -154,6 +154,7 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
   .hcg { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px;
     grid-template-areas: "name name main" "chips info alt" "season season season"; }
   .hcg > .hcrow2 { display: contents; }
+  .hcg .hcname, .hcg .sp.main { margin-bottom: 6px; }
   .hcg .hcinfo { justify-self: end; align-items: flex-end; text-align: right; align-self: center; padding-left: 0; }
   .hcg .sp.alt { flex: none; }
   .hcg .sp.alt .spbadge { display: inline-block; }
