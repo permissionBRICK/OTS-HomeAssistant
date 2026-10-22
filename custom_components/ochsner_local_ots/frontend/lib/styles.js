@@ -146,6 +146,7 @@ svg.ch .base { stroke: var(--ohp-line); }
 svg.ch .plotbg { fill: transparent; }
 svg.ch .h { cursor: grab; touch-action: none; outline: none; }
 svg.ch .h.ro { cursor: not-allowed; }
+svg.ch .h.frozen { cursor: progress; }
 svg.ch .h .hit { fill: transparent; stroke: none; }
 svg.ch .h .dotv { transition: r .12s; }
 svg.ch .h:hover .dotv, svg.ch .h:focus-visible .dotv, svg.ch .h.act .dotv { r: 9px; }

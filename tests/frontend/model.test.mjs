@@ -66,9 +66,16 @@ test("real AirHawk plant → 3 heat-only circuits, buffer, aux, no DHW/cooling U
   assert.equal(circuitActive(plant, live, 1, "dhw"), false, "valve on DHW → circuits idle");
   assert.equal(enumLabel(plant, "hp.status", 1), "Heizen");
   assert.equal(enumLabel(plant, "hp.program", 3), "Abgeschaltet");
-  assert.equal(writableEntity(plant, "hp.program"), "select.betriebswahl_warmepumpe");
-  assert.equal(writableEntity(plant, "hc1.badge"), null);
-  assert.equal(writableEntity(plant, "hc1.season"), null, "registry-disabled entity is not written");
+  assert.equal(writableEntity(plant, "hp.program", "select"), "select.betriebswahl_warmepumpe");
+  assert.equal(writableEntity(plant, "hp.program", "number"), null, "wrong domain for the service");
+  assert.equal(writableEntity(plant, "hp.program"), null, "the service domain is required");
+  assert.equal(writableEntity(plant, "hc1.badge", "sensor"), null);
+  assert.equal(writableEntity(plant, "hc1.season", "select"), null, "registry-disabled entity is not written");
+  assert.equal(writableEntity(plant, "hp.status", "sensor"), null, "not writable");
+  const r = { roles: { x: { entity_id: "number.x" } } };
+  assert.equal(writableEntity(r, "x", "number"), null, "writable must be explicitly true");
+  r.roles.x.writable = true;
+  assert.equal(writableEntity(r, "x", "number"), "number.x");
 });
 
 test("sections adapt: DHW+cooling+pool, 1 circuit/no buffer, bms, circuit filter", () => {

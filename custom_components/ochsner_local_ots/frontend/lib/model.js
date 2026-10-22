@@ -91,11 +91,20 @@ export function role(plant, key) {
   return (plant && plant.roles && plant.roles[key]) || null;
 }
 
-/** Entity id usable for writing (exists, enabled, writable). */
-export function writableEntity(plant, key) {
+/**
+ * Entity id usable for writing: the role says writable, the entity exists
+ * and is enabled, and it is of the `domain` whose service will be called.
+ */
+export function writableEntity(plant, key, domain) {
   const r = role(plant, key);
-  if (!r || !r.entity_id || r.enabled === false || r.writable === false) return null;
+  if (!r || r.writable !== true || !r.entity_id || r.enabled === false) return null;
+  if (!domain || !String(r.entity_id).startsWith(domain + ".")) return null;
   return r.entity_id;
+}
+
+/** `id` if it is an entity of `domain`, else null. */
+export function ofDomain(id, domain) {
+  return id && String(id).startsWith(domain + ".") ? id : null;
 }
 
 /** Entity id for display/more-info (may be disabled → null). */

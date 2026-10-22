@@ -5,7 +5,7 @@ import { esc } from "../lib/dom.js";
 import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
 import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
-import { badgeFor, circuitKind, circuitName, displayEntity, enumLabel, hcKey, num, val, writableEntity } from "../lib/model.js";
+import { badgeFor, circuitKind, circuitName, displayEntity, enumLabel, hcKey, num, ofDomain, val, writableEntity } from "../lib/model.js";
 import { poolEntity, poolText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
@@ -166,10 +166,13 @@ export class ControlView {
     const ctx = this.card.ctx;
     if (!ctx || ctx.disabled || ctx.plant.plant_id !== this.plantId) return;
     const { plant } = ctx;
-    const circuit = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
+    const found = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
+    // Only ever call a domain's services on an entity of that domain.
+    const circuit = found && ofDomain(found.climate, "climate") ? found : null;
+    const wh = ofDomain(plant.dhw && plant.dhw.water_heater, "water_heater");
     switch (act) {
       case "hp": {
-        const ent = writableEntity(plant, "hp.program");
+        const ent = writableEntity(plant, "hp.program", "select");
         const opt = plant.roles["hp.program"].options || {};
         if (!ent || opt[d.v] === undefined) return;
         if (d.v === "3" && !(this.armed && this.armed > Date.now())) {
@@ -207,14 +210,13 @@ export class ControlView {
         return;
       }
       case "boost": {
-        const btn = plant.dhw && plant.dhw.boost_button;
+        const btn = ofDomain(plant.dhw && plant.dhw.boost_button, "button");
         if (!btn) return;
         this._dropQueued("dhw");
         this._service("boost", 1, "dhw", "button", "press", { entity_id: btn });
         return;
       }
       case "dhwstep": {
-        const wh = plant.dhw && plant.dhw.water_heater;
         const st = wh && ctx.state(wh);
         if (!st || !st.attributes || typeof st.attributes.temperature !== "number") return;
         const a = st.attributes;
@@ -227,7 +229,6 @@ export class ControlView {
         return;
       }
       case "dhwmode": {
-        const wh = plant.dhw && plant.dhw.water_heater;
         if (!wh) return;
         this._dropQueued("dhw");
         this._service("dhwmode", d.v, "dhw", "water_heater", "set_operation_mode", { entity_id: wh, operation_mode: d.v });
@@ -275,7 +276,7 @@ export class ControlView {
     const { I, plant, live } = ctx;
     const r = plant.roles["hp.program"];
     if (!r) return "";
-    const ent = writableEntity(plant, "hp.program");
+    const ent = writableEntity(plant, "hp.program", "select");
     const cur = num(live, "hp.program");
     const shown = this._busyTarget("hp", cur) ?? cur;
     const armed = this.armed && this.armed > Date.now();

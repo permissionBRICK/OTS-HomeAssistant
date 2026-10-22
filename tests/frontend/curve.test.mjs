@@ -127,3 +127,38 @@ test("pending diff, feed confirmation and effect at the current outdoor temp", (
   assert.equal(e.aboveLimit, false);
   assert.equal(C.effectAt(HC1, after, 18, 20).aboveLimit, true);
 });
+
+test("curveProblems: heating gap and cooling order", () => {
+  const { curveProblems } = C;
+  assert.deepEqual(curveProblems({ heat_curve_norm_outdoor: -15, heat_curve_base_outdoor: 20 }), []);
+  assert.deepEqual(curveProblems({ heat_curve_norm_outdoor: 19, heat_curve_base_outdoor: 20 }), []);
+  assert.deepEqual(curveProblems({ heat_curve_norm_outdoor: 19.5, heat_curve_base_outdoor: 20 }), ["heat_order"]);
+  assert.deepEqual(curveProblems({ cool_curve_norm_outdoor: 32, cool_curve_base_outdoor: 20 }, "base_first"), []);
+  assert.deepEqual(curveProblems({ cool_curve_norm_outdoor: 18, cool_curve_base_outdoor: 20 }, "base_first"), ["cool_order"], "order flipped");
+  assert.deepEqual(curveProblems({ cool_curve_norm_outdoor: 20.5, cool_curve_base_outdoor: 20 }, "base_first"), ["cool_order"], "gap < 1 K");
+});
+
+test("valueProblems: bounds, step grid, minimum flow", () => {
+  const { valueProblems } = C;
+  const bounds = { heat_curve_norm_flow: { min: 20, max: 90, step: 0.1 }, heat_curve_max_flow: { min: 0, max: 70, step: 1 } };
+  assert.deepEqual(valueProblems([{ key: "heat_curve_norm_flow", to: 38.5 }], bounds), []);
+  assert.equal(valueProblems([{ key: "heat_curve_norm_flow", to: 95 }], bounds)[0].code, "bounds");
+  assert.equal(valueProblems([{ key: "heat_curve_max_flow", to: 41.5 }], bounds)[0].code, "step");
+  assert.equal(valueProblems([{ key: "heat_curve_max_flow", to: 8 }], bounds)[0].code, "min_flow");
+});
+
+test("writeOrder keeps every intermediate state valid", () => {
+  const { writeOrder, curveProblems } = C;
+  const current = { heat_curve_norm_outdoor: -15, heat_curve_base_outdoor: -5, heat_curve_norm_flow: 36 };
+  const writes = [{ key: "heat_curve_norm_outdoor", to: 0 }, { key: "heat_curve_norm_flow", to: 38 }, { key: "heat_curve_base_outdoor", to: 5 }];
+  const order = writeOrder(current, writes);
+  let st = { ...current };
+  for (const w of order) {
+    st = { ...st, [w.key]: w.to };
+    assert.deepEqual(curveProblems(st), [], JSON.stringify(order));
+  }
+  assert.equal(order.findIndex((w) => w.key === "heat_curve_base_outdoor") < order.findIndex((w) => w.key === "heat_curve_norm_outdoor"), true, "base point first");
+  // moving both left: norm first
+  const left = writeOrder({ heat_curve_norm_outdoor: -5, heat_curve_base_outdoor: 0 }, [{ key: "heat_curve_base_outdoor", to: -12 }, { key: "heat_curve_norm_outdoor", to: -20 }]);
+  assert.deepEqual(left.map((w) => w.key), ["heat_curve_norm_outdoor", "heat_curve_base_outdoor"]);
+});

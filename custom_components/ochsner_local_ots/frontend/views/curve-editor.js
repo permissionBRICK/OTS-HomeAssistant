@@ -5,9 +5,9 @@
 
 import { esc } from "../lib/dom.js";
 import {
-  COOL_KEYS, CURVE_KEYS, HANDLES, HEAT_KEYS, SHIFT_THRESHOLD,
-  aboveHeatLimit, axes, constrain, coolFlowAt, coolOrder, coolPointsOrdered, curveShift, dragStep,
-  effectAt, hasCoolCurve, hasHeatCurve, heatFlowAt, nudge, pendingDiff, reflects, ticks,
+  COOL_KEYS, CURVE_KEYS, HANDLES, HEAT_KEYS, MIN_FLOW, SHIFT_THRESHOLD,
+  aboveHeatLimit, axes, constrain, coolFlowAt, coolOrder, coolPointsOrdered, curveProblems, curveShift, dragStep,
+  effectAt, hasCoolCurve, hasHeatCurve, heatFlowAt, nudge, pendingDiff, reflects, ticks, valueProblems, writeOrder,
 } from "../lib/curve.js";
 import { hcKey, num, writableEntity, role } from "../lib/model.js";
 
@@ -56,19 +56,28 @@ export class CurveEditor {
 
   /** Feed values (+ written-but-unconfirmed values), without pending. */
   _base(ctx, n) {
+    return this._baseFrom(ctx.live, this._bounds(ctx, n), n);
+  }
+
+  _baseFrom(live, bounds, n) {
     const s = this._s(n);
     const v = {};
     for (const k of CURVE_KEYS) {
-      const x = num(ctx.live, hcKey(n, k));
+      const x = num(live, hcKey(n, k));
       if (x !== undefined) v[k] = x;
     }
     const now = Date.now();
     for (const [k, a] of Object.entries(s.awaiting)) {
-      const step = this._bounds(ctx, n)[k]?.step;
-      if (reflects(v[k], a.v, step) || now - a.at > AWAIT_TIMEOUT) delete s.awaiting[k];
+      if (reflects(v[k], a.v, bounds[k]?.step) || now - a.at > AWAIT_TIMEOUT) delete s.awaiting[k];
       else v[k] = a.v;
     }
     return v;
+  }
+
+  /** Newest feed event of this editor's plant (not the render snapshot). */
+  _liveNow() {
+    const store = this.card.store;
+    return (store && store.liveFor(this.plantId)) || { values: {} };
   }
 
   _bounds(ctx, n) {
@@ -83,7 +92,7 @@ export class CurveEditor {
 
   _writable(ctx, n) {
     const w = new Set();
-    for (const k of CURVE_KEYS) if (writableEntity(ctx.plant, hcKey(n, k))) w.add(k);
+    for (const k of CURVE_KEYS) if (writableEntity(ctx.plant, hcKey(n, k), "number")) w.add(k);
     return w;
   }
 
@@ -159,6 +168,7 @@ export class CurveEditor {
     if (!ctx || ctx.disabled) return;
     const id = hEl.getAttribute("data-h");
     const n = this.geom.n;
+    if (this._s(n).applying) return; // frozen while the writes run
     const pt = this._svgPoint(e);
     if (!pt) return;
     e.preventDefault();
@@ -258,6 +268,10 @@ export class CurveEditor {
     if (!ctx || !this.geom) return;
     const n = this.geom.n;
     const id = hEl.getAttribute("data-h");
+    if (this._s(n).applying) {
+      if (e.key.startsWith("Arrow") || e.key === "Escape" || e.key === "Enter") e.preventDefault();
+      return; // frozen while the writes run
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       if (this.drag) {
@@ -290,12 +304,32 @@ export class CurveEditor {
     this.card.requestRender();
   }
 
+  /** Why the complete curve (base + pending) must not be written, or null. */
+  _invalid(I, values, writes, bounds, order) {
+    const vp = valueProblems(writes, bounds)[0];
+    if (vp) {
+      const name = I.t("r_" + vp.key);
+      const fmt = (v) => (typeof v === "number" ? I.auto(v, 2) : "–");
+      if (vp.code === "bounds") return I.t("invalid_bounds", { name, min: fmt(vp.min), max: fmt(vp.max) });
+      if (vp.code === "step") return I.t("invalid_step", { name, step: fmt(vp.step) });
+      if (vp.code === "min_flow") return I.t("invalid_min_flow", { name, min: MIN_FLOW });
+      return I.t("invalid_value", { name });
+    }
+    const cp = curveProblems(values, order);
+    if (cp.includes("heat_order")) return I.t("invalid_heat_order");
+    if (cp.includes("cool_order")) return I.t("invalid_cool_order");
+    return null;
+  }
+
   async apply(n) {
     const ctx = this._ctx();
     const s = this._s(n);
     if (!ctx || s.applying || ctx.disabled) return;
-    const base = this._base(ctx, n);
+    const I = ctx.I;
+    // Revalidate the complete curve against the newest metadata and live
+    // values right before writing: drags were checked against older values.
     const bounds = this._bounds(ctx, n);
+    const base = this._baseFrom(this._liveNow(), bounds, n);
     const diff = pendingDiff(base, s.pending, bounds);
     // Drop no-op entries.
     for (const k of Object.keys(s.pending)) if (!diff.some((d) => d.key === k)) delete s.pending[k];
@@ -305,23 +339,38 @@ export class CurveEditor {
     }
     // Bind every write to this plant's entities now: whatever happens while
     // the writes run (tab switch, refetch), they go exactly here.
-    const I = ctx.I;
-    const plan = diff.map((d) => ({ ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key)) }));
+    const plan = diff.map((d) => ({ ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key), "number") }));
     const ro = plan.find((d) => !d.entity);
     if (ro) {
       s.error = I.t("handle_readonly", { name: I.t("r_" + ro.key) });
       this.card.requestRender();
       return;
     }
+    const order = coolOrder(base);
+    const target = { ...base, ...s.pending };
+    const why = this._invalid(I, target, plan, bounds, order);
+    if (why) {
+      s.error = I.t("apply_refused", { why });
+      this.card.requestRender();
+      return;
+    }
+    const writes = writeOrder(base, plan, order);
     s.error = null;
-    s.applying = { i: 0, n: plan.length };
+    s.applying = { i: 0, n: writes.length }; // handles are frozen meanwhile
     this.card.requestRender();
-    for (const d of plan) {
+    for (const d of writes) {
+      // The controller state may have moved since: never write a value that
+      // turns a valid curve into a crossed one.
+      const now = this._baseFrom(this._liveNow(), bounds, n);
+      if (!curveProblems(now, order).length && curveProblems({ ...now, [d.key]: d.to }, order).length) {
+        s.error = I.t("apply_refused", { why: I.t("invalid_changed") });
+        break;
+      }
       s.applying.i++;
       this.card.requestRender();
       try {
         await this.card.call("number", "set_value", { entity_id: d.entity, value: d.to });
-        delete s.pending[d.key];
+        if (s.pending[d.key] === d.to) delete s.pending[d.key];
         s.awaiting[d.key] = { v: d.to, at: Date.now() };
       } catch (err) {
         s.error = I.t("apply_error", { msg: errText(err) });
@@ -485,12 +534,14 @@ export class CurveEditor {
     let lines = "";
     let points = "";
     const boxes = []; // label boxes the "now" label must avoid
+    const frozen = !!s.applying;
     const handleAttrs = (id, keys, label, valuetext) => {
       const ro = keys.every((k) => !writable.has(k)) || ctx.disabled;
-      const tip = ro && !ctx.disabled ? I.t("handle_readonly", { name: roName(keys) }) : label;
+      const tip = ro && !ctx.disabled ? I.t("handle_readonly", { name: roName(keys) }) : frozen ? I.t("handle_frozen") : label;
+      // Frozen handles keep their tab stop (keyboard focus survives the Apply).
       return {
         ro,
-        open: `<g class="h${ro ? " ro" : ""}${active === id ? " act" : ""}" data-h="${id}" data-key="h-${id}" ${ro ? "" : 'tabindex="0" '}role="slider" aria-label="${esc(label)}" aria-valuetext="${esc(valuetext)}"${ro ? ' aria-disabled="true"' : ""}><title>${esc(tip)}</title>`,
+        open: `<g class="h${ro ? " ro" : ""}${frozen ? " frozen" : ""}${active === id ? " act" : ""}" data-h="${id}" data-key="h-${id}" ${ro ? "" : 'tabindex="0" '}role="slider" aria-label="${esc(label)}" aria-valuetext="${esc(valuetext)}"${ro || frozen ? ' aria-disabled="true"' : ""}><title>${esc(tip)}</title>`,
       };
     };
     const vline = (id, key, col, labelKey, labelTop) => {

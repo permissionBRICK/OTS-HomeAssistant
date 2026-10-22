@@ -269,3 +269,64 @@ export function effectAt(before, after, x, nowFlow) {
   if (fin(after.heat_curve_max_flow)) to = Math.min(after.heat_curve_max_flow, to);
   return { from, to, aboveLimit: aboveHeatLimit(after, x) };
 }
+
+const FLOW_KEYS = new Set(["heat_curve_norm_flow", "heat_curve_base_flow", "heat_curve_max_flow", "cool_curve_norm_flow", "cool_curve_base_flow"]);
+
+/**
+ * Ordering rules a complete curve state must satisfy (the same ones the
+ * drag constraints enforce): heating norm point ≥ 1 K left of the base
+ * point; the cooling points ≥ 1 K apart in their `coolOrder`
+ * ("norm_first" | "base_first"). Returns a list of problem codes.
+ */
+export function curveProblems(c, coolOrderWanted) {
+  const out = [];
+  if (fin(c.heat_curve_norm_outdoor) && fin(c.heat_curve_base_outdoor) && c.heat_curve_norm_outdoor > c.heat_curve_base_outdoor - MIN_GAP + 1e-9) out.push("heat_order");
+  if (fin(c.cool_curve_norm_outdoor) && fin(c.cool_curve_base_outdoor)) {
+    const order = coolOrderWanted || coolOrder(c);
+    const [first, second] = order === "base_first" ? [c.cool_curve_base_outdoor, c.cool_curve_norm_outdoor] : [c.cool_curve_norm_outdoor, c.cool_curve_base_outdoor];
+    if (first > second - MIN_GAP + 1e-9) out.push("cool_order");
+  }
+  return out;
+}
+
+/**
+ * Per-value checks before writing: bounds, step grid, minimum flow.
+ * `writes` = [{key, to}]; returns [{key, code, ...}] (empty = fine).
+ */
+export function valueProblems(writes, bounds = {}) {
+  const out = [];
+  for (const { key, to } of writes) {
+    const b = bounds[key] || {};
+    if (!fin(to)) out.push({ key, code: "nan" });
+    else if (fin(b.min) && to < b.min - 1e-9) out.push({ key, code: "bounds", min: b.min, max: b.max });
+    else if (fin(b.max) && to > b.max + 1e-9) out.push({ key, code: "bounds", min: b.min, max: b.max });
+    else if (fin(b.step) && b.step > 0 && Math.abs(to / b.step - Math.round(to / b.step)) > 1e-6) out.push({ key, code: "step", step: b.step });
+    else if (FLOW_KEYS.has(key) && to < MIN_FLOW - 1e-9) out.push({ key, code: "min_flow" });
+  }
+  return out;
+}
+
+/**
+ * Order the writes so that every intermediate controller state keeps the
+ * point ordering (e.g. when both heating points move right past the old
+ * base point, the base point goes first and widens the gap). Greedy: next
+ * is the first remaining write that keeps the state valid; if none can,
+ * the stable order is kept (the final state is valid either way).
+ */
+export function writeOrder(current, writes, coolOrderWanted) {
+  const left = [...writes];
+  const out = [];
+  let state = { ...current };
+  const validNow = () => curveProblems(state, coolOrderWanted).length === 0;
+  while (left.length) {
+    let i = 0;
+    if (validNow()) {
+      const ok = left.findIndex((w) => curveProblems({ ...state, [w.key]: w.to }, coolOrderWanted).length === 0);
+      if (ok >= 0) i = ok;
+    }
+    const [w] = left.splice(i, 1);
+    out.push(w);
+    state = { ...state, [w.key]: w.to };
+  }
+  return out;
+}

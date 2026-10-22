@@ -98,3 +98,71 @@ test("a queued circuit edit is dropped when the preset changes externally", { sk
   await sleep(2200);
   assert.deepEqual((await writes(page)).slice(1), ["climate.set_preset_mode climate.wintergarten eco"]);
 });
+
+const curveState = (page, n = 1) => page.eval(`(() => { const s = harness.el._views.efficiency.curve.st.get(${n}); return s ? { pending: { ...s.pending }, error: s.error, applying: !!s.applying } : null; })()`);
+const setPending = (page, pending, n = 1) => page.eval(`(() => { const ed = harness.el._views.efficiency.curve; ed._s(${n}).pending = ${JSON.stringify(pending)}; harness.el.requestRender(); })()`);
+
+test("Apply orders writes so the points never cross (base point first when it widens the gap)", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=60");
+  const c = on(page);
+  await page.eval("harness.plant.values['hc1.heat_curve_base_outdoor'] = -5; harness.plant.push()");
+  await sleep(100);
+  await setPending(page, { heat_curve_norm_outdoor: 0, heat_curve_base_outdoor: 5 });
+  await sleep(80);
+  await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.writes().length === 2", 3000);
+  assert.deepEqual(await writes(page), [
+    "number.set_value number.fussboden_fusspunkt_aussentemperatur 5",
+    "number.set_value number.fussboden_norm_aussentemperatur 0",
+  ]);
+});
+
+test("Apply revalidates against the newest live values and refuses a crossed curve", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=60");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_norm"]', "+ArrowRight", "+ArrowRight"); // −15 → −14
+  assert.deepEqual((await curveState(page)).pending, { heat_curve_norm_outdoor: -14 });
+  // meanwhile the base point was moved on the controller to −14.5
+  await page.eval("harness.plant.values['hc1.heat_curve_base_outdoor'] = -14.5; harness.plant.push()");
+  await sleep(80);
+  await c.click('[data-cact="apply"]');
+  await sleep(300);
+  assert.deepEqual(await writes(page), []);
+  assert.match(await c.text(".pendbar .err"), /Nicht übernommen: Die Norm-Außentemperatur muss mindestens 1 K unter/);
+  // out-of-range / off-grid values are refused too
+  await setPending(page, { heat_curve_max_flow: 41.5 });
+  await sleep(60);
+  await c.click('[data-cact="apply"]');
+  await sleep(200);
+  assert.match(await c.text(".pendbar .err"), /Schrittweite 1/);
+  await setPending(page, { heat_curve_norm_flow: 95 });
+  await sleep(60);
+  await c.click('[data-cact="apply"]');
+  await sleep(200);
+  assert.match(await c.text(".pendbar .err"), /zwischen 20 und 90/);
+  assert.deepEqual(await writes(page), []);
+});
+
+test("handles are frozen while Apply runs; no edit gets lost", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=400");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_max"]', "ArrowUp");
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  await c.click('[data-cact="apply"]');
+  await sleep(100);
+  assert.equal((await curveState(page)).applying, true);
+  assert.ok(await c.exists('[data-h="heat_norm"].frozen'));
+  // keyboard and pointer edits during the Apply are ignored
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight", "ArrowRight");
+  await c.drag('[data-h="heat_norm"] .dotv', 0, -40);
+  const mid = (await curveState(page)).pending;
+  assert.ok(!("heat_curve_norm_flow" in mid) && !("heat_curve_norm_outdoor" in mid), JSON.stringify(mid));
+  assert.equal(mid.heat_limit, 16.8, "the submitted value, not a later nudge");
+  await page.waitFor("harness.writes().length === 2", 3000);
+  await page.waitFor(`!${c.root}.querySelector(".pendbar")`, 3000);
+  assert.deepEqual((await curveState(page)).pending, {});
+  assert.deepEqual(await writes(page), [
+    "number.set_value number.fussboden_maximale_vorlauftemperatur 41",
+    "number.set_value number.fussboden_heizgrenze 16.8",
+  ]);
+});

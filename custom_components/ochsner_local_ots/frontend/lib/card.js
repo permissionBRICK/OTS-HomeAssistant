@@ -103,6 +103,10 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     return this._config;
   }
 
+  get store() {
+    return this._store;
+  }
+
   set hass(h) {
     const prev = this._hass;
     this._hass = h;
