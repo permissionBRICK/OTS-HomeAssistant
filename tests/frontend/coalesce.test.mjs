@@ -170,3 +170,60 @@ test("cancel between the timer and the deferred send stops the write", async (t)
   await flush();
   assert.deepEqual(sent, []);
 });
+
+function ctxSetup(t) {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { mode: "performance", target: 52 };
+  const sent = [];
+  const c = new Coalescer({
+    delay: 1500,
+    current: () => state.target,
+    context: () => state.mode,
+    send: async (v) => { sent.push(v); state.target = v; },
+  });
+  return { c, sent, state };
+}
+
+test("a queued edit is dropped when the mode changed before it fires", async (t) => {
+  const { c, sent, state } = ctxSetup(t);
+  c.push(52.5);
+  state.mode = "eco";
+  state.target = 46; // eco setpoint now shown
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, [], "52.5 must not land on the eco setpoint");
+  assert.equal(c.state, "dropped");
+  assert.equal(c.value, undefined);
+});
+
+test("a queued edit is dropped when the target changed externally", async (t) => {
+  const { c, sent, state } = ctxSetup(t);
+  c.push(52.5);
+  state.target = 55; // someone else changed it
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, []);
+  assert.equal(c.state, "dropped");
+});
+
+test("our own previous write landing during a new burst does not drop it", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { mode: "heat|comfort", target: 21 };
+  const sent = [];
+  let release;
+  const c = new Coalescer({
+    delay: 1500,
+    current: () => state.target,
+    context: () => state.mode,
+    send: (v) => new Promise((res) => { sent.push(v); release = () => { state.target = v; res(); }; }),
+  });
+  c.push(21.5);
+  t.mock.timers.tick(1500);
+  await flush();
+  c.push(22); // new burst while 21.5 is on the wire (baseline still 21)
+  release(); // HA now reports 21.5 — our own write
+  t.mock.timers.tick(1500);
+  await flush();
+  await flush();
+  assert.deepEqual(sent, [21.5, 22]);
+});

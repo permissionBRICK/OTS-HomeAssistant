@@ -69,3 +69,32 @@ test("an Apply that is running when the plant changes only writes A's entities",
   for (const x of w) assert.match(x, /^number\.set_value number\.(?!wp2_)fussboden_/, x);
   assert.ok(!(await c.exists(".pendbar")), "B shows nothing of A's apply");
 });
+
+test("a mode change drops a queued DHW temperature edit (Comfort 52 → + → Eco 46)", { skip }, async () => {
+  const page = await b.open("variant=full&view=controls&latency=30");
+  const c = on(page);
+  assert.match(await c.text('[data-key="dhw"] .stepper .v'), /52°/);
+  await c.click('[data-act="dhwstep"][data-d="1"]');
+  await c.click('[data-act="dhwmode"][data-v="eco"]');
+  await sleep(2200);
+  assert.deepEqual(await writes(page), ["water_heater.set_operation_mode water_heater.warmwasser eco"]);
+  assert.equal(await page.eval("harness.plant.values['dhw.setpoint_eco']"), 46, "eco setpoint untouched");
+  assert.ok(!(await c.exists('[data-key="dhw"] .stepper .v.pend')));
+});
+
+test("a queued circuit edit is dropped when the preset changes externally", { skip }, async () => {
+  const page = await b.open("variant=house&view=controls&latency=30");
+  const c = on(page);
+  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  await c.click('.hc[data-key="hc2"] [data-d="1"]');
+  // hc1: the controller switches to eco by itself (time program)
+  await page.eval("harness.plant.values['hc1.comfort_eco'] = 1; harness.plant.push()");
+  await sleep(2200);
+  assert.deepEqual(await writes(page), ["climate.set_temperature climate.radiatoren 22"], "only hc2's edit is written");
+  assert.match(await c.text('.hc[data-key="hc1"] .note'), /verworfen/);
+  // our own preset click also drops the queued edit, silently
+  await c.click('.hc[data-key="hc3"] [data-d="1"]');
+  await c.click('[data-act="preset"][data-c="3"][data-v="eco"]');
+  await sleep(2200);
+  assert.deepEqual((await writes(page)).slice(1), ["climate.set_preset_mode climate.wintergarten eco"]);
+});

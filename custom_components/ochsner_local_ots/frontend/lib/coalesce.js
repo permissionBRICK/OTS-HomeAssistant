@@ -12,11 +12,18 @@ export class Coalescer {
    * @param {() => void} [o.onChange]         UI refresh hook
    * @param {number} [o.delay=1500]
    * @param {number} [o.confirmTimeout=15000] how long the optimistic value is kept after a successful write
+   * @param {() => string} [o.context] what the value applies to (e.g. the active
+   *   mode/preset). Captured with the baseline value when a burst starts; if
+   *   either changed by the time the write would go out, the queued value is
+   *   dropped (state "dropped") instead of landing on the wrong setpoint.
    * @param {{setTimeout:Function, clearTimeout:Function}} [o.timers]
    */
-  constructor({ send, current, onChange, delay = 1500, confirmTimeout = 15000, timers } = {}) {
+  constructor({ send, current, onChange, context, delay = 1500, confirmTimeout = 15000, timers } = {}) {
     this._send = send;
     this._current = current;
+    this._context = context || null;
+    this._snap = null; // { ctx, base } at the start of the current burst
+    this._lastSent = undefined;
     this._onChange = onChange || (() => {});
     this.delay = delay;
     this.confirmTimeout = confirmTimeout;
@@ -24,7 +31,7 @@ export class Coalescer {
     this._timer = null;
     this._confirmTimer = null;
     this._inflight = null;
-    this.state = "idle"; // idle | waiting | sending | sent | error
+    this.state = "idle"; // idle | waiting | sending | sent | error | dropped
     this.error = null;
     this._value = undefined; // displayed optimistic value
     this._dirty = false;
@@ -46,6 +53,7 @@ export class Coalescer {
 
   push(v) {
     if (this.disposed) return;
+    if (this.state !== "waiting") this._snap = { ctx: this._context ? this._context() : null, base: this._current() };
     this._value = v;
     this._dirty = true;
     this.error = null;
@@ -101,6 +109,14 @@ export class Coalescer {
     this.state = "idle";
   }
 
+  /** Mode/preset or the baseline moved (not by our own last write) since the burst began. */
+  _contextChanged() {
+    if (!this._context || !this._snap) return false;
+    if (this._context() !== this._snap.ctx) return true;
+    const base = this._current();
+    return !same(base, this._snap.base) && !same(base, this._lastSent);
+  }
+
   _arm() {
     if (this._timer) this._timers.clearTimeout(this._timer);
     this._timer = this._timers.setTimeout(() => {
@@ -127,12 +143,19 @@ export class Coalescer {
     const v = this._value;
     this._dirty = false;
     if (v === undefined) return;
+    if (this._contextChanged()) {
+      this._value = undefined;
+      this.state = "dropped";
+      this._onChange();
+      return;
+    }
     if (same(v, this._current())) {
       this._value = undefined;
       this.state = "idle";
       this._onChange();
       return;
     }
+    this._lastSent = v;
     this.state = "sending";
     this._onChange();
     const p = Promise.resolve().then(() => {

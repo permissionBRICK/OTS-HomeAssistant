@@ -106,9 +106,17 @@ export class ControlView {
         const st = this.card.stateOf(entityId);
         return st && st.attributes ? st.attributes.temperature : undefined;
       },
+      // The target belongs to the active mode (hvac mode + preset, or the
+      // water heater's operation mode): another mode has another setpoint.
+      context: () => {
+        const st = this.card.stateOf(entityId);
+        if (!st) return "";
+        return domain === "climate" ? `${st.state}|${(st.attributes && st.attributes.preset_mode) || ""}` : st.state;
+      },
       onChange: () => {
         const I = this.card.i18n;
         if (c.state === "error") this._note(key, "err", `${I.t("error")}: ${c.error}`, 8000);
+        else if (c.state === "dropped") this._note(key, "info", I.t("dropped_ctx"), 6000);
         else if (lastState === "sending" && (c.state === "sent" || c.state === "idle")) this._note(key, "ok", "✓ " + I.t("saved"), 1800);
         else if (c.state === "waiting" || c.state === "sending") this.notes.delete(key);
         lastState = c.state;
@@ -118,6 +126,16 @@ export class ControlView {
     c.entityId = entityId;
     this.coal.set(key, c);
     return c;
+  }
+
+  /**
+   * A mode/preset/season/on-off change re-targets the section's setpoint:
+   * drop a queued (not yet sent) temperature edit instead of letting it land
+   * on the new mode's setpoint.
+   */
+  _dropQueued(key) {
+    const c = this.coal.get(key);
+    if (c && c.state === "waiting") c.cancel();
   }
 
   async _service(key, target, noteKey, domain, service, data) {
@@ -176,6 +194,7 @@ export class ControlView {
       }
       case "preset": {
         if (!circuit || !circuit.climate) return;
+        this._dropQueued(`hc${circuit.index}`);
         const key = `p${circuit.index}`;
         if (d.v === "off") this._service(key, "off", `hc${circuit.index}`, "climate", "set_hvac_mode", { entity_id: circuit.climate, hvac_mode: "off" });
         else this._service(key, d.v, `hc${circuit.index}`, "climate", "set_preset_mode", { entity_id: circuit.climate, preset_mode: d.v });
@@ -183,12 +202,14 @@ export class ControlView {
       }
       case "season": {
         if (!circuit || !circuit.climate) return;
+        this._dropQueued(`hc${circuit.index}`);
         this._service(`s${circuit.index}`, d.v, `hc${circuit.index}`, "climate", "set_hvac_mode", { entity_id: circuit.climate, hvac_mode: d.v });
         return;
       }
       case "boost": {
         const btn = plant.dhw && plant.dhw.boost_button;
         if (!btn) return;
+        this._dropQueued("dhw");
         this._service("boost", 1, "dhw", "button", "press", { entity_id: btn });
         return;
       }
@@ -208,6 +229,7 @@ export class ControlView {
       case "dhwmode": {
         const wh = plant.dhw && plant.dhw.water_heater;
         if (!wh) return;
+        this._dropQueued("dhw");
         this._service("dhwmode", d.v, "dhw", "water_heater", "set_operation_mode", { entity_id: wh, operation_mode: d.v });
         return;
       }
