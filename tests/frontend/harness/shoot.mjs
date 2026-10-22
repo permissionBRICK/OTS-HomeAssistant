@@ -25,6 +25,8 @@ export const SHOTS = [
   ["house-en-wide-light", "variant=house&theme=light&scheme=ha&lang=en", 1280],
   ["full-emergency-dark-ochsner", "variant=full&theme=dark&scheme=ochsner&emergency=hp.emergency_status:1,dhw.emergency_status:2&view=plant", 760],
   ["full-fahrenheit-light-ha", "variant=full&theme=light&scheme=ha&fahrenheit=1&lang=en&view=controls", 420],
+  ["house-fahrenheit-light-ha", "variant=house&theme=light&scheme=ha&fahrenheit=1&lang=en", 760],
+  ["full-fahrenheit-narrow-dark", "variant=full&theme=dark&scheme=ha&fahrenheit=1&lang=en", 360],
   ["unavailable-dark", "variant=house&theme=dark&unavailable=1&nohistory=1&view=controls", 420],
   ["drag-live-dark-ochsner", "variant=house&theme=dark&scheme=ochsner&view=efficiency", 760, "dragLive"],
   ["drag-pending-light-ha", "variant=house&theme=light&scheme=ha&view=efficiency", 760, "dragPending"],

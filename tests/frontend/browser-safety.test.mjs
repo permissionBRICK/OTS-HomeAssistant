@@ -275,6 +275,55 @@ test("handles are frozen while Apply runs; no edit gets lost", { skip }, async (
   ]);
 });
 
+// Each change hits the second write (heating limit) while the first one is on the wire.
+const refetch = "harness.el.store.refetch(true); true";
+for (const [what, change, why] of [
+  ["its role is mapped to another entity", `harness.plant.roleOverrides["hc1.heat_limit"] = { entity_id: "number.fussboden_heizgrenze_neu" }; ${refetch}`, /Heizgrenze gehört inzwischen zu einer anderen Entität/],
+  ["its role is no longer writable", `harness.plant.roleOverrides["hc1.heat_limit"] = { writable: false }; ${refetch}`, /Heizgrenze ist nicht mehr beschreibbar/],
+  ["its entity is disabled", `harness.plant.roleOverrides["hc1.heat_limit"] = { enabled: false }; ${refetch}`, /Heizgrenze ist nicht mehr beschreibbar/],
+  ["its bounds changed", `harness.plant.roleOverrides["hc1.heat_limit"] = { max: 16 }; ${refetch}`, /Für Heizgrenze gelten inzwischen andere Grenzen/],
+  ["the circuit is gone", "harness.plant.values['hc1.availability'] = 0; harness.plant.push(); true", /Heizkreis ist nicht mehr vorhanden/],
+  ["the controller became unavailable", "harness.plant.available = false; harness.plant.push(); true", /Anlage ist nicht erreichbar/],
+]) {
+  test(`Apply re-checks the binding before every write: stops when ${what}`, { skip }, async () => {
+    const page = await b.open("variant=house&view=efficiency&latency=300");
+    const c = on(page);
+    await c.focusKey('[data-h="heat_max"]', "ArrowUp");
+    await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+    await c.click('[data-cact="apply"]');
+    await page.waitFor("harness.plant.calls.length === 1", 2000);
+    await page.eval(change);
+    await sleep(900);
+    assert.deepEqual(await writes(page), ["number.set_value number.fussboden_maximale_vorlauftemperatur 41"], "nothing goes to the old binding");
+    const st = await curveState(page);
+    assert.deepEqual(st.pending, { heat_limit: 16.8 }, "the unsent edit stays pending");
+    assert.equal(st.applying, false);
+    assert.match(st.error, why);
+    assert.match(st.error, /^Nicht übernommen: /);
+    if (await c.exists(".pendbar")) assert.match(await c.text(".pendbar .err"), why);
+    await sleep(600);
+    assert.equal((await writes(page)).length, 1, "and nothing is retargeted later");
+    assert.deepEqual(page.errors, []);
+  });
+}
+
+test("Apply re-checks the binding before the first write too (changed after the last render)", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=30");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  // the payload maps the role elsewhere; no render has run since
+  await page.eval(`(() => {
+    harness.el.requestRender = () => {};
+    harness.plant.roleOverrides["hc1.heat_limit"] = { entity_id: "number.fussboden_heizgrenze_neu" };
+    return harness.el.store.refetch(true).then(() => harness.el._views.efficiency.curve.apply(1)).then(() => true);
+  })()`);
+  await sleep(200);
+  assert.deepEqual(await writes(page), []);
+  const st = await curveState(page);
+  assert.deepEqual(st.pending, { heat_limit: 16.8 });
+  assert.match(st.error, /Heizgrenze gehört inzwischen zu einer anderen Entität/);
+});
+
 test("Fahrenheit HA: curve maths stay native, number.set_value gets °F", { skip }, async () => {
   const page = await b.open("variant=house&view=efficiency&latency=30&fahrenheit=1");
   const c = on(page);
@@ -312,6 +361,39 @@ test("Fahrenheit HA: steppers and the DHW gauge work in HA's unit", { skip }, as
     "climate.set_temperature climate.erdgeschoss 75.5",
     "water_heater.set_temperature water_heater.warmwasser 126",
   ]);
+});
+
+test("Fahrenheit HA: every native temperature says °C, HA-unit values say °F", { skip }, async () => {
+  const texts = (page, root, sel) => page.eval(`[...${root}.querySelectorAll(${JSON.stringify(sel)})].map((e) => e.textContent)`);
+  const page = await b.open("variant=house&view=all&latency=30&fahrenheit=1", { width: 1280, height: 1400 });
+  const c = on(page);
+  // schematic: flow/return/buffer labels and circuit rows (native feed values)
+  const svg = await page.eval(`${c.root}.querySelector("svg.plant").textContent`);
+  assert.match(svg, /VL 29,6°CRL 25,1°CPuffer26,3°C/);
+  assert.match(svg, /Vorlauf 25,9°C · Soll 26,8°C/);
+  assert.doesNotMatch(svg.replace(/°[CF]/g, ""), /°/, "no bare degree sign in the schematic");
+  // controls: climate stepper in °F, feed flow values in °C
+  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /°F$/);
+  assert.match(await c.text('.hc[data-key="hc1"]'), /Vorlauf 25,9°C \/ 26,8°C/);
+  assert.match(await c.text(".card-controls .hero .sub"), /Puffer 26,3°C · VL 29,6°C → RL 25,1°C/);
+  // curve: axis ticks, handles (label, slider text), now label, floating label, crosshair
+  const ticks = await texts(page, c.root, "svg.ch[data-curve] text.ax");
+  assert.ok(ticks.length > 8 && ticks.every((t) => /°C$|^jetzt .*°C$/.test(t)), JSON.stringify(ticks));
+  assert.match(await c.text('[data-h="heat_limit"] text'), /^Heizgrenze 16,7°C$/);
+  assert.equal(await page.eval(`${c.root}.querySelector('[data-h="heat_norm"]').getAttribute("aria-valuetext")`), "−15,0°C → 36,0°C");
+  await c.focusKey('[data-h="heat_norm"]', "ArrowUp");
+  assert.equal(await c.text(".flab text"), "−15,0°C → 36,1°C");
+  assert.match(await c.text(".readout"), /bei 12,2°C außen: Vorlauf 26,8°C → /);
+  const [x, y] = await c.center("svg.ch[data-curve] .plotbg");
+  await page.mouse("mouseMoved", x, y);
+  await sleep(60);
+  assert.match(await c.text(".tip.cur"), /^außen [−\d,]+°C → Vorlauf-Soll [\d,]+°C$/);
+  // the same plant in °C keeps the short "°"
+  const pc = await b.open("variant=house&view=all&latency=30", { width: 1280, height: 1400 });
+  assert.match(await pc.eval(`harness.el.shadowRoot.querySelector("svg.plant").textContent`), /VL 29,6°RL 25,1°Puffer26,3°off/);
+  const cTicks = await texts(pc, "harness.el.shadowRoot", "svg.ch[data-curve] text.ax");
+  assert.ok(cTicks.every((t) => !/°C/.test(t)), JSON.stringify(cTicks));
+  assert.deepEqual(page.errors, []);
 });
 
 const toFahrenheit = (page) => page.eval("harness.plant.fahrenheit = true; harness.fake.rebuild(); true");

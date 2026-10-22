@@ -234,6 +234,48 @@ test("heat pump off needs a confirmation tap; presets map to climate services", 
   await page.waitFor(`${sr}.querySelector('[data-act="preset"][data-c="2"][data-v="eco"]').classList.contains("on")`, 2000);
 });
 
+test("legacy operating program (HC3 Wintergarten = Reduziert): shown instead of Komfort/Eco, chips explain the switch", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=house&view=all&latency=30", { width: 1280, height: 1400 });
+  const hc = (n) => `.hc[data-key="hc${n}"]`;
+  const chipState = (n) => page.eval(`[...${sr}.querySelectorAll('${hc(n)} [data-act="preset"]')].map((b) => [b.dataset.v, b.classList.contains("on"), b.getAttribute("aria-pressed"), b.getAttribute("title")])`);
+  const rowChip = (eid) => page.eval(`(${sr}.querySelector('svg.plant [data-more="${eid}"] text.chip') || {}).textContent`);
+  // the fixture's HC3 runs op_program 2 while comfort_eco = 0 and the badge says auto_comfort
+  assert.equal(await page.eval("harness.plant.values['hc3.op_program']"), 2);
+  assert.match(await text(page, `${hc(3)} .hcname .sub`), /\| Reduziert$/);
+  assert.equal(await rowChip("climate.wintergarten"), "Reduziert");
+  const legacy = await chipState(3);
+  assert.deepEqual(legacy.map(([v, on, pressed]) => [v, on, pressed]), [["comfort", false, "false"], ["eco", false, "false"], ["off", false, "false"]]);
+  assert.match(legacy[0][3], /Läuft im Programm „Reduziert“\. Komfort schaltet den Heizkreis auf die Komfort\/Eco-Steuerung der App um/);
+  assert.match(legacy[1][3], /^Läuft im Programm „Reduziert“\. Eco schaltet/);
+  assert.equal(legacy[2][3], null, "Aus keeps its plain meaning");
+  // circuits on the app's control are unchanged
+  assert.match(await text(page, `${hc(1)} .hcname .sub`), /\| Komfort$/);
+  assert.equal(await rowChip("climate.fussboden"), "Komfort");
+  assert.deepEqual((await chipState(1)).map(([v, on, , title]) => [v, on, title]), [["comfort", true, null], ["eco", false, null], ["off", false, null]]);
+  // other legacy programs show their own label; Aus (1) stays "Aus"
+  for (const [raw, label] of [[3, "Normalbetrieb"], [4, "Handbetrieb Heizen"], [7, "Party"], [8, "Urlaub"]]) {
+    await page.eval(`harness.plant.values['hc3.op_program'] = ${raw}; harness.plant.push(); true`);
+    await sleep(80);
+    assert.equal(await rowChip("climate.wintergarten"), label);
+    assert.match(await text(page, `${hc(3)} .hcname .sub`), new RegExp(`\\| ${label}$`));
+  }
+  await page.eval("harness.plant.values['hc3.op_program'] = 1; harness.plant.values['hc3.badge'] = 0; harness.plant.push(); true"); // off_grey
+  await sleep(80);
+  assert.equal(await rowChip("climate.wintergarten"), "Aus");
+  assert.deepEqual((await chipState(3)).map(([v, on, , title]) => [v, on, title]), [["comfort", false, null], ["eco", false, null], ["off", true, null]]);
+  // choosing Komfort under a legacy program writes the app's control (op_program 0)
+  await page.eval("harness.plant.values['hc3.op_program'] = 2; harness.plant.values['hc3.badge'] = 3; harness.plant.push(); true");
+  await sleep(80);
+  await click(page, `[data-act="preset"][data-c="3"][data-v="comfort"]`);
+  await page.waitFor("harness.writes().length === 1", 2000);
+  assert.deepEqual(await writes(page), ["climate.set_preset_mode climate.wintergarten comfort"]);
+  assert.equal(await page.eval("harness.plant.values['hc3.op_program']"), 0);
+  await page.waitFor(`${sr}.querySelector('[data-act="preset"][data-c="3"][data-v="comfort"]').classList.contains("on")`, 2000);
+  assert.match(await text(page, `${hc(3)} .hcname .sub`), /\| Komfort$/);
+  assert.equal(await rowChip("climate.wintergarten"), "Komfort");
+  assert.deepEqual(page.errors, []);
+});
+
 test("DHW + cooling plant: season chips, water heater modes, boost, −/+ on DHW", { skip: !CHROME && "no chromium" }, async () => {
   const page = await open("variant=full&view=controls&latency=30");
   await click(page, '[data-act="season"][data-c="1"][data-v="cool"]');

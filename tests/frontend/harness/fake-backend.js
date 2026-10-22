@@ -267,6 +267,7 @@ export class FakePlant {
     this.flashWrites = 1284;
     this.available = true;
     this.climateMap = {}; // circuit → climate entity id in the plants payload (re-mapped entity)
+    this.roleOverrides = {}; // role key → fields replaced in the plants payload (re-mapped / read-only role)
     this._subs = new Set();
     this._listeners = new Set();
     this._entities = null;
@@ -358,6 +359,7 @@ export class FakePlant {
       delete r.enabled;
       if (e && !e.enabled) r.enabled = false;
       if (this.fahrenheit && e && e.platform === "number" && r.unit === "°C") r.display_unit = "°F";
+      if (this.roleOverrides[key]) Object.assign(r, this.roleOverrides[key]);
       out[key] = r;
     }
     return out;
@@ -453,9 +455,9 @@ export class FakePlant {
     const ents = this.entities();
     const D = (v) => this.disp(v);
     for (const [key, e] of Object.entries(ents)) {
-      if (!e || e.enabled === false) continue;
-      const raw = this.values[key];
       const r = roles[key];
+      if (!e || e.enabled === false || !r) continue; // r: the section is gone
+      const raw = this.values[key];
       const attrs = { friendly_name: e.name };
       const isTemp = this.fahrenheit && r.unit === "°C" && typeof raw === "number";
       if (r.unit) attrs.unit_of_measurement = this.fahrenheit && r.unit === "°C" ? "°F" : r.unit;
@@ -563,7 +565,8 @@ export class FakePlant {
     if (domain === "number" && service === "set_value") {
       const key = this._keyFor(eid);
       if (!key) throw new Error(`unknown entity ${eid}`);
-      const r = this.roles()[key];
+      // A circuit that left the feed keeps its entities until the entry reloads.
+      const r = this.roles()[key] || backendRoleMeta(this.backend, key) || {};
       const nv = F && r.unit === "°C" ? native(data.value) : Number(data.value);
       // HA validates against the entity's (display-unit) range.
       if ((typeof r.min === "number" && nv < r.min - 1e-6) || (typeof r.max === "number" && nv > r.max + 1e-6)) {

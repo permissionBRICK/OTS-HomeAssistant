@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, convertDelta, convertTemp, enumLabel, haTempUnit, hpMode, isProducing, layoutSignature, liveCop, parseBadge, pickPlant, sections, serviceValue, toServiceValue, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
+import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, convertDelta, convertTemp, enumLabel, haTempUnit, hpMode, isProducing, layoutSignature, legacyProgram, liveCop, parseBadge, pickPlant, sections, serviceValue, toServiceValue, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
 import { BADGES, FakePlant } from "./harness/fake-backend.js";
 import { fixtures } from "./helpers.mjs";
 
@@ -137,4 +137,17 @@ test("units: native values are converted only at the service call", () => {
   assert.deepEqual(serviceValue({ unit: "K" }, 1.5, "°F"), { value: 1.5, stale: false }, "deltas are never converted");
   assert.equal(haTempUnit({ config: { unit_system: { temperature: "°F" } } }), "°F");
   assert.equal(haTempUnit({}), "°C");
+});
+
+test("legacy operating program: labels from the payload, none for Komfort/Eco (0) and Aus (1)", () => {
+  const fp = new FakePlant(fixtures());
+  const plant = fp.plantPayload();
+  const live = fp.event();
+  assert.equal(legacyProgram(plant, live, 1), null);
+  assert.deepEqual(legacyProgram(plant, live, 3), { raw: 2, label: "Reduziert" }, "the reference plant's Wintergarten");
+  const at = (raw) => legacyProgram(plant, { values: { "hc3.op_program": raw } }, 3);
+  assert.equal(at(1), null);
+  assert.equal(at(undefined), null);
+  assert.deepEqual([3, 4, 5, 6, 7, 8].map((r) => at(r).label), ["Normalbetrieb", "Handbetrieb Heizen", "Handbetrieb Kühlen", "Eco", "Party", "Urlaub"]);
+  assert.deepEqual(at(9), { raw: 9, label: undefined });
 });

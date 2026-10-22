@@ -1,6 +1,8 @@
 // UI strings (DE/EN) and locale-aware number formatting.
 // Enum labels (status texts, select options) come from the backend payload.
 
+import { haTempUnit } from "./model.js";
+
 export const STRINGS = {
   de: {
     heat_pump: "Wärmepumpe",
@@ -101,6 +103,13 @@ export const STRINGS = {
     invalid_unit: "{name}: die Einheit der Entität ({unit}) lässt sich nicht umrechnen.",
     unit_changed: "{name} wird inzwischen in {unit} angezeigt – die Daten werden neu geladen, bitte erneut übernehmen.",
     apply_error: "Fehler beim Schreiben: {msg}",
+    program_n: "Programm {n}",
+    program_replace: "Läuft im Programm „{program}“. {choice} schaltet den Heizkreis auf die Komfort/Eco-Steuerung der App um und ersetzt dieses Programm.",
+    apply_unavailable: "Die Anlage ist nicht erreichbar – die übrigen Änderungen bleiben vorgemerkt.",
+    circuit_gone: "Der Heizkreis ist nicht mehr vorhanden – die übrigen Änderungen bleiben vorgemerkt.",
+    binding_changed: "{name} gehört inzwischen zu einer anderen Entität – bitte prüfen und erneut übernehmen.",
+    binding_readonly: "{name} ist nicht mehr beschreibbar – die übrigen Änderungen bleiben vorgemerkt.",
+    bounds_changed: "Für {name} gelten inzwischen andere Grenzen – bitte prüfen und erneut übernehmen.",
     handle_readonly: "Nicht änderbar: {name} hat keine aktive Entität.",
     kbd_hint: "Pfeiltasten verschieben, Umschalt = ×5, Enter übernimmt, Esc verwirft",
     r_heat_curve_norm_outdoor: "Norm-Außentemp.",
@@ -266,6 +275,13 @@ export const STRINGS = {
     invalid_unit: "{name}: the entity's unit ({unit}) cannot be converted.",
     unit_changed: "{name} is now shown in {unit} – reloading the data, please apply again.",
     apply_error: "Write failed: {msg}",
+    program_n: "Program {n}",
+    program_replace: "Running the “{program}” program. {choice} switches the circuit to the app's comfort/eco control, replacing this program.",
+    apply_unavailable: "The plant is not reachable – the remaining changes stay pending.",
+    circuit_gone: "The heating circuit is no longer present – the remaining changes stay pending.",
+    binding_changed: "{name} now belongs to another entity – please check and apply again.",
+    binding_readonly: "{name} is no longer writable – the remaining changes stay pending.",
+    bounds_changed: "{name} now has different limits – please check and apply again.",
     handle_readonly: "Not adjustable: {name} has no enabled entity.",
     kbd_hint: "Arrow keys move, Shift = ×5, Enter applies, Esc discards",
     r_heat_curve_norm_outdoor: "Design outdoor temp.",
@@ -365,6 +381,9 @@ export function translate(lang, key, params) {
 /** Bundle of translate + number helpers for one hass locale. */
 export function makeI18n(hass) {
   const lang = langOf(hass);
+  // Feed values are native °C. A bare "°" means °C only while HA shows °C
+  // too; with HA in °F every native temperature says "°C".
+  const nativeC = haTempUnit(hass) === "°C" ? "°" : "°C";
   const [locale, grouping] = numberLocale(hass);
   const cache = new Map();
   const nf = (d) => {
@@ -399,7 +418,8 @@ export function makeI18n(hass) {
     for (let d = 0; d < max; d++) if (Math.abs(n * 10 ** d - Math.round(n * 10 ** d)) < 1e-6) return num(n, d);
     return num(n, max);
   };
-  const temp = (v, d = 1) => (Number.isFinite(Number(v)) ? num(v, d) + "°" : "–");
+  /** Temperature: native °C by default, or in `unit` (HA's unit for climate/water_heater values). */
+  const temp = (v, d = 1, unit = "°C") => (Number.isFinite(Number(v)) ? num(v, d) + (unit === "°F" ? "°F" : nativeC) : "–");
   return {
     lang,
     t: (key, params) => translate(lang, key, params),
@@ -407,6 +427,8 @@ export function makeI18n(hass) {
     signed,
     auto,
     temp,
+    /** Unit suffix of native temperatures ("°", or "°C" when HA is not in °C). */
+    deg: nativeC,
     int: (v) => num(v, 0),
   };
 }
