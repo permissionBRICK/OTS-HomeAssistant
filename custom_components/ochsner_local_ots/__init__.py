@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
-from typing import Any, Dict, List
+import time
+from typing import Any, Callable, Dict, List
 
 import aiohttp
 import voluptuous as vol
 
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -1037,8 +1038,64 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id]["platforms"] = list(setups)
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
+    hass.data[DOMAIN][entry.entry_id]["unsub"] = [
+        _async_watch_sections(hass, entry, rc["coordinator"], rc["plant"]["caps"])
+        for rc in runtime_controllers
+    ]
     await _async_dashboard_changed(hass)
     return True
+
+
+# A plant whose sections change at runtime (a circuit, DHW or pool enabled
+# on the controller, BMS switched) needs a reload: role ids are polled and
+# entities/devices created per present section at setup.
+SECTION_RELOAD_MIN_INTERVAL_SEC = 600
+
+
+@callback
+def _async_watch_sections(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: ClimatixCoordinator, caps: Dict[str, Any]
+) -> Callable[[], None]:
+    """Reload the entry once when its plant sections change for good.
+
+    The new set must be seen on two consecutive successful updates (no
+    reload for a flapping value) and an entry is reloaded at most once per
+    SECTION_RELOAD_MIN_INTERVAL_SEC.
+    """
+    loaded = plant_lib.section_signature(caps)
+    state: Dict[str, Any] = {"candidate": None}
+
+    @callback
+    def _check() -> None:
+        if not coordinator.last_update_success:
+            return
+        data = coordinator.data if isinstance(coordinator.data, dict) else {}
+        values = data.get("values") if isinstance(data.get("values"), dict) else {}
+        new_caps = plant_lib.compute_capabilities(values)
+        current = plant_lib.section_signature(new_caps)
+        if current == loaded:
+            state["candidate"] = None
+            return
+        if state["candidate"] != current:
+            state["candidate"] = current
+            return
+        reloads = hass.data.setdefault(DOMAIN, {}).setdefault("_section_reloads", {})
+        now = time.monotonic()
+        last = reloads.get(entry.entry_id)
+        if last is not None and now - last < SECTION_RELOAD_MIN_INTERVAL_SEC:
+            return
+        reloads[entry.entry_id] = now
+        _LOGGER.info(
+            "Heat pump sections of %s changed (circuits %s -> %s, DHW %s -> %s); reloading the entry",
+            entry.title,
+            [c["index"] for c in caps["circuits"]],
+            [c["index"] for c in new_caps["circuits"]],
+            caps["dhw"],
+            new_caps["dhw"],
+        )
+        hass.config_entries.async_schedule_reload(entry.entry_id)
+
+    return coordinator.async_add_listener(_check)
 
 
 async def _async_dashboard_changed(hass: HomeAssistant) -> None:
@@ -1190,6 +1247,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        for unsub in (store or {}).get("unsub", []) if isinstance(store, dict) else []:
+            unsub()
         await _async_dashboard_changed(hass)
         # Close per-controller sessions so we don't hold any connections.
         try:

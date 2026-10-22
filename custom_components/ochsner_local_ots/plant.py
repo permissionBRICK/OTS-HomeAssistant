@@ -348,6 +348,24 @@ def compute_capabilities(values: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def section_signature(caps: Mapping[str, Any]) -> Tuple[Any, ...]:
+    """What decides the polled role ids and the entities/devices at setup.
+
+    Present circuits (with the flags their climate entity is built from),
+    DHW, BMS, buffer and pool presence.
+    """
+    return (
+        bool(caps.get("bms")),
+        bool(caps.get("dhw")),
+        bool(caps.get("buffer")),
+        bool(caps.get("pool")),
+        tuple(
+            (int(c["index"]), bool(c["heat"]), bool(c["cool"]), bool(c["room_sensor"]), bool(c["humidity"]))
+            for c in caps.get("circuits", []) or []
+        ),
+    )
+
+
 def public_capabilities(caps: Mapping[str, Any]) -> Dict[str, bool]:
     """The websocket ``capabilities`` object (no circuit list)."""
     return {k: bool(v) for k, v in caps.items() if k != "circuits"}
