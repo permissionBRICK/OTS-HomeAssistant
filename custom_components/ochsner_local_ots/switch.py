@@ -138,19 +138,16 @@ class ClimatixGenericSwitch(CoordinatorEntity[ClimatixCoordinator], SwitchEntity
         await self._write_value(self._off_value)
 
     async def _write_value(self, value: Any) -> None:
-        data = self.coordinator.data or {}
-        current_raw = extract_first_value(data, self._read_id)
-        # Skip the write when the datapoint already holds the target value, to
-        # avoid unnecessary controller writes.
-        if _values_equal(current_raw, value):
-            return
+        async with self.coordinator.async_write_session() as session:
+            data = self.coordinator.data or {}
+            current_raw = extract_first_value(data, self._read_id)
+            # Skip the write when the datapoint already holds the target value, to
+            # avoid unnecessary controller writes.
+            if _values_equal(current_raw, value):
+                return
 
-        await self._api.write(self._write_id, value)
-        try:
-            await self.coordinator.async_refresh_ids([self._read_id])
-        except Exception:
-            # Fallback: refresh everything if the targeted read fails.
-            await self.coordinator.async_request_refresh()
+            session.refresh([self._read_id])
+            await self._api.write(self._write_id, value)
 
 
 def _values_equal(a: Any, b: Any) -> bool:

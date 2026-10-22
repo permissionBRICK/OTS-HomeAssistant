@@ -51,6 +51,11 @@ from .const import (
     CONF_RESCAN_ON_START,
     CONF_REDOWNLOAD_BUNDLE,
     CONF_POLLING_MODE,
+    CONF_COLOR_SCHEME,
+    CONF_SIDEBAR_PANEL,
+    COLOR_SCHEME_HA,
+    COLOR_SCHEMES,
+    DEFAULT_SIDEBAR_PANEL,
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
     POLLING_MODE_SLOW,
@@ -87,8 +92,15 @@ LANGUAGE_AUTO = "auto"
 LANGUAGE_OPTIONS = (LANGUAGE_AUTO, "de", "en")
 
 
+def dashboard_options(sidebar_panel: bool = DEFAULT_SIDEBAR_PANEL) -> Dict[str, Any]:
+    """Options every new entry starts with (heat pump dashboard settings)."""
+    return {CONF_SIDEBAR_PANEL: bool(sidebar_panel), CONF_COLOR_SCHEME: COLOR_SCHEME_HA}
+
+
 class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+    # 1.2: entries carry the dashboard options (sidebar panel, colours).
+    MINOR_VERSION = 2
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
@@ -111,6 +123,8 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovered: ControllerIdentity | None = None
         self._network_task: asyncio.Task | None = None
         self._network_results: list[ControllerIdentity] = []
+        # Entry waiting for the dashboard question (title, data).
+        self._pending_entry: Optional[tuple[str, Dict[str, Any]]] = None
 
     def _host_already_configured(self, host: str) -> bool:
         host = host.strip()
@@ -219,7 +233,30 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }
         if self._discovered and self._discovered.mac:
             controller[CONF_MAC_ADDRESS] = self._discovered.mac
-        return self.async_create_entry(title=title, data={CONF_CONTROLLERS: [controller]})
+        # Every interactive creation path asks the dashboard question last.
+        self._pending_entry = (title, {CONF_CONTROLLERS: [controller]})
+        return self._show_dashboard_form()
+
+    def _show_dashboard_form(self):
+        return self.async_show_form(
+            step_id="dashboard",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_SIDEBAR_PANEL, default=DEFAULT_SIDEBAR_PANEL): selector.BooleanSelector()}
+            ),
+        )
+
+    async def async_step_dashboard(self, user_input: Optional[Dict[str, Any]] = None):
+        """Show the heat pump view in the sidebar (panel) or offer cards only."""
+        if self._pending_entry is None:
+            return self.async_abort(reason="not_ochsner")
+        if user_input is None:
+            return self._show_dashboard_form()
+        title, data = self._pending_entry
+        return self.async_create_entry(
+            title=title,
+            data=data,
+            options=dashboard_options(bool(user_input.get(CONF_SIDEBAR_PANEL, DEFAULT_SIDEBAR_PANEL))),
+        )
 
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
         if user_input is not None:
@@ -481,7 +518,8 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="updated")
             return self.async_abort(reason="already_configured")
 
-        return self.async_create_entry(title=f"Climatix ({host})", data=data)
+        # YAML import: no question, dashboard defaults.
+        return self.async_create_entry(title=f"Climatix ({host})", data=data, options=dashboard_options())
 
 
 class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
@@ -530,6 +568,10 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         poll_threshold_cur = int(existing_options.get(CONF_POLLING_THRESHOLD, DEFAULT_POLLING_THRESHOLD))
         max_ids_cur = int(existing_options.get(CONF_MAX_IDS_PER_READ_REQUEST, DEFAULT_MAX_IDS_PER_READ_REQUEST))
         rescan_on_start = bool(existing_options.get(CONF_RESCAN_ON_START, False))
+        sidebar_cur = bool(existing_options.get(CONF_SIDEBAR_PANEL, DEFAULT_SIDEBAR_PANEL))
+        scheme_cur = str(existing_options.get(CONF_COLOR_SCHEME) or COLOR_SCHEME_HA)
+        if scheme_cur not in COLOR_SCHEMES:
+            scheme_cur = COLOR_SCHEME_HA
         rescan_now_default = False
         redownload_default = False
         edit_entities_default = False
@@ -586,6 +628,11 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                                 language_sel = language_cur
                             out[CONF_LANGUAGE] = language_sel
 
+                            # Heat pump dashboard: sidebar panel + colours.
+                            out[CONF_SIDEBAR_PANEL] = bool(user_input.get(CONF_SIDEBAR_PANEL, sidebar_cur))
+                            scheme_sel = str(user_input.get(CONF_COLOR_SCHEME) or scheme_cur)
+                            out[CONF_COLOR_SCHEME] = scheme_sel if scheme_sel in COLOR_SCHEMES else scheme_cur
+
                             # Ensure entity overrides always survive option updates.
                             if CONF_ENTITY_OVERRIDES not in out:
                                 out[CONF_ENTITY_OVERRIDES] = {}
@@ -619,6 +666,17 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                         options=list(LANGUAGE_OPTIONS),
                         mode=selector.SelectSelectorMode.DROPDOWN,
                         translation_key="language",
+                    )
+                ),
+                vol.Optional(CONF_SIDEBAR_PANEL, default=sidebar_cur): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_COLOR_SCHEME,
+                    default=scheme_cur,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(COLOR_SCHEMES),
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="color_scheme",
                     )
                 ),
                 vol.Optional(
