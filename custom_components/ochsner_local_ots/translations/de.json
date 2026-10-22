@@ -47,6 +47,16 @@
           "identity_key": "Wärmepumpe",
           "local_ip": "Lokale IP-Adresse"
         }
+      },
+      "dashboard": {
+        "title": "Wärmepumpen-Ansicht",
+        "description": "Wärmepumpen-Ansicht in der Seitenleiste anzeigen?\n\n**Ja:** In der Seitenleiste erscheint der Eintrag „Wärmepumpe“ mit Anlagenschema, Bedienung und Heizkurve.\n**Nein:** kein Eintrag in der Seitenleiste; dieselben Ansichten gibt es weiterhin als Karten, die du jedem Dashboard hinzufügen kannst (in der Kartenauswahl nach „Ochsner“ suchen).\n\nDas kannst du später unter Konfigurieren ändern.",
+        "data": {
+          "sidebar_panel": "Wärmepumpen-Ansicht in der Seitenleiste anzeigen"
+        },
+        "data_description": {
+          "sidebar_panel": "Aus = nur Karten, manuell zu jedem Dashboard hinzufügbar."
+        }
       }
     },
     "error": {
@@ -75,6 +85,8 @@
         "description": "Standard-Schwelle für gedrosselte Abfragen ist 20. Du kannst sie erhöhen, falls Verbindungsfehler auftreten.",
         "data": {
           "language": "Sprache der Entitätsnamen und Beschriftungen",
+          "sidebar_panel": "Wärmepumpen-Ansicht in der Seitenleiste anzeigen",
+          "color_scheme": "Farben der Wärmepumpen-Ansicht",
           "scan_interval": "Abfrageintervall (Sekunden)",
           "polling_threshold": "Polling / auto Verzögerung Multiplikator",
           "max_ids_per_read_request": "Max. Werte pro Leseanfrage",
@@ -136,6 +148,16 @@
     }
   },
   "entity": {
+    "button": {
+      "dhw_boost": {
+        "name": "Warmwasser Boost"
+      }
+    },
+    "climate": {
+      "heating_circuit": {
+        "name": "Heizkreis"
+      }
+    },
     "sensor": {
       "flash_writes": {
         "name": "Flash-Schreibvorgänge"
@@ -146,6 +168,11 @@
       "read_rate_5m": {
         "name": "Leserate (5 min)"
       }
+    },
+    "water_heater": {
+      "dhw": {
+        "name": "Warmwasser"
+      }
     }
   },
   "selector": {
@@ -154,6 +181,12 @@
         "auto": "Der Home-Assistant-Sprache folgen",
         "de": "Deutsch",
         "en": "English"
+      }
+    },
+    "color_scheme": {
+      "options": {
+        "ha": "Farben des Home-Assistant-Designs",
+        "ochsner": "Farben der Ochsner-App"
       }
     }
   }

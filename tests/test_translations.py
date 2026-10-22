@@ -32,3 +32,19 @@ def test_entity_translations_cover_integration_provided_names():
         sensors = data["entity"]["sensor"]
         for key in ("flash_writes", "read_requests", "read_rate_5m"):
             assert sensors[key]["name"].strip(), f"{lang}: missing entity name for {key}"
+
+
+def test_dashboard_strings_in_both_languages():
+    for lang in ("en", "de"):
+        data = json.loads((PKG / "translations" / f"{lang}.json").read_text(encoding="utf-8"))
+        step = data["config"]["step"]["dashboard"]
+        assert step["title"].strip() and step["description"].strip()
+        assert step["data"]["sidebar_panel"].strip()
+        init = data["options"]["step"]["init"]["data"]
+        assert init["sidebar_panel"].strip() and init["color_scheme"].strip()
+        assert set(data["selector"]["color_scheme"]["options"]) == {"ha", "ochsner"}
+        entity = data["entity"]
+        for platform, key in (("climate", "heating_circuit"), ("water_heater", "dhw"), ("button", "dhw_boost")):
+            assert entity[platform][key]["name"].strip(), f"{lang}: {platform}.{key}"
+    de = json.loads((PKG / "translations" / "de.json").read_text(encoding="utf-8"))
+    assert "Seitenleiste" in de["config"]["step"]["dashboard"]["description"]
