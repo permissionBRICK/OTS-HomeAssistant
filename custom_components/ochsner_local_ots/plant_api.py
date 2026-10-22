@@ -26,6 +26,8 @@ import voluptuous as vol
 
 from homeassistant.auth.permissions.const import POLICY_READ
 from homeassistant.components import websocket_api
+from homeassistant.components.number import NumberDeviceClass
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -34,8 +36,9 @@ from homeassistant.util import dt as dt_util
 
 from . import plant as P
 from .catalog import DiscoveryCatalog, load_catalog, normalize_language
-from .const import DOMAIN, SIGNAL_PLANTS_CHANGED
+from .const import CONF_ENTITY_OVERRIDES, DOMAIN, SIGNAL_PLANTS_CHANGED
 from .dashboard import color_scheme
+from .number import number_settings
 from .plant_entity import plant_runtime
 
 _LOGGER = logging.getLogger(__name__)
@@ -142,6 +145,24 @@ def _role_entity(
     return None, None
 
 
+_TEMPERATURE_UNITS = (UnitOfTemperature.CELSIUS, UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.KELVIN)
+
+
+def _number_display_unit(
+    hass: HomeAssistant, reg: Optional[er.RegistryEntry], native: Optional[str], device_class: Any
+) -> Optional[str]:
+    """The unit Home Assistant shows a number in (NumberEntity rules), for
+    entities without a state yet."""
+    if device_class != NumberDeviceClass.TEMPERATURE or native not in _TEMPERATURE_UNITS:
+        return native
+    custom = ((reg.options if reg is not None else {}).get("number") or {}).get("unit_of_measurement")
+    if custom in _TEMPERATURE_UNITS:
+        return custom
+    if native in (UnitOfTemperature.CELSIUS, UnitOfTemperature.FAHRENHEIT):
+        return hass.config.units.temperature_unit
+    return native
+
+
 def build_role(
     hass: HomeAssistant,
     role: str,
@@ -149,20 +170,39 @@ def build_role(
     candidates: List[Candidate],
     catalog: Optional[DiscoveryCatalog],
     language: str,
+    *,
+    host: str = "",
+    overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """One role's entry. ``unit``/``min``/``max``/``step`` are in the native
+    unit of the feed values; ``display_unit`` is the unit the entity's state
+    and its services use when Home Assistant converts it (°F, ...)."""
     registry = er.async_get(hass)
     chosen, entity_id = _role_entity(registry, candidates)
     out: Dict[str, Any] = {"entity_id": entity_id}
     cfg = chosen[2] if chosen else (candidates[0][2] if candidates else None)
     state = hass.states.get(entity_id) if entity_id else None
     attrs = state.attributes if state is not None else {}
-    if entity_id:
-        reg = registry.async_get(entity_id)
-        if reg is not None and reg.disabled_by is not None:
-            out["enabled"] = False
-    unit = (cfg or {}).get("unit") or attrs.get("unit_of_measurement") or P.role_unit(role)
+    reg = registry.async_get(entity_id) if entity_id else None
+    if reg is not None and reg.disabled_by is not None:
+        out["enabled"] = False
+    settings = (
+        number_settings(cfg, host=host, entity_overrides=overrides)
+        if chosen and chosen[0] == "number" and isinstance(cfg, dict)
+        else None
+    )
+    native = settings["unit"] if settings else (cfg or {}).get("unit")
+    unit = native or P.role_unit(role) or (None if settings else attrs.get("unit_of_measurement"))
     if unit:
         out["unit"] = unit
+    if state is not None:
+        shown = attrs.get("unit_of_measurement")
+    elif settings:
+        shown = _number_display_unit(hass, reg, native, settings["device_class"])
+    else:
+        shown = None
+    if shown and unit and shown != unit:
+        out["display_unit"] = shown
     if chosen and chosen[3]:
         out["writable"] = True
         domain = chosen[0]
@@ -174,13 +214,9 @@ def build_role(
                     for label, v in opts.items()
                     if P.as_int(v) is not None
                 }
-        elif domain == "number":
-            for key, attr, fallback in (("min", "min", "min"), ("max", "max", "max"), ("step", "step", "step")):
-                value = attrs.get(attr, (cfg or {}).get(fallback))
-                try:
-                    value = float(value) if value is not None else None
-                except (TypeError, ValueError):
-                    value = None
+        elif settings:
+            for key in ("min", "max", "step"):
+                value = settings[key]
                 # Numbers without a configured range use a ±1e9 text box.
                 if value is not None and abs(value) < 1e8:
                     out[key] = value
@@ -397,8 +433,12 @@ def build_plant(
         }
 
     index = entity_index(ctrl)
+    overrides = (entry.options or {}).get(CONF_ENTITY_OVERRIDES)
     roles = {
-        role: build_role(hass, role, oid, index.get(P.canonical_id(oid), []), catalog, language)
+        role: build_role(
+            hass, role, oid, index.get(P.canonical_id(oid), []), catalog, language,
+            host=host, overrides=overrides if isinstance(overrides, dict) else None,
+        )
         for role, oid in P.role_ids(caps).items()
     }
 

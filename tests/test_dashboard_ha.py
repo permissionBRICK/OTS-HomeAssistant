@@ -524,6 +524,68 @@ async def test_ws_plants_dhw_and_handler(hass, monkeypatch, fake_controller):
         await teardown(hass, plant)
 
 
+@pytest.mark.asyncio
+async def test_number_roles_are_native_with_display_unit(hass, monkeypatch, fake_controller):
+    from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
+
+    hass.config.units = US_CUSTOMARY_SYSTEM
+    # Without a device class Home Assistant converts nothing: native only.
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=dhw_plant)
+    try:
+        (p,) = (await plant_api.async_build_plants(hass, "en"))["plants"]
+        assert not any("display_unit" in v for v in p["roles"].values())
+        flow = p["roles"]["hc1.heat_curve_norm_flow"]
+        assert (flow["unit"], flow["min"], flow["max"], flow["step"]) == ("°C", 20.0, 90.0, 0.1)
+    finally:
+        await teardown(hass, plant)
+
+    # A user's temperature device class makes HA show °F: bounds stay native
+    # (like the feed values), display_unit is what number.set_value expects.
+    overrides = {
+        f"{KEY}:number:{oid}".replace("=", ""): {"device_class": "temperature"}
+        for oid in ("ACO38I58AAE=", OFF1, DHW_OFFSET)
+    }
+    options = {"sidebar_panel": True, "color_scheme": "ha", "entity_overrides": overrides}
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=dhw_plant, options=options)
+    try:
+        (p,) = (await plant_api.async_build_plants(hass, "en"))["plants"]
+        flow = p["roles"]["hc1.heat_curve_norm_flow"]
+        assert (flow["unit"], flow["display_unit"]) == ("°C", "°F")
+        assert (flow["min"], flow["max"], flow["step"]) == (20.0, 90.0, 0.1)
+        # The entity's state (converted by HA) does not leak into the bounds.
+        hass.states.async_set(flow["entity_id"], "96.8", {"unit_of_measurement": "°F", "min": 68, "max": 194})
+        (p,) = (await plant_api.async_build_plants(hass, "en"))["plants"]
+        flow = p["roles"]["hc1.heat_curve_norm_flow"]
+        assert (flow["unit"], flow["display_unit"], flow["min"], flow["max"]) == ("°C", "°F", 20.0, 90.0)
+
+        # Corrections are temperature differences: the supplements never take
+        # the temperature device class, so HA never converts them.
+        for uid, role in ((f"{KEY}:number:ACNZw458AAE", "hc1.room_offset"), (f"{KEY}:number:ACPOwnXZAAE", "dhw.offset")):
+            ent = plant.entities[uid]
+            assert ent.device_class is None and ent.native_unit_of_measurement == "K"
+            r = p["roles"][role]
+            assert r["unit"] == "K" and "display_unit" not in r
+        # The overridden catalog number does get it (existing behaviour).
+        assert plant.entities[f"{KEY}:number:ACO38I58AAE"].device_class == "temperature"
+    finally:
+        await teardown(hass, plant)
+
+
+def test_number_settings_match_the_entity():
+    from custom_components.ochsner_local_ots.number import ClimatixGenericNumber, number_settings
+
+    cfg = {"name": "x", "read_id": "ACO38I58AAE=", "unit": "°C", "min": 20, "max": 90, "step": 0.5, "bundle_max": 80}
+    ov = {f"{KEY}:number:ACO38I58AAE": {"min": 25, "max": 95, "step": 1, "unit": "°F", "device_class": "temperature"}}
+    s = number_settings(cfg, host=KEY, entity_overrides=ov)
+    assert (s["unit"], s["min"], s["max"], s["step"], s["device_class"]) == ("°F", 25.0, 80.0, 1.0, "temperature")
+    ent = ClimatixGenericNumber(Mock(), api=None, host=KEY, base_url="", cfg=cfg, entity_overrides=ov)
+    assert (ent.native_unit_of_measurement, ent.native_min_value, ent.native_max_value, ent.native_step) == (
+        "°F", 25.0, 80.0, 1.0,
+    )
+    unbounded = number_settings({"name": "y", "read_id": "x"}, host=KEY)
+    assert (unbounded["min"], unbounded["max"], unbounded["step"], unbounded["mode"]) == (-1e9, 1e9, None, "box")
+
+
 class FakeConnection:
     def __init__(self, user=None):
         self.user = user
