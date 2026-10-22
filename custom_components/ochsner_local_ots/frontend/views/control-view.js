@@ -366,7 +366,8 @@ export class ControlView {
         const ent = this._target(ctx, key);
         if (!ent) return;
         const r = role(plant, key);
-        const step = r.step > 0 ? r.step : 0.5;
+        // 0.5 K per tap like the Ochsner app; the entity's own step only if coarser
+        const step = Math.max(r.step > 0 ? r.step : 0.5, 0.5);
         const c = this._coal(key, ent, "number");
         const base = c.display();
         if (base === undefined) return;

@@ -53,15 +53,15 @@ test("a + burst on Reduziert writes exactly one number.set_value with the final 
   const c = on(page);
   await c.click(`${tile(3)} .sptoggle`);
   for (let i = 0; i < 4; i++) await c.click(btn(3, "setpoint_reduced_heat", 1));
-  assert.match(await c.text(`${row(3, "setpoint_reduced_heat")} .v.pend`), /10,4°/, "optimistic value, role step 0.1");
+  assert.match(await c.text(`${row(3, "setpoint_reduced_heat")} .v.pend`), /12,0°/, "optimistic value, 0.5 K per tap like the app");
   assert.match(await c.text(tile(3)), /wird gesendet, sobald du aufhörst/);
   assert.deepEqual(await writes(page), [], "nothing before the idle delay");
   await sleep(1900);
   const ent = await eid(page, "hc3.setpoint_reduced_heat");
-  assert.deepEqual(await writes(page), [`number.set_value ${ent} 10.4`]);
+  assert.deepEqual(await writes(page), [`number.set_value ${ent} 12`]);
   // the controller recomputed the target; the tag stays on the reduced setpoint
-  assert.equal(await page.eval("harness.plant.values['hc3.room_target_heat']"), 10.4);
-  assert.match(await c.text(`${tile(3)} .stepper .v`), /10,4°/);
+  assert.equal(await page.eval("harness.plant.values['hc3.room_target_heat']"), 12);
+  assert.match(await c.text(`${tile(3)} .stepper .v`), /12,0°/);
   assert.deepEqual(await activeRows(page, c), ["hc3.setpoint_reduced_heat"]);
   assert.ok(!(await c.exists(`${row(3, "setpoint_reduced_heat")} .v.pend`)));
   // + then − back to the current value: no write at all
@@ -193,8 +193,8 @@ test("Fahrenheit HA: setpoints stay native °C on screen and are converted once 
   assert.match(await c.text(row(1, "setpoint_normal_cool")), /Normal cooling[^]*24\.0°C/);
   await c.click(btn(1, "setpoint_normal_cool", 1));
   await sleep(1900);
-  assert.deepEqual(await writes(page), [`number.set_value ${await eid(page, "hc1.setpoint_normal_cool")} 75.38`]);
-  assert.equal(await page.eval("harness.plant.values['hc1.setpoint_normal_cool']"), 24.1);
+  assert.deepEqual(await writes(page), [`number.set_value ${await eid(page, "hc1.setpoint_normal_cool")} 76.1`]);
+  assert.equal(await page.eval("harness.plant.values['hc1.setpoint_normal_cool']"), 24.5);
   assert.deepEqual(page.errors, []);
 });
 
