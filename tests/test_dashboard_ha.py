@@ -870,3 +870,98 @@ async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fak
         assert plant.runtime["write_counts"][KEY] == 1
     finally:
         await teardown(hass, plant)
+
+
+# --- dependent values after writes ---------------------------------------------
+
+
+SP_NORMAL1, SP_REDUCED1, TARGET1, BADGE1 = "ASMhEo58AAE=", "ASOkTo58AAE=", "CiPcW458AAE=", "CyPmL458AAE="
+DHW_COMFORT_SP, DHW_OFFSET, DHW_TARGET = "ASMv1XXZAAE=", "ACPOwnXZAAE=", "CiMzqnXZAAE="
+
+
+def recomputing_controller(fake_controller):
+    """A fake that recomputes dependents like the controller does: the
+    circuit target from comfort/eco, its setpoints and the correction (and
+    the badge), the DHW target from the comfort setpoint and correction."""
+
+    class Recomputing(fake_controller):
+        def _first(self, oid):
+            v = self.values.get(oid)
+            return v[0] if isinstance(v, list) else v
+
+        async def write(self, oid, value):
+            out = await super().write(oid, value)
+            eco = self._first(CE1) == 1
+            base = self._first(SP_REDUCED1 if eco else SP_NORMAL1)
+            self.set(TARGET1, float(base) + float(self._first(OFF1) or 0))
+            self.set(BADGE1, 6 if eco else 3)
+            if DHW_TARGET in self.values:
+                self.set(DHW_TARGET, float(self._first(DHW_COMFORT_SP)) + float(self._first(DHW_OFFSET) or 0))
+            return out
+
+    return Recomputing
+
+
+@pytest.mark.asyncio
+async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller))
+    fake = plant.fake
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        offset = plant.entities[f"{KEY}:number:ACNZw458AAE"]  # supplement
+        comfort_eco = plant.entities[f"{KEY}:select:AiPKUI58AAE"]  # supplement
+        setpoint = plant.entities[f"{KEY}:number:ASMhEo58AAE"]  # catalog number
+        assert c.target_temperature == 21.5
+
+        # Supplement correction +1 K: the climate target follows at once ...
+        fake.reads.clear()
+        await offset.async_set_native_value(1.0)
+        assert len(fake.reads) == 1  # one read for the write and its dependents
+        assert {OFF1, TARGET1, BADGE1, "ACJz7Y58AAE=", "CyP/dY58AAE="} <= set(fake.reads[0])
+        assert c.target_temperature == 22.5
+        # ... so asking for the shown target does not overshoot to +2 K.
+        fake.writes.clear()
+        await c.async_set_temperature(temperature=22.5)
+        assert fake.writes == []
+        await c.async_set_temperature(temperature=23.0)
+        assert fake.writes == [(OFF1, 1.5)] and c.target_temperature == 23.0
+
+        # Existing catalog number (normal setpoint) -> target re-read too.
+        await setpoint.async_set_native_value(22.0)
+        assert c.target_temperature == 23.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+
+        # Comfort/eco select -> target and badge follow.
+        await comfort_eco.async_select_option("Eco")
+        assert c.target_temperature == 20.5 and c.preset_mode == "eco"
+        assert c.extra_state_attributes["badge"] == "auto_eco_red"
+
+        # Climate preset write: one read covers the write and the dependents.
+        fake.reads.clear()
+        await c.async_set_preset_mode("comfort")
+        assert len(fake.reads) == 1 and c.target_temperature == 23.5
+
+        # A point outside every plant section only re-reads itself.
+        other = next(
+            e for u, e in plant.entities.items()
+            if u.startswith(f"{KEY}:number:") and P.write_section(e._read_id) is None
+        )
+        fake.reads.clear()
+        await other.async_set_native_value(float(other.native_value) + 1)
+        assert fake.reads == [[other._read_id]]
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_dhw_writes_reread_the_dhw_target(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller), mutate=dhw_plant)
+    try:
+        wh = plant.entities[f"{KEY}:water_heater:dhw"]
+        dhw_offset = plant.entities[f"{KEY}:number:ACPOwnXZAAE"]
+        assert wh.extra_state_attributes["effective_target"] == 50.0
+        await dhw_offset.async_set_native_value(3.0)
+        assert wh.extra_state_attributes["effective_target"] == 53.0
+        await wh.async_set_temperature(temperature=52)
+        assert wh.extra_state_attributes["effective_target"] == 55.0
+    finally:
+        await teardown(hass, plant)

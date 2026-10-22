@@ -13,7 +13,6 @@ from . import plant as P
 from .const import DOMAIN
 from .coordinator import ClimatixCoordinator
 from .plant_entity import async_write_planned, main_device_info, plant_runtime
-from .water_heater import dhw_dependents
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
@@ -37,4 +36,4 @@ class OchsnerDhwBoostButton(CoordinatorEntity[ClimatixCoordinator], ButtonEntity
         self._attr_device_info = main_device_info(ctrl)
 
     async def async_press(self) -> None:
-        await async_write_planned(self._ctrl, P.plan_dhw_boost, dhw_dependents())
+        await async_write_planned(self._ctrl, P.plan_dhw_boost)

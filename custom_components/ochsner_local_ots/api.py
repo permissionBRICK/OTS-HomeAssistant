@@ -220,13 +220,16 @@ class ClimatixGenericApi:
 
 
 class ClimatixGenericApiWriteHook:
-    """Wrapper for ClimatixGenericApi that runs a hook after successful writes."""
+    """Wrapper for ClimatixGenericApi that runs a hook after successful writes.
+
+    The hook gets the written id.
+    """
 
     def __init__(
         self,
         inner: ClimatixGenericApi,
         *,
-        on_write: Callable[[], Awaitable[None]],
+        on_write: Callable[[str], Awaitable[None]],
     ) -> None:
         self._inner = inner
         self._on_write = on_write
@@ -253,7 +256,7 @@ class ClimatixGenericApiWriteHook:
 
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
         resp = await self._inner.write(generic_id, value)
-        await self._on_write()
+        await self._on_write(generic_id)
         return resp
 
 

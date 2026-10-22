@@ -899,7 +899,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 on_address_unknown=_on_address_unknown,
             )
 
-        async def _on_write(host_key: str = stable_key) -> None:
+        # The coordinator is created below; the write hook finds it here.
+        write_target: Dict[str, Any] = {}
+
+        async def _on_write(
+            written_id: str, host_key: str = stable_key, target: Dict[str, Any] = write_target
+        ) -> None:
             write_counts[host_key] = int(write_counts.get(host_key, 0)) + 1
             ent = write_count_entities.get(host_key)
             if ent is not None:
@@ -920,6 +925,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception:
                 pass
 
+            # The controller recomputes targets, badges, status, ... of the
+            # written section: re-read the polled ones with the write (one
+            # read per command), whichever entity wrote.
+            coordinator_ = target.get("coordinator")
+            if coordinator_ is not None:
+                try:
+                    polled = set(coordinator_.ids)
+                    await coordinator_.async_refresh_after_write(
+                        [oid for oid in plant_lib.write_dependents(written_id) if oid in polled]
+                    )
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Re-reading after a write failed: %s", type(err).__name__)
+
         api: Any = ClimatixGenericApiWriteHook(inner_api, on_write=_on_write)
 
         # Plant capabilities (which circuits/DHW/... exist) come from a few
@@ -936,6 +954,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             poll_threshold=poll_threshold,
             update_interval=timedelta(seconds=scan_interval_sec),
         )
+        write_target["coordinator"] = coordinator
         try:
             await coordinator.async_config_entry_first_refresh()
         except BaseException:

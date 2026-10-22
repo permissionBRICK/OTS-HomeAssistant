@@ -356,6 +356,17 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 if session.refresh_ids:
                     await self._async_refresh_after_write(list(session.refresh_ids))
 
+    async def async_refresh_after_write(self, ids: Iterable[str]) -> None:
+        """Re-read ids a write made stale: at the end of the running write
+        session (one read for the whole command), else right away."""
+        ids = [str(i) for i in ids if i]
+        if not ids:
+            return
+        if self._write_session is not None:
+            self._write_session.refresh(ids)
+            return
+        await self._async_refresh_after_write(ids)
+
     async def _async_refresh_after_write(self, ids: List[str]) -> None:
         try:
             await self.async_refresh_ids(ids)

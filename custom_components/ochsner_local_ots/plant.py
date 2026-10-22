@@ -852,6 +852,70 @@ DHW_DEPENDENTS = (
 )
 
 
+# --- dependents of a write -------------------------------------------------
+
+# Read-only results the controller recomputes when a section's settings
+# change (per section, besides the written point itself).
+HP_DEPENDENTS = (
+    "hp.program", "hp.status", "hp.system_status", "hp.aux_program", "hp.aux_status",
+    "hp.silent_program",
+)
+POOL_DEPENDENTS = ("pool.mode", "pool.setpoint", "pool.status")
+
+
+def _tag_of(oid: Any) -> Optional[int]:
+    oa = try_decode_oa(str(oid or ""))
+    return oa.instance_tag if oa is not None else None
+
+
+_DHW_TAG = _tag_of(DHW_ROLES["dhw.program"])
+_HP_TAG = _tag_of(HP_ROLES["hp.program"])
+_POOL_TAG = _tag_of(POOL_ROLES["pool.mode"])
+
+
+def write_section(oid: Any) -> Optional[str]:
+    """The plant section a written point belongs to (``hc1``.., ``dhw``, ``hp``, ``pool``).
+
+    By the point's module instance (any setpoint, curve point, program, ...
+    of a circuit lives on the circuit's tag) or, for points on shared
+    modules, by the role tables.
+    """
+    key = canonical_id(oid)
+    tag = _tag_of(key)
+    if tag in HC_TAGS:
+        return f"hc{HC_TAGS.index(tag) + 1}"
+    if tag is not None and tag == _DHW_TAG:
+        return "dhw"
+    if tag is not None and tag == _POOL_TAG:
+        return "pool"
+    for n in range(1, HC_COUNT + 1):
+        if key in {canonical_id(i) for i in circuit_role_ids(n).values()}:
+            return f"hc{n}"
+    if key in {canonical_id(i) for i in DHW_ROLES.values()}:
+        return "dhw"
+    if key in {canonical_id(i) for i in POOL_ROLES.values()}:
+        return "pool"
+    if (tag is not None and tag == _HP_TAG) or key in {canonical_id(i) for i in HP_ROLES.values()}:
+        return "hp"
+    return None
+
+
+def write_dependents(oid: Any) -> List[str]:
+    """Ids to re-read after a write to ``oid`` (its section's dependent reads)."""
+    section = write_section(oid)
+    if section is None:
+        return []
+    if section.startswith("hc"):
+        n = int(section[2:])
+        ids = circuit_role_ids(n)
+        return [ids[hc_key(n, k)] for k in CIRCUIT_DEPENDENTS if hc_key(n, k) in ids]
+    if section == "dhw":
+        return [DHW_ROLES[r] for r in DHW_DEPENDENTS]
+    if section == "pool":
+        return [POOL_ROLES[r] for r in POOL_DEPENDENTS]
+    return [HP_ROLES[r] for r in HP_DEPENDENTS]
+
+
 # --- supplement entities (B2) ---------------------------------------------------
 
 # Writable points the app uses that the packaged catalog does not expose as a

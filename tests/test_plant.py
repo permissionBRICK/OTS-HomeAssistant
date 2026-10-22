@@ -519,3 +519,21 @@ def test_role_units(plant_mod):
     assert P.role_unit("hc1.heat_curve_norm_flow") == "°C"
     assert P.role_unit("hc1.heat_limit_status") is None
     assert P.role_unit("hp.status") is None
+
+
+def test_write_sections_and_dependents(plant_mod):
+    P = plant_mod
+    assert P.write_section("AiPKUI58AAE=") == "hc1"
+    assert P.write_section("ASMhEo58AAE") == "hc1"  # unpadded spelling
+    assert P.write_section(P.retag("ACO38I58AAE=", P.HC_TAGS[2])) == "hc3"  # curve point HC3
+    assert P.write_section("ASMv1XXZAAE=") == "dhw"
+    assert P.write_section("AiMu5MdZAAE=") == "hp"
+    assert P.write_section("AiIQvULcIgE=") == "pool"
+    assert P.write_section("AyKWuiiJAAE=") == "hp"  # shared IO module, via the role table
+    assert P.write_section("not-an-id") is None
+    deps = P.write_dependents(P.retag("ASMhEo58AAE=", P.HC_TAGS[1]))
+    ids2 = P.circuit_role_ids(2)
+    assert deps == [ids2[P.hc_key(2, k)] for k in P.CIRCUIT_DEPENDENTS]
+    assert ids2["hc2.room_target_current"] in deps and ids2["hc2.badge"] in deps
+    assert P.write_dependents("ACPOwnXZAAE=") == [P.DHW_ROLES[r] for r in P.DHW_DEPENDENTS]
+    assert "CiMzqnXZAAE=" in P.write_dependents("ASPuhXXZAAE=")

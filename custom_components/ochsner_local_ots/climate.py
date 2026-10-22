@@ -94,12 +94,9 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         labels = (self._plant.get("labels") or {}).get(f"hc{self._n}.{key}") or {}
         return labels.get(str(v), str(v))
 
-    def _dependents(self) -> List[str]:
-        return [self._ids[k] for k in P.CIRCUIT_DEPENDENTS if k in self._ids]
-
     async def _write(self, plan) -> None:
         """Run ``plan(values)`` on the values current under the write lock."""
-        await async_write_planned(self._ctrl, plan, self._dependents())
+        await async_write_planned(self._ctrl, plan)
 
     # -- state -------------------------------------------------------------
 
@@ -187,6 +184,5 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         await async_write_planned(
             self._ctrl,
             lambda values: P.plan_temperature(requested, values, self._ids),
-            self._dependents(),
             missing=lambda values: P.temperature_inputs_missing(values, self._ids),
         )
