@@ -51,6 +51,22 @@ function pipe(d, col, active, w = 5, extra = "") {
   );
 }
 
+/**
+ * Vertical trunk from the buffer feed (entryY) to the circuit branches at ys.
+ * Water moves only between the feed and the farthest running circuit on each
+ * side, in the direction it flows; a stub that leads only to stopped circuits
+ * stands still.
+ */
+function trunk(x, entryY, ys, rows, col, w = 5) {
+  const top = Math.min(entryY, ...ys), bot = Math.max(entryY, ...ys);
+  const on = ys.filter((_, i) => rows[i].active);
+  const up = Math.min(entryY, ...on), down = Math.max(entryY, ...on);
+  const seg = (a, b, active) => (a === b ? "" :
+    `<path d="M${x} ${r(a)} V${r(b)}" fill="none" stroke="${active ? col : "var(--ohp-pipe-off)"}" stroke-width="${w}" stroke-linecap="round"${active ? ` class="flow"` : ""}/>`);
+  return `<path d="M${x} ${r(top)} V${r(bot)}" fill="none" stroke="var(--ohp-pipe)" stroke-width="${w + 4}" stroke-linecap="round"/>` +
+    seg(up, top, false) + seg(down, bot, false) + seg(entryY, up, true) + seg(entryY, down, true);
+}
+
 function fan(cx, cy, rad, col, spin) {
   const blade = (a) => `<path d="M${cx} ${cy} q ${r(rad * 0.3)} ${r(-rad * 0.75)} 0 ${r(-rad * 0.85)} q ${r(-rad * 0.35)} ${r(rad * 0.15)} 0 ${r(rad * 0.85)}" fill="${col}" fill-opacity=".8" transform="rotate(${a} ${cx} ${cy})"/>`;
   return (
@@ -166,9 +182,8 @@ function wideLayout(vm, W) {
   const anyActive = rows.some((x) => x.active);
   const ccol = circuitColor(vm);
   if (rows.length) {
-    const tTop = Math.min(fy, ...ys), tBot = Math.max(fy, ...ys);
     if (vm.buffer) s += pipe(`M${bufX + bufW} ${fy} H${trunkX}`, ccol, anyActive);
-    s += pipe(`M${trunkX} ${r(tTop)} V${r(tBot)}`, ccol, anyActive);
+    s += trunk(trunkX, fy, ys, rows, ccol);
     rows.forEach((rw, i) => {
       const y = ys[i];
       const pc = rw.type === "pool" ? C.pool : rw.cooling ? C.cool : C.heat;
@@ -237,7 +252,7 @@ function narrowLayout(vm, W) {
   const ccol = circuitColor(vm);
   if (rows.length) {
     if (vm.buffer) s += pipe(`M${bufX + bufW} ${fy} H${trunkX}`, ccol, anyActive);
-    s += pipe(`M${trunkX} ${fy} V${r(ys[ys.length - 1])}`, ccol, anyActive);
+    s += trunk(trunkX, fy, ys, rows, ccol);
     rows.forEach((rw, i) => {
       const y = ys[i];
       const pc = rw.type === "pool" ? C.pool : rw.cooling ? C.cool : C.heat;

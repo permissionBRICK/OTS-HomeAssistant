@@ -330,6 +330,51 @@ test("schematic: the heat pump loop moves only while the heat pump runs, a circu
   assert.deepEqual(page.errors, []);
 });
 
+test("schematic trunk: water moves from the buffer feed to the farthest running circuit on each side, in its direction", { skip: !CHROME && "no chromium" }, async () => {
+  // Coloured vertical trunk segments and the circuit branch heights, read from the paths
+  const trunkOf = (page) => page.eval(`(() => { const ps = [...${sr}.querySelectorAll("svg.plant path")].filter((p) => p.getAttribute("stroke") !== "var(--ohp-pipe)");
+    const q = (p) => p.getAttribute("d").split(" ");
+    // branches are "M<trunk x> <y> H<row x>", trunk segments "M<trunk x> <from> V<to>"; the last branch belongs to the bottom row
+    const br = ps.map(q).filter((d) => d.length === 3 && d[0][0] === "M" && d[2][0] === "H");
+    const x = br[br.length - 1][0];
+    const rowsY = br.filter((d) => d[0] === x).map((d) => +d[1]);
+    const segs = ps.filter((p) => { const d = q(p); return d.length === 3 && d[0] === x && d[2][0] === "V"; })
+      .map((p) => { const d = q(p); return { from: +d[1], to: +d[2].slice(1), on: p.classList.contains("flow") }; });
+    return { rowsY, segs }; })()`);
+  const reach = (t) => {
+    const on = t.segs.filter((g) => g.on);
+    return { top: Math.min(...on.map((g) => Math.min(g.from, g.to))), bot: Math.max(...on.map((g) => Math.max(g.from, g.to))), n: on.length };
+  };
+  for (const width of [1280, 360]) {
+    const page = await open("variant=house&view=plant&latency=30", { width, height: 1000, mobile: width < 500 });
+    const set = (vals) => page.eval(`(() => { Object.assign(harness.plant.values, ${JSON.stringify(vals)}); harness.plant.push(); return true; })()`);
+    // Wintergarten (bottom) stopped: the trunk moves only down to Radiatoren
+    await set({ "hp.status": 12, "hc1.pump": 1, "hc2.pump": 1, "hc3.pump": 0 });
+    await sleep(60);
+    let t = await trunkOf(page);
+    assert.equal(t.rowsY.length, 3, `${width}: three branches`);
+    assert.equal(reach(t).bot, t.rowsY[1], `${width}: moving part ends at Radiatoren`);
+    assert.ok(t.segs.some((g) => !g.on && Math.max(g.from, g.to) === t.rowsY[2]), `${width}: the stub to Wintergarten stands still`);
+    // every moving segment starts at the feed and runs away from it (up above it, down below it)
+    const feed = t.segs.filter((g) => g.on).map((g) => g.from);
+    assert.ok(feed.every((y) => y === feed[0]), `${width}: moving segments start at the feed`);
+    if (width >= 500) {
+      const upSeg = t.segs.find((g) => g.on && g.to < g.from);
+      assert.ok(upSeg && upSeg.to === t.rowsY[0], "wide: the part above the feed runs up to Fußboden");
+    }
+    // Radiatoren (middle) stopped, Wintergarten running: water still passes Radiatoren
+    await set({ "hc2.pump": 0, "hc3.pump": 1 });
+    await sleep(60);
+    t = await trunkOf(page);
+    assert.equal(reach(t).bot, t.rowsY[2], `${width}: moving part reaches Wintergarten`);
+    // nothing running: the trunk stands still
+    await set({ "hc1.pump": 0, "hc2.pump": 0, "hc3.pump": 0 });
+    await sleep(60);
+    assert.equal(reach(await trunkOf(page)).n, 0, `${width}: no motion without a running pump`);
+    assert.deepEqual(page.errors, []);
+  }
+});
+
 test("tapping the schematic opens more-info for the related entity", { skip: !CHROME && "no chromium" }, async () => {
   const page = await open("variant=house&view=plant");
   await click(page, 'svg.plant [data-more="climate.radiatoren"] rect');
