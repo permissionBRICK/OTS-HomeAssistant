@@ -1,9 +1,4 @@
 {
-"_source": {
-"branch": "feat/heatpump-dashboard-backend",
-"commit": "b96158eeaded1e44a1a51c4937f055b3af356002",
-"generator": "backend-snapshot/test_dump_payload.py"
-},
 "dhw_cool_pool": {
 "event": {
 "available": true,
@@ -21,7 +16,7 @@
 "power": true,
 "silent": true
 },
-"plant_id": "01M5HQPHEZCVWAA4GZ953DTAWZ:192.0.2.10",
+"plant_id": "entry-1:192.0.2.10",
 "updated": "2026-10-22T10:00:00+00:00",
 "values": {
 "avail.aux": 3901,
@@ -592,7 +587,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc1",
 "cool": false,
-"device_id": "0cb936d3c85e1612e412942ed7436a64",
+"device_id": "device-2",
 "heat": true,
 "humidity": false,
 "index": 1,
@@ -602,7 +597,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc2",
 "cool": true,
-"device_id": "5551745bdbc55af425ee594d0246e8fc",
+"device_id": "device-3",
 "heat": true,
 "humidity": false,
 "index": 2,
@@ -612,7 +607,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc3",
 "cool": false,
-"device_id": "572f47dff67fd25c1e02f600e190ff28",
+"device_id": "device-4",
 "heat": true,
 "humidity": false,
 "index": 3,
@@ -620,16 +615,16 @@
 "room_sensor": false
 }
 ],
-"device_id": "e7d3de87b2364cb86eba795ec611307e",
+"device_id": "device-1",
 "dhw": {
 "boost_button": "button.192_0_2_10_button_dhw_boost",
 "water_heater": "water_heater.192_0_2_10_water_heater_dhw"
 },
-"entry_id": "01M5HQPHEZCVWAA4GZ953DTAWZ",
+"entry_id": "entry-1",
 "flash_writes": "sensor.192_0_2_10_flash_writes",
 "host": "192.0.2.10",
 "model": "AIRHAWK518C11A",
-"plant_id": "01M5HQPHEZCVWAA4GZ953DTAWZ:192.0.2.10",
+"plant_id": "entry-1:192.0.2.10",
 "roles": {
 "avail.aux": {
 "enabled": false,
@@ -2085,7 +2080,7 @@
 "power": true,
 "silent": true
 },
-"plant_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV:192.0.2.10",
+"plant_id": "entry-1:192.0.2.10",
 "updated": "2026-10-22T10:00:00+00:00",
 "values": {
 "avail.aux": 3901,
@@ -2615,7 +2610,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc1",
 "cool": false,
-"device_id": "e56d88d704ef0a3b0377023f8fe00ea7",
+"device_id": "device-2",
 "heat": true,
 "humidity": false,
 "index": 1,
@@ -2625,7 +2620,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc2",
 "cool": false,
-"device_id": "49273a3331388fe6f7e5a425c2a2acb8",
+"device_id": "device-3",
 "heat": true,
 "humidity": false,
 "index": 2,
@@ -2635,7 +2630,7 @@
 {
 "climate": "climate.192_0_2_10_climate_hc3",
 "cool": false,
-"device_id": "23dc6bbdfb61ee2538c7a17102c84c39",
+"device_id": "device-4",
 "heat": true,
 "humidity": false,
 "index": 3,
@@ -2643,13 +2638,13 @@
 "room_sensor": false
 }
 ],
-"device_id": "f32c0496cd404c832335b2542cd7e7c3",
+"device_id": "device-1",
 "dhw": null,
-"entry_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV",
+"entry_id": "entry-1",
 "flash_writes": "sensor.192_0_2_10_flash_writes",
 "host": "192.0.2.10",
 "model": "AIRHAWK518C11A",
-"plant_id": "01M5HQPHAPNQJKZ77QRQE7Z2TV:192.0.2.10",
+"plant_id": "entry-1:192.0.2.10",
 "roles": {
 "avail.aux": {
 "enabled": false,

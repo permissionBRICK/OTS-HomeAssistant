@@ -4,8 +4,9 @@
 // ("house" = the snapshot as is, "dhw_cool_pool" = DHW + cooling HC2 + pool).
 // The harness fake must emit exactly those payloads, and every role the
 // frontend reads must exist there (or be an agreed, optional role).
-// `_source` records the backend commit the fixture was generated from
-// (/root/work/design/backend-snapshot/gen.sh <backend worktree> <out>).
+// The fixture is the backend's real payload. tests/test_frontend_contract.py
+// fails when the backend's output no longer matches it; regenerate with
+// OTS_UPDATE_FRONTEND_FIXTURE=1 pytest tests/test_frontend_contract.py
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -21,10 +22,8 @@ const OPTIONAL_ROLES = ["dhw.hysteresis"];
 const withoutIds = (roles) => Object.fromEntries(Object.entries(roles).map(([k, r]) => [k, { ...r, entity_id: !!r.entity_id }]));
 const circuitShape = (cs) => cs.map(({ climate, device_id, ...c }) => ({ ...c, climate: !!climate }));
 
-test("the fixture records the backend commit it was generated from", () => {
+test("the fixture holds both backend-generated plant variants", () => {
   const { backend } = fixtures();
-  assert.equal(backend._source.branch, "feat/heatpump-dashboard-backend");
-  assert.match(backend._source.commit, /^[0-9a-f]{40}$/);
   assert.deepEqual(Object.keys(backend).filter((k) => !k.startsWith("_")).sort(), ["dhw_cool_pool", "house"]);
 });
 

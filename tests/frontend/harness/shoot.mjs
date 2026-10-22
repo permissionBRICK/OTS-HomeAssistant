@@ -2,8 +2,10 @@
 // Usage: node tests/frontend/harness/shoot.mjs [outdir] [filter]
 import { startServer } from "./serve.mjs";
 import { launch } from "./cdp.mjs";
+import os from "node:os";
+import path from "node:path";
 
-const out = process.argv[2] || "/root/work/shots/frontend";
+const out = process.argv[2] || path.join(os.tmpdir(), "ochsner-dashboard-shots");
 const filter = process.argv[3] || "";
 
 export const SHOTS = [

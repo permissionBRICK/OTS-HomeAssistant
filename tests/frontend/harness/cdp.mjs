@@ -6,18 +6,17 @@ import path from "node:path";
 
 const CANDIDATES = [
   process.env.CHROME,
-  "/root/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
-  "/root/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
   "/usr/bin/chromium",
   "/usr/bin/google-chrome",
 ];
 
 export function findChrome() {
   for (const c of CANDIDATES) if (c && fs.existsSync(c)) return c;
-  if (fs.existsSync("/root/.cache/ms-playwright")) {
-    for (const d of fs.readdirSync("/root/.cache/ms-playwright")) {
+  const pw = process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(os.homedir(), ".cache", "ms-playwright");
+  if (fs.existsSync(pw)) {
+    for (const d of fs.readdirSync(pw).sort().reverse()) {
       for (const sub of ["chrome-linux64/chrome", "chrome-headless-shell-linux64/chrome-headless-shell"]) {
-        const p = path.join("/root/.cache/ms-playwright", d, sub);
+        const p = path.join(pw, d, sub);
         if (fs.existsSync(p)) return p;
       }
     }
