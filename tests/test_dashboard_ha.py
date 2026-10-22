@@ -829,6 +829,93 @@ async def test_overlapping_dhw_commands(hass, monkeypatch, fake_controller):
         await teardown(hass, plant)
 
 
+# --- polls overlapping commands ------------------------------------------------
+
+
+def held_poll_controller(fake_controller):
+    """A fake whose next read answers with the values of the moment it was
+    sent but returns only once released (a slow poll in flight)."""
+
+    class Held(fake_controller):
+        hold: "asyncio.Event | None" = None
+        held = None
+
+        async def read(self, ids, *, on_http_request=None):
+            out = await super().read(ids, on_http_request=on_http_request)
+            gate, self.hold = self.hold, None
+            if gate is not None:
+                self.held = list(ids)
+                await gate.wait()
+            return out
+
+    return Held
+
+
+async def _start_held_poll(hass, coordinator, fake):
+    fake.hold = asyncio.Event()
+    gate = fake.hold
+    task = hass.async_create_task(coordinator.async_refresh())
+    for _ in range(20):
+        await asyncio.sleep(0)
+        if fake.held is not None:
+            break
+    assert fake.held is not None
+    return gate, task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("polled", [True, False])
+async def test_poll_in_flight_never_undoes_a_command(hass, monkeypatch, fake_controller, polled):
+    plant = await setup_plant(hass, monkeypatch, held_poll_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        assert c.preset_mode == "comfort"
+        # polled: the slow poll read comfort/eco (Comfort) before the command;
+        # not polled: it skipped the id and merges onto its old snapshot.
+        state = coordinator._poll_state[CE1]
+        state.counter = 0 if polled else 10
+        gate, task = await _start_held_poll(hass, coordinator, fake)
+        assert (CE1 in fake.held) is polled
+
+        fake.writes.clear()
+        await c.async_set_preset_mode("eco")
+        assert fake.writes == [(CE1, 1)] and c.preset_mode == "eco"
+
+        gate.set()
+        await task
+        assert coordinator.last_update_success
+        assert c.preset_mode == "eco"  # the older poll does not restore Comfort
+        await c.async_set_preset_mode("eco")
+        assert fake.writes == [(CE1, 1)]  # ... so Eco is not written again
+        # The poll's other values are published.
+        assert coordinator.data["values"][OP1] == fake.values[OP1]
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_reads_publish_newest_first_value(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, held_poll_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        coordinator._poll_state[OFF1].counter = 0
+        gate, task = await _start_held_poll(hass, coordinator, fake)
+        # A targeted read started after the poll wins over it ...
+        fake.set(OFF1, 1.5)
+        await coordinator.async_refresh_ids([OFF1])
+        gate.set()
+        await task
+        assert coordinator.data["values"][OFF1] == [1.5, 1.5]
+        # ... and a poll started after a read publishes normally.
+        fake.set(OFF1, 2.0)
+        coordinator._poll_state[OFF1].counter = 0
+        await coordinator.async_refresh()
+        assert coordinator.data["values"][OFF1] == [2.0, 2.0]
+    finally:
+        await teardown(hass, plant)
+
+
 # --- unknown room setpoint correction -----------------------------------------
 
 

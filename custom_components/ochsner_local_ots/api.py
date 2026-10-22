@@ -220,9 +220,11 @@ class ClimatixGenericApi:
 
 
 class ClimatixGenericApiWriteHook:
-    """Wrapper for ClimatixGenericApi that runs a hook after successful writes.
+    """Wrapper for ClimatixGenericApi that runs hooks around writes.
 
-    The hook gets the written id.
+    ``before_write(id)`` runs before every write attempt, ``after_write(id,
+    ok)`` after it (also when it failed: the controller may have applied a
+    write whose response was lost), ``on_write(id)`` after a successful one.
     """
 
     def __init__(
@@ -230,9 +232,13 @@ class ClimatixGenericApiWriteHook:
         inner: ClimatixGenericApi,
         *,
         on_write: Callable[[str], Awaitable[None]],
+        before_write: Callable[[str], None] | None = None,
+        after_write: Callable[[str, bool], Awaitable[None]] | None = None,
     ) -> None:
         self._inner = inner
         self._on_write = on_write
+        self._before_write = before_write
+        self._after_write = after_write
 
     @property
     def base_url(self) -> str:
@@ -255,7 +261,16 @@ class ClimatixGenericApiWriteHook:
         return await self._inner.read_raw(ids, on_http_request=on_http_request)
 
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
-        resp = await self._inner.write(generic_id, value)
+        if self._before_write is not None:
+            self._before_write(generic_id)
+        try:
+            resp = await self._inner.write(generic_id, value)
+        except Exception:
+            if self._after_write is not None:
+                await self._after_write(generic_id, False)
+            raise
+        if self._after_write is not None:
+            await self._after_write(generic_id, True)
         await self._on_write(generic_id)
         return resp
 

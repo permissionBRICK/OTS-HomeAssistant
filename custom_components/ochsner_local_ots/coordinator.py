@@ -78,6 +78,13 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # One write at a time per controller (see async_write_session).
         self.write_lock = asyncio.Lock()
         self._write_session: WriteSession | None = None
+        # Freshness per id: every read takes a ticket when it starts, every
+        # write attempt bumps the ids it makes stale. A read publishes an id
+        # only if nothing newer (a write, or a read that started later) has
+        # touched it since its ticket, so a poll that was in flight during a
+        # command never restores a pre-command value.
+        self._seq: int = 0
+        self._id_seq: Dict[str, int] = {}
 
         try:
             pt = int(poll_threshold)
@@ -164,6 +171,41 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
     def read_values_per_min_5m(self) -> float:
         return float(self._rate_per_min_over_last(300.0)[1])
 
+    def _ticket(self) -> int:
+        self._seq += 1
+        return self._seq
+
+    def note_write(self, ids: Iterable[str]) -> None:
+        """Mark ids a write (attempt) may change, plus the running write
+        session's re-read ids: reads that started earlier must not publish
+        them. Called before and after each write attempt."""
+        seq = self._ticket()
+        session_ids = self._write_session.refresh_ids if self._write_session else {}
+        for oid in [*ids, *session_ids]:
+            if oid:
+                self._id_seq[str(oid)] = seq
+
+    def _publishable(self, oid: str, ticket: int) -> bool:
+        return self._id_seq.get(oid, 0) < ticket
+
+    def _merge_read(self, new_values: Dict[str, Any], ticket: int) -> tuple[Dict[str, Any], Dict[str, Any], set]:
+        """Merge a read onto the CURRENT data (not a snapshot from before the
+        read). Returns (current values, merged values, ids published)."""
+        current = self.data if isinstance(self.data, dict) else {}
+        current_values = current.get("values") if isinstance(current, dict) else None
+        if not isinstance(current_values, dict):
+            current_values = {}
+        merged: Dict[str, Any] = dict(current_values)
+        published = set()
+        for k, v in new_values.items():
+            k = str(k)
+            if not self._publishable(k, ticket):
+                continue
+            merged[k] = v
+            self._id_seq[k] = ticket
+            published.add(k)
+        return current_values, merged, published
+
     def _get_mode(self, oid: str) -> str:
         mode = str(
             self._id_modes.get(str(oid), POLLING_MODE_AUTOMATIC)
@@ -206,9 +248,6 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 return payload
 
             current = self.data if isinstance(self.data, dict) else {}
-            current_values = current.get("values") if isinstance(current, dict) else None
-            if not isinstance(current_values, dict):
-                current_values = {}
 
             ids_to_poll: List[str] = []
             skipped: List[str] = []
@@ -226,6 +265,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                     state.counter = int(state.counter) + 1
                 return current
 
+            ticket = self._ticket()
             self._note_read_values(len(ids_to_poll))
             payload = await self.api.read(
                 ids_to_poll, on_http_request=self._note_http_request
@@ -234,12 +274,13 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             if not isinstance(new_values, dict):
                 new_values = {}
 
-            # Merge polled subset into existing values.
-            merged_values: Dict[str, Any] = dict(current_values)
-            for k, v in new_values.items():
-                merged_values[str(k)] = v
+            # Merge the polled subset into the data as it is NOW: commands may
+            # have written / re-read values while this read was in flight;
+            # their values win (no await between here and publication).
+            current_values, merged_values, published = self._merge_read(new_values, ticket)
+            stale = {oid for oid in ids_to_poll if oid in new_values and oid not in published}
 
-            out = dict(current)
+            out = dict(self.data) if isinstance(self.data, dict) else {}
             out["values"] = merged_values
 
             # Update counters: increment on skipped cycles; on polled cycles compare old/new.
@@ -248,6 +289,9 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 state.counter = int(state.counter) + 1
 
             for oid_s in ids_to_poll:
+                if oid_s in stale:
+                    # A command re-read it meanwhile (and did the bookkeeping).
+                    continue
                 state = self._poll_state.setdefault(oid_s, _PollState())
                 mode = self._get_mode(oid_s)
 
@@ -287,27 +331,23 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         """Re-read a subset of OA IDs and merge into coordinator data.
 
         Used after writes to immediately reflect the updated value without
-        polling every configured ID.
+        polling every configured ID. Ids a write touched after this read
+        started (or a later read already published) keep their newer value.
         """
 
         ids = [str(x) for x in ids if x]
         if not ids:
             return
 
+        ticket = self._ticket()
         self._note_read_values(len(ids))
         payload = await self.api.read(ids, on_http_request=self._note_http_request)
         values = payload.get("values") if isinstance(payload, dict) else None
         if not isinstance(values, dict):
             return
 
+        current_values, merged_values, published = self._merge_read(values, ticket)
         current = self.data if isinstance(self.data, dict) else {}
-        current_values = current.get("values") if isinstance(current, dict) else None
-        merged_values: Dict[str, Any] = (
-            dict(current_values) if isinstance(current_values, dict) else {}
-        )
-        for k, v in values.items():
-            merged_values[str(k)] = v
-
         new_data = dict(current)
         new_data["values"] = merged_values
         self.async_set_updated_data(new_data)
@@ -316,7 +356,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         try:
             for oid in ids:
                 oid_s = str(oid)
-                if not oid_s:
+                if not oid_s or oid_s not in published:
                     continue
                 state = self._poll_state.setdefault(oid_s, _PollState())
                 mode = self._get_mode(oid_s)
