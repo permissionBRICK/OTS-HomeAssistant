@@ -142,7 +142,7 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
    may give up a few px of its centring box but never pushes a button onto a new line. */
 @container hc (min-width: 285px) {
   .hcg { grid-template-areas: "name main" "info main" "row row" "season season"; row-gap: 2px; }
-  .hcg .hcinfo { align-self: start; padding-left: 41px; }
+  .hcg .hcinfo { align-self: start; padding-left: 39px; }
   .hcg > .hcrow2 { grid-area: row; display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
   .hcg .modechips.preset { margin-top: 0; gap: 5px; flex: none; }
   .hcg .modechips.preset .mc { padding-left: 8px; padding-right: 8px; }
