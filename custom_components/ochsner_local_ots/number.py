@@ -293,8 +293,9 @@ class ClimatixGenericNumber(CoordinatorEntity[ClimatixCoordinator], NumberEntity
         desired = clean_number(value, self.native_step)
 
         async with self.coordinator.async_write_session() as session:
-            data = self.coordinator.data or {}
-            current = extract_first_numeric_value(data, self._read_id)
+            # Read right before deciding: the cached value may be minutes old.
+            values = await self.coordinator.async_fresh_values([self._read_id])
+            current = extract_first_numeric_value({"values": values}, self._read_id)
             if current is not None:
                 try:
                     if abs(float(current) - desired) < 1e-6:

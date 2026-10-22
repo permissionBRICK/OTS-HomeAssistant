@@ -427,14 +427,37 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             pass
         return {str(k) for k in values}
 
+    async def async_fresh_values(self, ids: Iterable[str]) -> Dict[str, Any]:
+        """Re-read the ids a write decision depends on (one read) and return
+        the values to plan from.
+
+        Polls skip unchanged values for minutes, so a cached value may predate
+        a change made elsewhere (the app, the controller's display). Call
+        inside the write session, before planning. Ids the read did not
+        answer (or all of them, if it failed) are left out: unknown, never
+        their cached value.
+        """
+        ids = list(dict.fromkeys(str(i) for i in ids if i))
+        answered: set[str] = set()
+        if ids:
+            try:
+                answered = await self.async_refresh_ids(ids)
+            except Exception as err:  # noqa: BLE001
+                self.logger.debug("Reading %s before a write failed: %s", ids, type(err).__name__)
+        data = self.data if isinstance(self.data, dict) else {}
+        values = data.get("values") if isinstance(data.get("values"), dict) else {}
+        unread = set(ids) - answered
+        return {k: v for k, v in values.items() if k not in unread}
+
     @asynccontextmanager
     async def async_write_session(self) -> AsyncIterator[WriteSession]:
         """Serialize read -> decide -> write -> re-read cycles per controller.
 
-        Callers read the current values and decide what to write only inside
-        the session, so an overlapping command sees the result (writes and
-        re-reads) of the one before it. Ids marked with ``session.refresh``
-        are re-read once when the session ends, also after a failed write.
+        Callers read the current values (``async_fresh_values``) and decide
+        what to write only inside the session, so an overlapping command sees
+        the result (writes and re-reads) of the one before it. Ids marked
+        with ``session.refresh`` are re-read once when the session ends, also
+        after a failed write.
         A session interrupted by cancellation re-reads nothing: its ids
         become unknown before the lock is released.
         """
