@@ -1,6 +1,6 @@
 # Ochsner local OTS - Climatix - (HACS)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
 [![GitHub Release](https://img.shields.io/github/release/permissionBRICK/OTS-HomeAssistant.svg)](https://github.com/permissionBRICK/OTS-HomeAssistant/releases)
 [![License](https://img.shields.io/github/license/permissionBRICK/OTS-HomeAssistant.svg)](LICENSE)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-donate-yellow.svg)](https://buymeacoffee.com/permissionbrick)
