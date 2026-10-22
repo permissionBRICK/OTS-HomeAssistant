@@ -105,20 +105,20 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .stepper .v.pend { color: var(--ohp-aux-text); }
 .hc .room { margin-top: 6px; font-size: 13px; color: var(--ohp-ink2); font-variant-numeric: tabular-nums; }
 .hc .room b { font-size: 14px; font-weight: 500; color: var(--ohp-ink); }
+.sp { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex: none; }
+.sp.alt { margin-top: 4px; }
+/* "aktiv" under the value inside the stepper: costs no width */
+.stepper .v.act { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+/* small stepper as wide as the main one, values centred under each other */
 .stepper.sm { gap: 4px; }
-.stepper.sm button { width: 30px; height: 30px; font-size: 16px; }
-.stepper.sm .v { min-width: 50px; font-size: 14.5px; }
-.spfold { margin-top: 8px; border-top: 1px solid var(--ohp-line); }
-.sptoggle { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 32px; padding: 4px 0 0; background: none; border: 0; cursor: pointer; font-size: 12.5px; color: var(--ohp-ink2); text-align: left; }
-.sptoggle svg { flex: none; transition: transform .15s; }
-.spfold.open .sptoggle svg { transform: rotate(90deg); }
-.sptoggle .spsum { margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sprows { padding: 2px 0 0 20px; }
-.sprow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; }
-.splab { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; font-size: 12.5px; line-height: 1.3; }
-.sptag { font-size: 10.5px; font-weight: 500; line-height: 1.5; padding: 0 7px; border-radius: 999px; white-space: nowrap; color: var(--ohp-on-heat); background: var(--ohp-heat); }
+.stepper.sm button { width: 28px; height: 28px; font-size: 15px; }
+.stepper.sm .v { min-width: 74px; font-size: 13.5px; font-weight: 400; }
+.spbadge { font-size: 11px; line-height: 1.6; padding: 0 7px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); white-space: nowrap; }
+.sptag { display: block; margin-top: 1px; font-size: 9.5px; font-weight: 500; line-height: 1.3; letter-spacing: .2px; padding: 0 6px; border-radius: 999px; white-space: nowrap; color: var(--ohp-on-heat); background: var(--ohp-heat); }
 .sptag.cool { color: var(--ohp-on-cool); background: var(--ohp-cool); }
-@media (prefers-reduced-motion: reduce) { .sptoggle svg { transition: none; } }
+.subrow { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; margin-top: 4px; }
+.corr { font-size: 12px; line-height: 1.3; padding: 3px 9px; border-radius: 999px; white-space: nowrap; color: var(--ohp-aux-text); border: 1px solid color-mix(in srgb, var(--ohp-aux) 50%, transparent); background: color-mix(in srgb, var(--ohp-aux) 12%, transparent); }
+button.corr { cursor: pointer; min-height: 28px; }
 .modechips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .mc { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); cursor: pointer; background: transparent; min-height: 30px; }
 .mc.on { border-color: transparent; color: var(--ohp-on-heat); background: var(--ohp-heat); }

@@ -36,14 +36,15 @@ export const SHOTS = [
   ["hover-crosshair-light", "variant=house&theme=light&scheme=ochsner&view=efficiency&lang=en", 760, "hover"],
   ["controls-burst-dark", "variant=house&theme=dark&scheme=ha&view=controls", 420, "burst"],
   ["controls-confirm-off-light", "variant=house&theme=light&scheme=ochsner&view=controls", 420, "armOff"],
-  ["setpoints-house-dark-ha-wide", "variant=house&theme=dark&scheme=ha", 1280, "fold:3"],
-  ["setpoints-house-narrow-dark-ha", "variant=house&theme=dark&scheme=ha", 360, "fold:3"],
-  ["setpoints-house-en-narrow-light-ochsner", "variant=house&theme=light&scheme=ochsner&lang=en&view=controls", 360, "fold:3"],
-  ["setpoints-full-cooling-dark-ochsner", "variant=full&theme=dark&scheme=ochsner", 760, "fold:2"],
-  ["setpoints-full-cooling-narrow-light-ha", "variant=full&theme=light&scheme=ha&view=controls", 360, "fold:2"],
-  ["setpoints-room-sensors-wide-dark-ha", "variant=full&theme=dark&scheme=ha", 1280],
-  ["setpoints-room-sensors-narrow-light-ha", "variant=full&theme=light&scheme=ha", 360],
-  ["setpoints-room-sensors-fahrenheit-narrow-dark-ochsner", "variant=full&theme=dark&scheme=ochsner&fahrenheit=1&lang=en", 360],
+  ["setpoints2-house-dark-ha-wide", "variant=house&theme=dark&scheme=ha", 1280],
+  ["setpoints2-house-narrow-dark-ha", "variant=house&theme=dark&scheme=ha", 360],
+  ["setpoints2-house-en-narrow-light-ochsner", "variant=house&theme=light&scheme=ochsner&lang=en&view=controls", 360],
+  ["setpoints2-correction-narrow-dark-ha", "variant=house&theme=dark&scheme=ha&view=controls&set=hc1.room_offset:1,hc1.room_target_heat:22.5", 360],
+  ["setpoints2-correction-en-light-ha", "variant=house&theme=light&scheme=ha&lang=en&view=controls&set=hc1.room_offset:-1.5,hc1.room_target_heat:20", 420],
+  ["setpoints2-full-cooling-narrow-dark-ha", "variant=full&theme=dark&scheme=ha", 360],
+  ["setpoints2-full-cooling-narrow-light-ochsner", "variant=full&theme=light&scheme=ochsner&view=controls", 360],
+  ["setpoints2-room-sensors-wide-dark-ha", "variant=full&theme=dark&scheme=ha", 1280],
+  ["setpoints2-room-sensors-fahrenheit-narrow-dark-ochsner", "variant=full&theme=dark&scheme=ochsner&fahrenheit=1&lang=en", 360],
 ];
 
 const sr = "harness.el.shadowRoot";
@@ -81,10 +82,6 @@ const ACTIONS = {
     await sleep(60);
   },
   armOff: (page) => click(page, '[data-act="hp"][data-v="3"]'),
-  fold: async (page, n) => {
-    await page.eval(`${sr}.querySelector('.hc[data-key="hc${n}"] .sptoggle').scrollIntoView({ block: "center" })`);
-    await click(page, `.hc[data-key="hc${n}"] .sptoggle`);
-  },
 };
 
 const server = await startServer(0);

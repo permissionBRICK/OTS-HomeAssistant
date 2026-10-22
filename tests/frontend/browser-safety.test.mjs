@@ -13,8 +13,8 @@ after(async () => { if (b) await b.close(); });
 test("removing the card cancels a queued −/+ write", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
-  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /22,0°/);
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
+  assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v'), /22,0°/);
   await page.eval("harness.el.remove()");
   await sleep(2200);
   assert.deepEqual(await writes(page), []);
@@ -43,7 +43,7 @@ test("removing the card during a preset request leaves no timers behind", { skip
   const c = on(page);
   await trackTimers(page);
   await c.click('[data-act="hp"][data-v="3"]'); // arms the off confirmation (timer)
-  await c.click('.hc[data-key="hc2"] [data-d="1"]'); // queued write (timer)
+  await c.click('.hc[data-key="hc2"] .sp.main [data-s="1"]'); // queued write (timer)
   await c.click('[data-act="preset"][data-c="1"][data-v="eco"]'); // request in flight
   assert.ok((await cardTimers(page)).length >= 2, JSON.stringify(await cardTimers(page)));
   await page.eval("harness.el.remove()");
@@ -66,7 +66,7 @@ test("control state is per plant: switching plants cancels A's queued edits and 
   const page = await b.open("variant=multi&view=panel&theme=light&latency=30", { width: 1280, height: 1600 });
   const c = on(page, CARD);
   // A: stepper burst + a pending curve edit
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
   await c.focusKey('[data-h="heat_limit"]', "ArrowRight", "ArrowRight");
   assert.ok(await c.exists(".pendbar"));
   await panelTab(page, "192.0.2.81");
@@ -78,9 +78,9 @@ test("control state is per plant: switching plants cancels A's queued edits and 
   await sleep(1800);
   assert.deepEqual(await writes(page), [], "A's queued write was cancelled, nothing went to B");
   // B's own stepper writes to B's entity only
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
   await page.waitFor("harness.writes().length === 1", 3000);
-  assert.deepEqual(await writes(page), ["climate.set_temperature climate.wp2_erdgeschoss 24.5"]);
+  assert.deepEqual(await writes(page), ["number.set_value number.wp2_erdgeschoss_raumsollwert_normal_kuhlen 24.5"]);
   // back on A: the cancelled edits stay gone
   await panelTab(page, "192.0.2.80");
   assert.ok(!(await c.exists(".pendbar")));
@@ -141,30 +141,30 @@ test("a mode change drops a queued DHW temperature edit (Comfort 52 → + → Ec
 test("a queued circuit edit is dropped when the preset changes externally", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
-  await c.click('.hc[data-key="hc2"] [data-d="1"]');
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
+  await c.click('.hc[data-key="hc2"] .sp.main [data-s="1"]');
   // hc1: the controller switches to eco by itself (time program)
   await page.eval("harness.plant.values['hc1.comfort_eco'] = 1; harness.plant.push()");
   await sleep(2200);
-  assert.deepEqual(await writes(page), ["climate.set_temperature climate.radiatoren 22"], "only hc2's edit is written");
+  assert.deepEqual(await writes(page), ["number.set_value number.radiatoren_raumsollwert_normal_heizen 22"], "only hc2's edit is written");
   assert.match(await c.text('.hc[data-key="hc1"] .note'), /verworfen/);
   // our own preset click also drops the queued edit, silently
-  await c.click('.hc[data-key="hc3"] [data-d="1"]');
+  await c.click('.hc[data-key="hc3"] .sp.main [data-s="1"]');
   await c.click('[data-act="preset"][data-c="3"][data-v="eco"]');
   await sleep(2200);
   assert.deepEqual((await writes(page)).slice(1), ["climate.set_preset_mode climate.wintergarten eco"]);
 });
 
-test("a queued circuit edit is dropped when a refetch maps the circuit to another entity", { skip }, async () => {
+test("a queued circuit edit is dropped when a refetch maps the setpoint to another entity", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
-  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /22,0°/);
-  // same plant, new payload: HC1 is now served by another climate entity
-  await page.eval("harness.plant.climateMap[1] = 'climate.fussboden_neu'; harness.el.store.refetch(true); true");
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
+  assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v'), /22,0°/);
+  // same plant, new payload: HC1's normal setpoint is now served by another number entity
+  await page.eval("harness.plant.roleOverrides['hc1.setpoint_normal_heat'] = { entity_id: 'number.fussboden_neu' }; harness.el.store.refetch(true); true");
   await sleep(2200);
-  assert.deepEqual(await writes(page), [], "nothing goes to the old climate.fussboden");
-  assert.ok(!(await c.exists('.hc[data-key="hc1"] .stepper .v.pend')));
+  assert.deepEqual(await writes(page), [], "nothing goes to the old entity (nor to the new one)");
+  assert.ok(!(await c.exists('.hc[data-key="hc1"] .sp.main .v.pend')));
   assert.match(await c.text('.hc[data-key="hc1"] .note'), /verworfen/);
   assert.deepEqual(page.errors, []);
 });
@@ -172,8 +172,8 @@ test("a queued circuit edit is dropped when a refetch maps the circuit to anothe
 test("a queued circuit edit is dropped when the feed hides the circuit controls (BMS)", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
-  await c.click('.hc[data-key="hc2"] [data-d="1"]');
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
+  await c.click('.hc[data-key="hc2"] .sp.main [data-s="1"]');
   // the feed reports BMS: no circuit controls any more; the climate
   // entities still exist in HA until the entry reloads
   await page.eval(`(() => {
@@ -195,7 +195,7 @@ test("a queued circuit edit is dropped when the feed hides the circuit controls 
 test("a queued edit is re-checked right before sending (binding lost between renders)", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
   // the controller becomes unavailable; no render has run yet when the timer fires
   await page.eval(`(() => {
     harness.el.requestRender = () => {};
@@ -204,7 +204,7 @@ test("a queued edit is re-checked right before sending (binding lost between ren
   })()`);
   await sleep(2200);
   assert.deepEqual(await writes(page), []);
-  assert.equal(await page.eval("harness.el._views.controls.coal.get('hc1').reason"), "invalid");
+  assert.equal(await page.eval("harness.el._views.controls.coal.get('hc1.setpoint_normal_heat').reason"), "invalid");
 });
 
 const curveState = (page, n = 1) => page.eval(`(() => { const s = harness.el._views.efficiency.curve.st.get(${n}); return s ? { pending: { ...s.pending }, error: s.error, applying: !!s.applying } : null; })()`);
@@ -339,26 +339,27 @@ test("Fahrenheit HA: curve maths stay native, number.set_value gets °F", { skip
     "number.set_value number.fussboden_heizgrenze 62.24",
   ]);
   // HA hands the integration native values again; the feed confirms them
+  // (a call is recorded before the fake's latency has passed)
+  await page.waitFor("harness.plant.values['hc1.heat_limit'] !== 16.7", 2000);
   assert.equal(await page.eval("harness.plant.values['hc1.heat_curve_norm_flow']"), 36.1);
   assert.equal(await page.eval("harness.plant.values['hc1.heat_limit']"), 16.8);
   await page.waitFor(`!${c.root}.querySelector(".pendbar")`, 3000);
 });
 
-test("Fahrenheit HA: steppers and the DHW gauge work in HA's unit", { skip }, async () => {
+test("Fahrenheit HA: setpoints stay native, the DHW gauge works in HA's unit", { skip }, async () => {
   const page = await b.open("variant=full&view=controls&latency=30&fahrenheit=1");
   const c = on(page);
-  // climate target 24 °C = 75.2 °F (cooling target of the full variant)
-  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /75,2°F/);
-  await c.click('.hc[data-key="hc1"] [data-d="1"]');
-  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /75,5°F/, "snaps to the 0.5° grid of HA's unit");
-  assert.match(await c.text('.hc[data-key="hc1"]'), /Korrektur \+0,2 K/, "0.3 °F = 0.17 K");
+  // main setpoint: normal cooling 24 °C, shown natively (°C) like the other feed values
+  assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v'), /^24,0°C/);
+  await c.click('.hc[data-key="hc1"] .sp.main [data-s="1"]');
+  assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v'), /^24,5°C/);
   const scale = await page.eval(`[...${c.root}.querySelectorAll(".gscale span")].map((s) => s.textContent)`);
   assert.ok(parseInt(scale[0], 10) <= 125 && parseInt(scale[2], 10) >= 130, JSON.stringify(scale));
   assert.match(scale[1], /Soll 126°F/);
   await c.click('[data-act="dhwstep"][data-d="1"]');
   await page.waitFor("harness.writes().length === 2", 3000);
   assert.deepEqual(await writes(page), [
-    "climate.set_temperature climate.erdgeschoss 75.5",
+    "number.set_value number.erdgeschoss_raumsollwert_normal_kuhlen 76.1",
     "water_heater.set_temperature water_heater.warmwasser 126",
   ]);
 });
@@ -372,8 +373,8 @@ test("Fahrenheit HA: every native temperature says °C, HA-unit values say °F",
   assert.match(svg, /VL 29,6°CRL 25,1°CPuffer26,3°C/);
   assert.match(svg, /Vorlauf 25,9°C · Soll 26,8°C/);
   assert.doesNotMatch(svg.replace(/°[CF]/g, ""), /°/, "no bare degree sign in the schematic");
-  // controls: climate stepper in °F, feed flow values in °C
-  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /°F$/);
+  // controls: setpoints and feed flow values in °C
+  assert.match(await c.text('.hc[data-key="hc1"] .sp.main .v span'), /^21,5°C$/);
   assert.match(await c.text('.hc[data-key="hc1"]'), /Vorlauf 25,9°C \/ 26,8°C/);
   assert.match(await c.text(".card-controls .hero .sub"), /Puffer 26,3°C · VL 29,6°C → RL 25,1°C/);
   // curve: axis ticks, handles (label, slider text), now label, floating label, crosshair

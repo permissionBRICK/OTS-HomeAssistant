@@ -4,32 +4,14 @@
 import { esc } from "../lib/dom.js";
 import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
-import { boltSvg, chevronSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
-import { activeSetpoint, badgeFor, roomReading, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, role, serviceValue, SETPOINTS, setpointRows, targetIsCool, val, writableEntity } from "../lib/model.js";
+import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
+import { activeSetpoint, badgeFor, roomReading, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, role, serviceValue, SETPOINTS, setpointPair, setpointRows, val, writableEntity } from "../lib/model.js";
 import { poolEntity, poolText, programText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
 const ARM_TIME = 2500;
 
 const errText = (err) => (err && (err.message || err.code)) || String(err);
-
-// Open setpoint fold-outs ("<plant_id>:<circuit>") for the browser session,
-// shared by every card and the panel.
-const FOLD_KEY = "ochsner-heatpump.setpoints-open";
-const foldOpen = (() => {
-  try {
-    return new Set(JSON.parse(globalThis.sessionStorage.getItem(FOLD_KEY) || "[]"));
-  } catch (_e) {
-    return new Set();
-  }
-})();
-function setFold(id, open) {
-  if (open) foldOpen.add(id);
-  else foldOpen.delete(id);
-  try {
-    globalThis.sessionStorage.setItem(FOLD_KEY, JSON.stringify([...foldOpen]));
-  } catch (_e) { /* storage blocked: remembered until the page reloads */ }
-}
 
 /** "hc3.setpoint_reduced_heat" → { n: 3, key: "setpoint_reduced_heat" }, else null. */
 const setpointKey = (key) => {
@@ -132,7 +114,7 @@ export class ControlView {
   }
 
   /**
-   * Entity a stepper key ("hc<n>", "hc<n>.setpoint_…" or "dhw") may write to in `ctx` right now:
+   * Entity a stepper key ("hc<n>.setpoint_…" or "dhw") may write to in `ctx` right now:
    * its section is shown, the controller is available and the entity is of
    * the right domain and writable. null = no write allowed.
    */
@@ -154,9 +136,7 @@ export class ControlView {
       const st = wh && ctx.state(wh);
       return st && st.state !== "unavailable" && st.attributes && typeof st.attributes.temperature === "number" ? wh : null;
     }
-    const c = ctx.sec.circuits.find((x) => `hc${x.index}` === key);
-    if (!c || !ofDomain(c.climate, "climate")) return null;
-    return circuitTarget(ctx, c).writable ? c.climate : null;
+    return null;
   }
 
   /** The stepper binding still holds as of now (fresh store/hass, not the last render). */
@@ -182,7 +162,7 @@ export class ControlView {
   }
 
   /**
-   * Coalescer for a stepper (circuit room target or DHW target), bound to the
+   * Coalescer for a stepper (circuit room setpoint or DHW target), bound to the
    * entity the user acted on: a different entity for the same key (payload
    * changed) gets a fresh coalescer and the old queued value is dropped.
    */
@@ -213,7 +193,7 @@ export class ControlView {
     return c;
   }
 
-  /** Coalescer I/O of a climate/water_heater target (set_temperature, HA's unit). */
+  /** Coalescer I/O of the water heater target (set_temperature, HA's unit). */
   _targetIo(entityId, domain) {
     return {
       send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityId, temperature: v }),
@@ -246,7 +226,7 @@ export class ControlView {
         return s ? num(s.live, key) : undefined;
       },
       // A mode change (on/off, preset, season, operating program) drops a
-      // queued setpoint edit, like the circuit's target stepper.
+      // queued setpoint edit: the mode also decides which setpoint is main.
       context: () => {
         const s = snap();
         if (!s) return "";
@@ -323,15 +303,7 @@ export class ControlView {
 
   _act(act, d) {
     const ctx = this.card.ctx;
-    if (!ctx || ctx.plant.plant_id !== this.plantId) return;
-    if (act === "spfold") {
-      // Folding is view state only: allowed while the plant is unreachable.
-      const id = `${this.plantId}:${d.c}`;
-      setFold(id, !foldOpen.has(id));
-      this.card.requestRender();
-      return;
-    }
-    if (ctx.disabled) return;
+    if (!ctx || ctx.disabled || ctx.plant.plant_id !== this.plantId) return;
     const { plant } = ctx;
     const found = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
     // Only ever call a domain's services on an entity of that domain.
@@ -352,13 +324,12 @@ export class ControlView {
         this._service("hp", Number(d.v), "hp", "select", "select_option", { entity_id: ent, option: opt[d.v] });
         return;
       }
-      case "step": {
-        if (!circuit || this._target(ctx, `hc${circuit.index}`) !== circuit.climate) return;
-        const tg = circuitTarget(ctx, circuit);
-        const c = this._coal(`hc${circuit.index}`, circuit.climate, "climate");
-        const base = c.display();
-        const next = Math.min(tg.max, Math.max(tg.min, Math.round(((base ?? tg.value) + Number(d.d) * tg.step) / tg.step) * tg.step));
-        c.push(Number(next.toFixed(2)));
+      case "reset": {
+        // The app's temporary correction (room_offset) back to 0, one write.
+        const n = Number(d.c);
+        const ent = this._offsetEntity(ctx, n);
+        if (!ent || this.busy.has(`o${n}`) || !num(ctx.live, hcKey(n, "room_offset"))) return;
+        this._service(`o${n}`, 0, `hc${n}`, "number", "set_value", { entity_id: ent, value: 0 });
         return;
       }
       case "spstep": {
@@ -505,28 +476,10 @@ export class ControlView {
     const { I, live } = ctx;
     const n = c.index;
     const name = circuitName(c, live);
-    const tg = circuitTarget(ctx, c);
-    const coal = this.coal.get(`hc${n}`);
-    if (coal) coal.sync();
-    const shown = coal && coal.value !== undefined ? coal.value : tg.value;
-    const pend = coal && coal.value !== undefined;
-    const off = num(live, hcKey(n, "room_offset"));
-    // The stepper is in HA's unit (climate attributes), the offset in K.
-    const tu = tg.climate ? haTempUnit(ctx.hass) : "°C";
-    const shownOff = off !== undefined && pend && tg.value !== undefined ? off + convertDelta(shown - tg.value, tu, "K") : off;
     const fa = num(live, hcKey(n, "flow_actual"));
     const ft = num(live, hcKey(n, "flow_target"));
-    const subParts = [];
-    if (shownOff !== undefined) subParts.push(`${I.t("correction")} ${I.signed(shownOff)} K`);
-    if (fa !== undefined || ft !== undefined) subParts.push(`${I.t("flow")} ${I.temp(fa)} / ${I.temp(ft)}`);
-    const canStep = tg.writable && !ctx.disabled && !!c.climate;
-    // The main stepper is the app's temporary correction (room_offset), not a setpoint.
-    const offRole = role(ctx.plant, hcKey(n, "room_offset"));
-    const offMax = offRole && typeof offRole.max === "number" && typeof offRole.min === "number" ? Math.max(Math.abs(offRole.min), Math.abs(offRole.max)) : 3;
-    const hint = I.t("correction_hint", { k: I.auto(offMax) });
-    const roTitle = ` role="group" aria-label="${esc(`${name}: ${hint}`)}" title="${esc(!canStep && !ctx.disabled ? I.t("entity_missing") : hint)}"`;
-    const minus = canStep && shown !== undefined && shown > tg.min + 1e-6 ? "" : " disabled";
-    const plus = canStep && shown !== undefined && shown < tg.max - 1e-6 ? "" : " disabled";
+    const flow = fa !== undefined || ft !== undefined ? `${I.t("flow")} ${I.temp(fa)} / ${I.temp(ft)}` : "";
+    const corr = this._correctionChip(ctx, c, name);
 
     const ps = presetState(ctx, c);
     const pShown = this._busyTarget(`p${n}`, ps) ?? ps;
@@ -548,13 +501,76 @@ export class ControlView {
       chips += `<div class="modechips" role="group">${sc("heat", I.t("heating"), "")}${sc("heat_cool", I.t("auto"), "auto")}${sc("cool", I.t("cooling"), "cool")}</div>`;
     }
     const more = c.climate || displayEntity(ctx.plant, hcKey(n, "status"));
+    const notes = this._noteHtml(`hc${n}`) + SETPOINTS.map((s) => this._noteHtml(hcKey(n, s.key))).join("");
+    const sp = this._setpoints(ctx, c, name);
     return `<div class="hc" data-key="hc${n}"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
-        <div class="stepper"${roTitle}><button data-act="step" data-c="${n}" data-d="-1" aria-label="${esc(I.t("lower") + " " + name)}"${minus}>−</button>
-          <div class="v${pend ? " pend" : ""}" aria-live="polite">${shown !== undefined ? tempIn(I, shown, tu) : "–"}</div>
-          <button data-act="step" data-c="${n}" data-d="1" aria-label="${esc(I.t("raise") + " " + name)}"${plus}>+</button></div></div>
-      ${this._roomLine(ctx, c)}<div class="sub" style="margin-top:4px">${esc(subParts.join(" · "))}</div>
-      ${chips}${this._noteHtml(`hc${n}`)}${this._setpoints(ctx, c, name)}</div>`;
+        ${sp.main}</div>${sp.alt}
+      ${this._roomLine(ctx, c)}${flow || corr ? `<div class="subrow"><span class="sub">${esc(flow)}</span>${corr}</div>` : ""}
+      ${chips}${notes}</div>`;
+  }
+
+  /**
+   * The circuit's setpoints: the main one of the selected mode (normal for
+   * Komfort, reduced for Eco/Reduziert) with the big stepper, the other one
+   * of the pair in a small row under it; the one the controller follows
+   * right now is tagged. Returns { main, alt } HTML.
+   */
+  _setpoints(ctx, c, name) {
+    const { I, live, plant } = ctx;
+    const n = c.index;
+    const pair = setpointPair(plant, live, c);
+    if (!pair) {
+      // No setpoint roles in the payload: the current target, read-only.
+      const tg = circuitTarget(ctx, c);
+      const tu = tg.climate ? haTempUnit(ctx.hass) : "°C";
+      return { main: `<div class="sp main"><div class="stepper" title="${esc(I.t("entity_missing"))}"><button disabled>−</button><div class="v">${tg.value !== undefined ? tempIn(I, tg.value, tu) : "–"}</div><button disabled>+</button></div></div>`, alt: "" };
+    }
+    const active = activeSetpoint(plant, live, c);
+    const row = (s, main) => {
+      const key = hcKey(n, s.key);
+      const r = role(plant, key);
+      const coal = this.coal.get(key);
+      if (coal) coal.sync();
+      const pend = !!coal && coal.value !== undefined;
+      const v = pend ? coal.value : num(live, key);
+      const can = !!this._target(ctx, key) && v !== undefined;
+      const full = I.t("sp_" + s.key);
+      const minus = can && !(typeof r.min === "number" && v <= r.min + 1e-6) ? "" : " disabled";
+      const plus = can && !(typeof r.max === "number" && v >= r.max - 1e-6) ? "" : " disabled";
+      const title = !can && !ctx.disabled ? I.t("entity_missing") : I.t("setpoint_title", { name: full });
+      const act = active === s.key;
+      const tag = act ? `<small class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</small>` : "";
+      const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_day"))}</span>`;
+      const btn = (d, sym, verb, dis) => `<button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="${d}" aria-label="${esc(`${verb} ${name}: ${full}`)}"${dis}>${sym}</button>`;
+      return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
+          <div class="v${pend ? " pend" : ""}${act ? " act" : ""}" aria-live="polite"><span>${v !== undefined ? I.temp(v) : "–"}</span>${tag}</div>
+          ${btn(1, "+", I.t("raise"), plus)}</div></div>`;
+    };
+    return { main: row(pair.main, true), alt: pair.alt ? row(pair.alt, false) : "" };
+  }
+
+  /** The circuit's room_offset entity if it may be written now, else null. */
+  _offsetEntity(ctx, n) {
+    const ent = writableEntity(ctx.plant, hcKey(n, "room_offset"), "number");
+    const st = ent && ctx.state(ent);
+    return st && st.state !== "unavailable" ? ent : null;
+  }
+
+  /**
+   * "Korrektur +1,0 K ✕" while the app's temporary correction (room_offset,
+   * e.g. set in the Ochsner app) is not 0; ✕ resets it. Read-only: no ✕.
+   */
+  _correctionChip(ctx, c, name) {
+    const { I, live } = ctx;
+    const n = c.index;
+    const off = num(live, hcKey(n, "room_offset"));
+    const shown = this._busyTarget(`o${n}`, off) ?? off;
+    if (shown === undefined || Math.abs(shown) < 0.05) return "";
+    const text = I.t("correction_chip", { v: I.signed(shown) });
+    const ent = !ctx.disabled && this._offsetEntity(ctx, n);
+    if (!ent) return `<span class="corr" title="${esc(I.t("correction_title"))}">${esc(text)}</span>`;
+    return `<button class="corr" data-act="reset" data-c="${n}" title="${esc(I.t("correction_reset"))}" aria-label="${esc(`${name}: ${I.t("correction_reset")} (${text})`)}">${esc(text)} <span aria-hidden="true">✕</span></button>`;
   }
 
   /** "Raum 22,4° · 48 % · Taupunkt 15,2°" for circuits with a room sensor, else "". */
@@ -567,48 +583,6 @@ export class ControlView {
     if (rd.hum !== undefined) parts.push(`<span title="${esc(I.t("humidity"))}">${I.int(rd.hum)} %</span>`);
     if (rd.dew !== undefined) parts.push(`${esc(I.t("dew_point"))} ${I.temp(rd.dew)}`);
     return `<div class="room">${parts.join(" · ")}</div>`;
-  }
-
-  /** Fold-out with the circuit's room setpoints (normal/reduced heating, cooling if cool-capable). */
-  _setpoints(ctx, c, name) {
-    const rows = setpointRows(ctx.plant, c);
-    if (!rows.length) return "";
-    const { I, live, plant } = ctx;
-    const n = c.index;
-    const open = foldOpen.has(`${this.plantId}:${n}`);
-    const active = activeSetpoint(plant, live, c);
-    const shownOf = (key) => {
-      const coal = this.coal.get(key);
-      if (coal) coal.sync();
-      const pend = !!coal && coal.value !== undefined;
-      return { pend, v: pend ? coal.value : num(live, key) };
-    };
-    // Closed: the two setpoints the current target follows (heating or cooling).
-    const cool = targetIsCool(live, n) && rows.some((s) => s.cool);
-    const sum = rows.filter((s) => s.cool === cool).map((s) => shownOf(hcKey(n, s.key)).v).filter((v) => v !== undefined).map((v) => I.temp(v)).join(" / ");
-    const id = `${ctx.uid}-sp${n}`;
-    let h = `<div class="spfold${open ? " open" : ""}"><button class="sptoggle" data-act="spfold" data-c="${n}" aria-expanded="${open}" aria-controls="${id}">${chevronSvg}<span>${esc(I.t("setpoints"))}</span>${open ? "" : `<span class="spsum">${esc(sum)}</span>`}</button>`;
-    if (open) {
-      h += `<div class="sprows" id="${id}">`;
-      for (const s of rows) {
-        const key = hcKey(n, s.key);
-        const r = role(plant, key);
-        const { pend, v } = shownOf(key);
-        const can = !!this._target(ctx, key) && v !== undefined;
-        const lbl = I.t("sp_" + s.key);
-        const ro = !can && !ctx.disabled ? ` title="${esc(I.t("entity_missing"))}"` : "";
-        const minus = can && !(typeof r.min === "number" && v <= r.min + 1e-6) ? "" : " disabled";
-        const plus = can && !(typeof r.max === "number" && v >= r.max - 1e-6) ? "" : " disabled";
-        const tag = active === s.key ? `<span class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</span>` : "";
-        const aria = (verb) => ` aria-label="${esc(`${verb} ${name} ${lbl}`)}"`;
-        h += `<div class="sprow" data-key="${key}"><div class="splab"><span>${esc(lbl)}</span>${tag}</div>
-          <div class="stepper sm"${ro}><button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="-1"${aria(I.t("lower"))}${minus}>−</button>
-          <div class="v${pend ? " pend" : ""}" aria-live="polite">${v !== undefined ? I.temp(v) : "–"}</div>
-          <button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="1"${aria(I.t("raise"))}${plus}>+</button></div></div>${this._noteHtml(key)}`;
-      }
-      h += `</div>`;
-    }
-    return h + `</div>`;
   }
 
   _pool(ctx) {

@@ -73,6 +73,11 @@ for (const kv of (q.get("emergency") || "").split(",").filter(Boolean)) {
   const [k, v] = kv.split(":");
   plants[0].values[k] = Number(v);
 }
+// e.g. ?set=hc1.room_offset:1,hc1.room_target_heat:22.5 → arbitrary feed values
+for (const kv of (q.get("set") || "").split(",").filter(Boolean)) {
+  const [k, v] = kv.split(":");
+  plants[0].values[k] = Number(v);
+}
 // e.g. ?disable=hc1.heat_limit,hc1.heat_curve_max_flow → registry-disabled role entities
 for (const key of (q.get("disable") || "").split(",").filter(Boolean)) {
   const e = plants[0].entities()[key];

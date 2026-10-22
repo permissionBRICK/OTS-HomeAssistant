@@ -222,6 +222,38 @@ export function targetIsCool(live, n) {
   return sel === 1 || sel === 3;
 }
 
+/**
+ * Does the selected mode run on the reduced setpoint? Eco (comfort_eco 1 under
+ * the app's control, or the legacy Eco program 6) and the legacy "Reduziert"
+ * program (2). Komfort and "Normal" (3) follow the time program, whose day
+ * value is the normal setpoint; every other state (off, manual, party,
+ * holiday) counts as normal too.
+ */
+export function mainIsReduced(live, n) {
+  const prog = num(live, hcKey(n, "op_program"));
+  if (prog === 2 || prog === 6) return true;
+  if (prog !== undefined && prog !== 0) return false;
+  return num(live, hcKey(n, "comfort_eco")) === 1;
+}
+
+/**
+ * The circuit's setpoint pair for the controls card: heating or cooling per
+ * target_selector (cooling only on cool-capable circuits), `main` chosen by
+ * the selected mode (never by day/night), `alt` the other one of the pair.
+ * { cool, main, alt } with SETPOINTS entries (alt may be null), or null when
+ * the payload has no setpoint role for the circuit.
+ */
+export function setpointPair(plant, live, circuit) {
+  const rows = setpointRows(plant, circuit);
+  const hasCool = rows.some((s) => s.cool), hasHeat = rows.some((s) => !s.cool);
+  if (!hasCool && !hasHeat) return null;
+  const cool = hasCool && (!hasHeat || targetIsCool(live, circuit.index));
+  const pair = rows.filter((s) => s.cool === cool);
+  const reduced = mainIsReduced(live, circuit.index);
+  const main = pair.find((s) => s.reduced === reduced) || pair[0];
+  return { cool, main, alt: pair.find((s) => s !== main) || null };
+}
+
 export const ACTIVE_TOLERANCE = 0.05;
 
 /**

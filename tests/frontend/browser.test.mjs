@@ -195,24 +195,23 @@ test("apply error is shown and the remaining pending values are kept", { skip: !
   assert.equal((await writes(page)).length, 2, "failed attempt + successful retry");
 });
 
-test("−/+ burst: value updates at once, one coalesced climate write after 1.5 s", { skip: !CHROME && "no chromium" }, async () => {
+test("−/+ burst: value updates at once, one coalesced setpoint write after 1.5 s", { skip: !CHROME && "no chromium" }, async () => {
   const page = await open("variant=house&view=controls&latency=50");
-  const plus = '.hc[data-key="hc1"] [data-d="1"]';
+  const plus = '.hc[data-key="hc1"] .sp.main [data-s="1"]';
   for (let i = 0; i < 3; i++) await click(page, plus);
-  assert.match(await text(page, '.hc[data-key="hc1"] .stepper .v'), /23,0°/);
-  assert.match(await text(page, '.hc[data-key="hc1"]'), /Korrektur \+1,5 K/);
+  assert.match(await text(page, '.hc[data-key="hc1"] .sp.main .v'), /23,0°/);
   assert.match(await text(page, '.hc[data-key="hc1"] .note'), /wird gesendet, sobald du aufhörst/);
   await sleep(900);
   assert.deepEqual(await writes(page), []);
   await page.waitFor("harness.writes().length === 1", 2000);
-  assert.deepEqual(await writes(page), ["climate.set_temperature climate.fussboden 23"]);
+  assert.deepEqual(await writes(page), ["number.set_value number.fussboden_raumsollwert_normal_heizen 23"]);
   await page.waitFor(`/gespeichert/.test((${sr}.querySelector('.hc[data-key="hc1"] .note') || {}).textContent)`, 2000);
   // + then − back to the current value → no write at all
   await click(page, plus);
-  await click(page, '.hc[data-key="hc1"] [data-d="-1"]');
+  await click(page, '.hc[data-key="hc1"] .sp.main [data-s="-1"]');
   await sleep(1900);
   assert.equal((await writes(page)).length, 1);
-  assert.match(await text(page, '.hc[data-key="hc1"] .stepper .v'), /23,0°/);
+  assert.match(await text(page, '.hc[data-key="hc1"] .sp.main .v'), /23,0°/);
 });
 
 test("heat pump off needs a confirmation tap; presets map to climate services", { skip: !CHROME && "no chromium" }, async () => {
@@ -342,12 +341,12 @@ test("changing the configured view keeps the theme variables", { skip: !CHROME &
 test("controller recovery re-enables the controls from the live feed alone", { skip: !CHROME && "no chromium" }, async () => {
   const page = await open("variant=house&view=controls&unavailable=1&latency=30");
   assert.ok(await page.eval(`!!${sr}.querySelector(".banner")`), "unavailable banner");
-  assert.ok(await page.eval(`${sr}.querySelector('.hc[data-key="hc1"] [data-d="1"]').disabled`));
+  assert.ok(await page.eval(`${sr}.querySelector('.hc[data-key="hc1"] .sp.main [data-s="1"]').disabled`));
   const fetches = await page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length");
   await page.eval("harness.plant.available = true; harness.plant.push()");
   await sleep(120);
   assert.ok(await page.eval(`!${sr}.querySelector(".banner")`), "banner gone");
-  assert.ok(await page.eval(`!${sr}.querySelector('.hc[data-key="hc1"] [data-d="1"]').disabled`), "controls enabled");
+  assert.ok(await page.eval(`!${sr}.querySelector('.hc[data-key="hc1"] .sp.main [data-s="1"]').disabled`), "controls enabled");
   assert.equal(await page.eval("harness.fake.conn.sent.filter((m) => m.type === 'ochsner_local_ots/plants').length"), fetches, "without a refetch");
   // and the other way round: the feed reports the outage
   await page.eval("harness.plant.available = false; harness.plant.push()");
