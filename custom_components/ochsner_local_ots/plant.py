@@ -194,6 +194,9 @@ POOL_ROLES: Dict[str, str] = {
     "pool.mode": "AiIQvULcIgE=",
     "pool.setpoint": "ASPmx0LcAAE=",
     "pool.status": "CyMogkLcAAE=",
+    # PoolDetailDto.temperature: the same sensor input the app shows as the
+    # buffer temperature (hp.buffer_top) on the buffer screens.
+    "pool.temp": "AyJn4iiJAAE=",
 }
 
 # Default display units for roles whose entity carries none.
@@ -205,7 +208,7 @@ ROLE_UNITS: Dict[str, str] = {
     "dhw.temp": "°C", "dhw.target": "°C", "dhw.offset": "K",
     "dhw.setpoint_comfort": "°C", "dhw.setpoint_eco": "°C",
     "dhw.setpoint_reduced": "°C", "dhw.setpoint_boost": "°C",
-    "pool.setpoint": "°C",
+    "pool.setpoint": "°C", "pool.temp": "°C",
 }
 _HC_UNITS: Dict[str, str] = {
     "room_offset": "K", "room_target_current": "°C", "room_target_heat": "°C",

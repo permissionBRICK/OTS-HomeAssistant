@@ -155,6 +155,8 @@ def test_role_ids_only_for_present_sections(plant_mod, snapshot):
     caps = dict(caps, dhw=True, pool=True)
     roles = P.role_ids(caps)
     assert roles["dhw.boost"] == "AiOzyHXZAAE=" and roles["pool.mode"] == "AiIQvULcIgE="
+    assert {r for r in roles if r.startswith("pool.")} == {"pool.mode", "pool.setpoint", "pool.status", "pool.temp"}
+    assert roles["pool.temp"] == roles["hp.buffer_top"] and P.role_unit("pool.temp") == "°C"
     for oid in P.capability_ids():
         assert oid in roles.values()
 

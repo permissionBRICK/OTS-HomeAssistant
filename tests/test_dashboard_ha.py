@@ -525,6 +525,32 @@ async def test_ws_plants_dhw_and_handler(hass, monkeypatch, fake_controller):
 
 
 @pytest.mark.asyncio
+async def test_pool_roles(hass, monkeypatch, fake_controller):
+    def pool_plant(fake):
+        fake.set("AiM3dQAAAAE=", 1)
+        for oid, v in {"AiIQvULcIgE=": 2, "ASPmx0LcAAE=": 28.0, "CyMogkLcAAE=": 1}.items():
+            fake.set(oid, v)
+
+    plant = await setup_plant(hass, monkeypatch, fake_controller, mutate=pool_plant)
+    try:
+        (p,) = (await plant_api.async_build_plants(hass, "en"))["plants"]
+        assert p["capabilities"]["pool"] is True
+        roles = p["roles"]
+        assert {"pool.mode", "pool.setpoint", "pool.status", "pool.temp"} <= set(roles)
+        assert roles["pool.mode"]["labels"] == {"0": "Automatic", "1": "Off", "2": "On", "3": "Holiday"}
+        assert roles["pool.temp"]["unit"] == "°C"
+        assert roles["pool.temp"]["entity_id"] == roles["hp.buffer_top"]["entity_id"]
+        conn = FakeConnection()
+        plant_api.ws_subscribe(hass, conn, {"id": 9, "type": f"{DOMAIN}/subscribe"})
+        values = conn.messages[0]["event"]["values"]
+        assert (values["pool.mode"], values["pool.setpoint"], values["pool.status"]) == (2, 28.0, 1)
+        assert values["pool.temp"] == pytest.approx(values["hp.buffer_top"])
+        conn.subscriptions[9]()
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
 async def test_number_roles_are_native_with_display_unit(hass, monkeypatch, fake_controller):
     from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
