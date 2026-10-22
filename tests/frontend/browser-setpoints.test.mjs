@@ -24,7 +24,7 @@ const active = (page, c) => page.eval(`[...${c.root}.querySelectorAll(".hc .sp")
 /** Change feed values and push an update (like a coordinator refresh). */
 const setValues = (page, vals) => page.eval(`(() => { Object.assign(harness.plant.values, ${JSON.stringify(vals)}); harness.plant.push(); return true; })()`);
 
-test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and legacy Reduziert; the other one below with a Tag/Nacht badge", { skip }, async () => {
+test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and legacy Reduziert; the other one below with a Nacht/Normal badge", { skip }, async () => {
   let page = await b.open("variant=house&view=controls&latency=30");
   let c = on(page);
   assert.ok(!(await c.exists(".sptoggle")), "no fold-out any more");
@@ -33,13 +33,13 @@ test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and 
   assert.equal(await attr(page, c, `${alt(1)} .spbadge`, "title"), "Reduziert (Eco, Nacht)");
   // HC3 Wintergarten runs the legacy "Reduziert" program: reduced is main, the day value below
   assert.deepEqual(await rowOf(page, c, main(3)), ["setpoint_reduced_heat", "10,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(3)), ["setpoint_normal_heat", "25,0°", "Tag"]);
+  assert.deepEqual(await rowOf(page, c, alt(3)), ["setpoint_normal_heat", "25,0°", "Normal"]);
   assert.match(await c.text(`${tile(3)} .hcname .sub`), /Heizen \| Reduziert/, "legacy program label kept");
   // Eco under the app's control, the legacy Eco program, "Normal" and other legacy states
   await setValues(page, { "hc1.comfort_eco": 1, "hc2.op_program": 6 });
   await sleep(60);
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_reduced_heat", "19,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Tag"]);
+  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Normal"]);
   assert.equal((await rowOf(page, c, main(2)))[0], "setpoint_reduced_heat");
   for (const prog of [3, 1, 4, 7, 8]) {
     await setValues(page, { "hc2.op_program": prog, "hc2.comfort_eco": 1 });
@@ -51,7 +51,7 @@ test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and 
   page = await b.open("variant=house&view=controls&latency=30&lang=en");
   c = on(page);
   assert.equal((await rowOf(page, c, alt(1)))[2], "Night");
-  assert.equal((await rowOf(page, c, alt(3)))[2], "Day");
+  assert.equal((await rowOf(page, c, alt(3)))[2], "Normal");
   assert.equal(await attr(page, c, `${alt(3)} .spbadge`, "title"), "Normal (Comfort, day)");
 });
 
@@ -138,7 +138,7 @@ test("cooling pair by target_selector, only on cool-capable circuits", { skip },
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_normal_cool", "24,0°", ""]);
   assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_reduced_cool", "26,0°", "Nacht"]);
   assert.deepEqual(await rowOf(page, c, main(2)), ["setpoint_reduced_cool", "25,5°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(2)), ["setpoint_normal_cool", "22,0°", "Tag"]);
+  assert.deepEqual(await rowOf(page, c, alt(2)), ["setpoint_normal_cool", "22,0°", "Normal"]);
   assert.equal(await attr(page, c, `${alt(2)} .spbadge`, "title"), "Normal Kühlen");
   assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_cool:main", "hc2.setpoint_reduced_cool:main"]);
   assert.ok(await c.exists(`${main(2)} .sptag.cool`));
@@ -211,7 +211,7 @@ test("a mode change drops queued setpoint edits", { skip }, async () => {
   assert.deepEqual(await writes(page), [`climate.set_preset_mode ${await page.eval("harness.plant.climateId(1)")} eco`]);
   // Eco: reduced is main now; neither value changed
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_reduced_heat", "19,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Tag"]);
+  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Normal"]);
   assert.deepEqual(page.errors, []);
 });
 

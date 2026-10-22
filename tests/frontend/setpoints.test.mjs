@@ -138,7 +138,7 @@ test("schematic sub line drops the least important parts first", () => {
 
 test("setpoint and room labels exist in German and English", () => {
   const exp = {
-    sp_day: ["Tag", "Day"],
+    sp_normal: ["Normal", "Normal"],
     sp_night: ["Nacht", "Night"],
     sp_setpoint_normal_heat: ["Normal (Komfort, Tag)", "Normal (Comfort, day)"],
     sp_setpoint_reduced_heat: ["Reduziert (Eco, Nacht)", "Reduced (Eco, night)"],

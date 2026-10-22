@@ -541,7 +541,7 @@ export class ControlView {
       const title = !can && !ctx.disabled ? I.t("entity_missing") : I.t("setpoint_title", { name: full });
       const act = active === s.key;
       const tag = act ? `<small class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</small>` : "";
-      const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_day"))}</span>`;
+      const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_normal"))}</span>`;
       const btn = (d, sym, verb, dis) => `<button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="${d}" aria-label="${esc(`${verb} ${name}: ${full}`)}"${dis}>${sym}</button>`;
       return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
           <div class="v${pend ? " pend" : ""}${act ? " act" : ""}" aria-live="polite"><span>${v !== undefined ? I.temp(v) : "–"}</span>${tag}</div>
