@@ -128,8 +128,9 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
         desired = "" if value is None else str(value)
 
         async with self.coordinator.async_write_session() as session:
-            data = self.coordinator.data or {}
-            current = extract_first_value(data, self._read_id)
+            # Read right before deciding: the cached value may be minutes old.
+            values = await self.coordinator.async_fresh_values([self._read_id])
+            current = extract_first_value({"values": values}, self._read_id)
             if current is not None and str(current) == desired:
                 return
 

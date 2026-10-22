@@ -95,8 +95,9 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         return labels.get(str(v), str(v))
 
     async def _write(self, plan) -> None:
-        """Run ``plan(values)`` on the values current under the write lock."""
-        await async_write_planned(self._ctrl, plan)
+        """Run ``plan(values)`` on op_program / comfort_eco / season read
+        under the write lock (the app may have changed them since the poll)."""
+        await async_write_planned(self._ctrl, plan, P.mode_input_ids(self._ids))
 
     # -- state -------------------------------------------------------------
 
@@ -179,10 +180,11 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
             return
         requested = float(temperature)
-        # The correction is relative: with the current offset (or target)
-        # unknown it is re-read once, and nothing is written if it stays unknown.
+        # The correction is relative: it is computed from the offset and
+        # target read right before the write; if they cannot be read nothing
+        # is written (never from cached values).
         await async_write_planned(
             self._ctrl,
             lambda values: P.plan_temperature(requested, values, self._ids),
-            missing=lambda values: P.temperature_inputs_missing(values, self._ids),
+            P.temperature_input_ids(self._ids),
         )

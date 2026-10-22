@@ -780,23 +780,15 @@ def new_offset(requested: float, target: float, offset: float) -> float:
     return 0.0 if out == 0 else out
 
 
-def temperature_inputs_missing(values: Mapping[str, Any], ids: Mapping[str, str]) -> List[str]:
-    """Ids plan_temperature needs that have no value yet (to re-read once)."""
-    missing: List[str] = []
-    if as_float(first_value(values, ids.get("room_offset"))) is None:
-        missing.append(ids["room_offset"])
-    if circuit_target(values, ids) is None:
-        sel = as_int(first_value(values, ids.get("target_selector")))
-        if sel is None:
-            keys = ("target_selector", "room_target_heat", "room_target_cool", "room_target_current")
-        elif sel in (0, 2):
-            keys = ("room_target_heat", "room_target_current")
-        elif sel in (1, 3):
-            keys = ("room_target_cool", "room_target_current")
-        else:
-            keys = ("room_target_current",)
-        missing += [ids[k] for k in keys if ids.get(k)]
-    return missing
+def mode_input_ids(ids: Mapping[str, str]) -> List[str]:
+    """Ids plan_hvac_mode / plan_turn_on / plan_preset decide from (read before planning)."""
+    return [ids[k] for k in ("op_program", "comfort_eco", "season") if ids.get(k)]
+
+
+def temperature_input_ids(ids: Mapping[str, str]) -> List[str]:
+    """Ids plan_temperature decides from (read before planning)."""
+    keys = ("room_offset", "target_selector", "room_target_heat", "room_target_cool", "room_target_current")
+    return [ids[k] for k in keys if ids.get(k)]
 
 
 def plan_temperature(requested: float, values: Mapping[str, Any], ids: Mapping[str, str]) -> List[Write]:
@@ -873,6 +865,21 @@ def plan_dhw_on(values: Mapping[str, Any]) -> List[Write]:
 def plan_dhw_boost(values: Mapping[str, Any]) -> List[Write]:
     """Boost button: program on if needed, boost <- 1 (one-time charge)."""
     return _dhw_sequence([(DHW_ROLES["dhw.program"], 0), (DHW_ROLES["dhw.boost"], 1)], values)
+
+
+DHW_MODE_ROLES = ("dhw.program", "dhw.comfort_eco", "dhw.boost")
+DHW_SETPOINT_ROLES = ("dhw.setpoint_comfort", "dhw.setpoint_eco", "dhw.setpoint_boost")
+
+
+def dhw_mode_input_ids() -> List[str]:
+    """Ids the DHW operation writes (and the boost button) decide from."""
+    return [DHW_ROLES[r] for r in DHW_MODE_ROLES]
+
+
+def dhw_setpoint_input_ids() -> List[str]:
+    """Ids a DHW setpoint write decides from: the operation (which setpoint
+    is active) and every setpoint it can pick."""
+    return [DHW_ROLES[r] for r in (*DHW_MODE_ROLES, *DHW_SETPOINT_ROLES)]
 
 
 def dhw_setpoint_role(operation: Optional[str]) -> str:

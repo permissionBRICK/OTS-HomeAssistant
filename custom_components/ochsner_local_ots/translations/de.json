@@ -191,6 +191,9 @@
     }
   },
   "exceptions": {
+    "dhw_operation_unknown": {
+      "message": "Die Warmwasser-Betriebsart ist unbekannt (die Wärmepumpe hat sie nicht gemeldet), daher ist unklar, welcher Sollwert aktiv ist. Es wurde nichts geschrieben; bitte später erneut versuchen."
+    },
     "room_offset_unknown": {
       "message": "Die Raumsollwert-Korrektur des Heizkreises ist nicht bekannt (die Wärmepumpe hat sie nicht gemeldet). Es wurde nichts geschrieben; bitte später erneut versuchen."
     },

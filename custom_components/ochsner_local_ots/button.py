@@ -36,4 +36,4 @@ class OchsnerDhwBoostButton(CoordinatorEntity[ClimatixCoordinator], ButtonEntity
         self._attr_device_info = main_device_info(ctrl)
 
     async def async_press(self) -> None:
-        await async_write_planned(self._ctrl, P.plan_dhw_boost)
+        await async_write_planned(self._ctrl, P.plan_dhw_boost, P.dhw_mode_input_ids())

@@ -329,17 +329,12 @@ def test_unknown_offset_is_never_assumed_zero(plant_mod):
     with pytest.raises(P.UnknownValueError):
         P.new_offset(23.0, 23.0, None)
     assert P.offset_bounds(23.0, None) is None
-    assert P.temperature_inputs_missing(values, ids) == ["ACNZw458AAE="]
-    # Nothing known: offset, selector and every target candidate are re-read.
-    values, ids = _circuit(P)
-    assert P.temperature_inputs_missing(values, ids) == [
+    # Offset, selector and every target candidate are read before planning.
+    assert P.temperature_input_ids(ids) == [
         "ACNZw458AAE=", "CyP/dY58AAE=", "CiPcW458AAE=", "CiO36o58AAE=", "CiMeXI58AAE=",
     ]
-    # Cooling target selected: only the cooling target (and the fallback).
-    values, ids = _circuit(P, target_selector=1, room_offset=0.0)
-    assert P.temperature_inputs_missing(values, ids) == ["CiO36o58AAE=", "CiMeXI58AAE="]
+    assert P.mode_input_ids(ids) == ["AiIQvY58IgE=", "AiPKUI58AAE=", "AiMN7I58AAE="]
     values, ids = _circuit(P, target_selector=0, room_target_heat=23.0, room_offset=2.0)
-    assert P.temperature_inputs_missing(values, ids) == []
     assert P.plan_temperature(23.0, values, ids) == []
     assert P.plan_temperature(22.0, values, ids) == [("ACNZw458AAE=", 1.0)]
 

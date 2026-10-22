@@ -111,13 +111,17 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         if operation_mode not in P.DHW_OPERATIONS:
             raise HomeAssistantError(f"Unsupported operation {operation_mode}")
-        await async_write_planned(self._ctrl, lambda values: P.plan_dhw_operation(operation_mode, values))
+        await async_write_planned(
+            self._ctrl, lambda values: P.plan_dhw_operation(operation_mode, values), P.dhw_mode_input_ids()
+        )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await async_write_planned(self._ctrl, P.plan_dhw_on)
+        await async_write_planned(self._ctrl, P.plan_dhw_on, P.dhw_mode_input_ids())
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await async_write_planned(self._ctrl, lambda values: P.plan_dhw_operation(P.DHW_OFF, values))
+        await async_write_planned(
+            self._ctrl, lambda values: P.plan_dhw_operation(P.DHW_OFF, values), P.dhw_mode_input_ids()
+        )
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         if (mode := kwargs.get("operation_mode")) is not None:
@@ -129,7 +133,11 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
 
         def plan(values):
             # The setpoint of the mode that is active once earlier writes are done.
-            role = P.dhw_setpoint_role(P.dhw_operation(values))
+            operation = P.dhw_operation(values)
+            if operation is None:
+                # Which setpoint is active is unknown: never guess one.
+                raise P.UnknownValueError("dhw_operation_unknown", "DHW operation unknown")
+            role = P.dhw_setpoint_role(operation)
             lo, hi = self._role_bounds(role)
             value = P.clamp(P.round_half(requested), lo, hi)
             oid = P.DHW_ROLES[role]
@@ -138,4 +146,4 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
                 return []
             return [(oid, value)]
 
-        await async_write_planned(self._ctrl, plan)
+        await async_write_planned(self._ctrl, plan, P.dhw_setpoint_input_ids())

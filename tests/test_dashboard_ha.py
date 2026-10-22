@@ -1150,8 +1150,9 @@ async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fak
         assert (c.min_temp, c.max_temp) == (7, 35)  # HA defaults: base unknown
         fake.writes.clear()
         fake.reads.clear()
+        inputs = P.temperature_input_ids(c._ids)
         await c.async_set_temperature(temperature=23.5)
-        assert fake.reads[0] == [OFF1]  # one targeted read, then planned with +2 K
+        assert fake.reads[0] == inputs and OFF1 in inputs  # one read, then planned with +2 K
         assert fake.writes == []  # unchanged; never "offset 0"
         _forget(coordinator, OFF1)
         await c.async_set_temperature(temperature=22.5)
@@ -1166,7 +1167,7 @@ async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fak
             await c.async_set_temperature(temperature=23.5)
         assert err.value.translation_domain == DOMAIN
         assert err.value.translation_key == "room_offset_unknown"
-        assert fake.reads == [[OFF1]] and fake.writes == []
+        assert fake.reads == [inputs] and fake.writes == []
         assert plant.runtime["write_counts"][KEY] == 1
     finally:
         await teardown(hass, plant)
@@ -1217,8 +1218,9 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         # Supplement correction +1 K: the climate target follows at once ...
         fake.reads.clear()
         await offset.async_set_native_value(1.0)
-        assert len(fake.reads) == 1  # one read for the write and its dependents
-        assert {OFF1, TARGET1, BADGE1, "ACJz7Y58AAE=", "CyP/dY58AAE="} <= set(fake.reads[0])
+        # One read before deciding, one for the write and its dependents.
+        assert len(fake.reads) == 2 and fake.reads[0] == [OFF1]
+        assert {OFF1, TARGET1, BADGE1, "ACJz7Y58AAE=", "CyP/dY58AAE="} <= set(fake.reads[1])
         assert c.target_temperature == 22.5
         # ... so asking for the shown target does not overshoot to +2 K.
         fake.writes.clear()
@@ -1236,10 +1238,12 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         assert c.target_temperature == 20.5 and c.preset_mode == "eco"
         assert c.extra_state_attributes["badge"] == "auto_eco_red"
 
-        # Climate preset write: one read covers the write and the dependents.
+        # Climate preset write: one read before planning, one re-read covers
+        # the write and the dependents.
         fake.reads.clear()
         await c.async_set_preset_mode("comfort")
-        assert len(fake.reads) == 1 and c.target_temperature == 23.5
+        assert len(fake.reads) == 2 and c.target_temperature == 23.5
+        assert fake.reads[0] == P.mode_input_ids(c._ids)
 
         # A point outside every plant section only re-reads itself.
         other = next(
@@ -1248,18 +1252,20 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         )
         fake.reads.clear()
         await other.async_set_native_value(float(other.native_value) + 1)
-        assert fake.reads == [[other._read_id]]
+        assert fake.reads == [[other._read_id], [other._read_id]]
     finally:
         await teardown(hass, plant)
 
 
 def lossy_controller(fake_controller):
     """A recomputing fake whose next write is applied but whose response is
-    lost (timeout), and whose next ``fail_reads`` reads fail."""
+    lost (timeout), whose next ``fail_reads`` reads fail, and whose
+    ``fail_rereads`` reads after the next write fail (the pre-read answers)."""
 
     class Lossy(recomputing_controller(fake_controller)):
         lose_response = False
         fail_reads = 0
+        fail_rereads = 0
 
         async def read(self, ids, *, on_http_request=None):
             if self.fail_reads:
@@ -1270,6 +1276,7 @@ def lossy_controller(fake_controller):
 
         async def write(self, oid, value):
             out = await super().write(oid, value)
+            self.fail_reads, self.fail_rereads = self.fail_reads + self.fail_rereads, 0
             if self.lose_response:
                 self.lose_response = False
                 raise asyncio.TimeoutError()
@@ -1303,7 +1310,7 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
 
         # Lost response and the re-read fails too: target and correction
         # become unknown instead of keeping their stale values ...
-        fake.lose_response, fake.fail_reads = True, 2  # re-read + fallback poll
+        fake.lose_response, fake.fail_rereads = True, 2  # re-read + fallback poll
         with pytest.raises(HomeAssistantError):
             await c.async_set_temperature(temperature=23.0)
         assert fake.values[OFF1] == [1.5, 1.5] and fake.values[TARGET1] == [23.0, 23.0]
@@ -1319,7 +1326,7 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
         assert fake.writes == [] and c.target_temperature == 23.0
 
         # Still unreadable: refused with the translated error, nothing written.
-        fake.lose_response, fake.fail_reads = True, 2
+        fake.lose_response, fake.fail_rereads = True, 2
         with pytest.raises(HomeAssistantError):
             await c.async_set_temperature(temperature=22.0)
         fake.writes.clear()
@@ -1352,13 +1359,15 @@ async def test_invalidation_never_reports_a_recovery(hass, monkeypatch, fake_con
         seen = []
         unsub = coordinator.async_add_listener(lambda: seen.append(coordinator.last_update_success))
 
-        # A command queued during the outage fails and forgets its values:
-        # no listener ever sees the coordinator (and its entities) recovered.
-        fake.lose_response, fake.fail_reads = True, 2
+        # A command queued during the outage (pre-read, write response,
+        # re-read and fallback poll all fail) forgets its values: no
+        # listener ever sees the coordinator (and its entities) recovered.
+        fake.lose_response, fake.fail_reads = True, 3
         with pytest.raises(HomeAssistantError):
-            await c.async_set_temperature(temperature=22.5)
+            await c.async_set_preset_mode("eco")
+        assert fake.fail_reads == 0
         assert seen and not any(seen)
-        assert OFF1 not in coordinator.data["values"]
+        assert CE1 not in coordinator.data["values"] and OFF1 not in coordinator.data["values"]
         outdoor = "AyKWuiiJAAE="
         assert outdoor in coordinator.data["values"]
         failure = coordinator.last_exception
@@ -1381,6 +1390,8 @@ async def test_reread_omitting_a_dependent_marks_it_unknown(hass, monkeypatch, f
 
         async def omit_targets(ids, *, on_http_request=None):
             out = await real_read(ids, on_http_request=on_http_request)
+            if BADGE1 not in ids:  # the read before planning answers fully
+                return out
             out["values"].pop(TARGET1, None)
             out["values"].pop(CURRENT_TARGET1, None)
             return out
@@ -1404,7 +1415,7 @@ def gated_controller(fake_controller):
     (after applying it) waits for ``gate``, so a command can be cancelled there."""
 
     class Gated(recomputing_controller(fake_controller)):
-        gate_read = False
+        gate_read = 0  # park the n-th read from now
         gate_write = False
 
         def __init__(self, *a, **kw):
@@ -1418,9 +1429,10 @@ def gated_controller(fake_controller):
 
         async def read(self, ids, *, on_http_request=None):
             if self.gate_read:
-                self.gate_read = False
-                self.reads.append(list(ids))
-                await self._park()
+                self.gate_read -= 1
+                if not self.gate_read:
+                    self.reads.append(list(ids))
+                    await self._park()
             return await super().read(ids, on_http_request=on_http_request)
 
         async def write(self, oid, value):
@@ -1441,9 +1453,7 @@ async def test_cancelled_command_leaves_no_stale_values(hass, monkeypatch, fake_
     try:
         c = plant.entities[f"{KEY}:climate:hc1"]
         assert c.target_temperature == 21.5 and coordinator.data["values"][OFF1] == [0, 0]
-        if where == "preread":
-            _forget(coordinator, OFF1)  # read once before planning
-        fake.gate_read = where in ("reread", "preread")
+        fake.gate_read = {"preread": 1, "reread": 2}.get(where, 0)
         fake.gate_write = where in ("write", "write_outside_session")
         fake.reads.clear()
         fake.writes.clear()
@@ -1492,6 +1502,114 @@ async def test_dhw_writes_reread_the_dhw_target(hass, monkeypatch, fake_controll
         assert wh.extra_state_attributes["effective_target"] == 53.0
         await wh.async_set_temperature(temperature=52)
         assert wh.extra_state_attributes["effective_target"] == 55.0
+    finally:
+        await teardown(hass, plant)
+
+
+# --- values changed outside HA -------------------------------------------------
+
+OP3, CE3, SEASON3 = "AiIQvcxcIgE=", "AiPKUMxcAAE=", "AiMN7MxcAAE="
+FLOW_NORM1 = "ACO38I58AAE="  # catalog number, °C
+
+
+def _stale(coordinator, oid, value):
+    """The cache still holds ``value`` (polls skip unchanged ids for minutes)."""
+    data = dict(coordinator.data)
+    data["values"] = dict(data["values"], **{oid: [value, value]})
+    coordinator.async_set_updated_data(data)
+
+
+@pytest.mark.asyncio
+async def test_commands_plan_from_a_fresh_read(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, fake_controller)
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        # HC3 runs the legacy "Reduziert" program (set in the app); HA's cache
+        # still says 0. SetEco must leave it, like the app (290 <- 0, then Eco).
+        c3 = plant.entities[f"{KEY}:climate:hc3"]
+        assert fake.values[OP3] == [2, 2]
+        _stale(coordinator, OP3, 0)
+        fake.reads.clear()
+        fake.writes.clear()
+        await c3.async_set_preset_mode("eco")
+        assert fake.writes == [(OP3, 0), (CE3, 1)]
+        # One read before planning, one re-read after the writes.
+        assert len(fake.reads) == 2 and fake.reads[0] == [OP3, CE3, SEASON3]
+        assert c3.preset_mode == "eco" and coordinator.data["values"][OP3] == [0, 0]
+
+        # Generic number (catalog): the cache equals the wanted value, the
+        # controller does not -> written.
+        flow = plant.entities[f"{KEY}:number:ACO38I58AAE"]
+        fake.set(FLOW_NORM1, 36.0)
+        _stale(coordinator, FLOW_NORM1, 40.0)
+        fake.reads.clear()
+        fake.writes.clear()
+        await flow.async_set_native_value(40.0)
+        assert fake.writes == [(FLOW_NORM1, 40.0)]
+        # One read before deciding, one re-read (with the circuit's dependents).
+        assert len(fake.reads) == 2 and fake.reads[0] == [FLOW_NORM1] and FLOW_NORM1 in fake.reads[1]
+        # The controller already holds the wanted value (cache differs): no write.
+        fake.set(FLOW_NORM1, 42.0)
+        _stale(coordinator, FLOW_NORM1, 40.0)
+        fake.reads.clear()
+        fake.writes.clear()
+        await flow.async_set_native_value(42.0)
+        assert fake.writes == [] and fake.reads == [[FLOW_NORM1]]
+        assert flow.native_value == 42.0
+
+        # Supplement select (comfort/eco of HC1): same rule.
+        sup_select = plant.entities[f"{KEY}:select:AiPKUI58AAE"]
+        _stale(coordinator, CE1, 1)
+        assert sup_select.current_option == "Eco" and fake.values[CE1] == [0, 0]
+        fake.writes.clear()
+        await sup_select.async_select_option("Eco")
+        assert fake.writes == [(CE1, 1)]
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_failed_read_before_planning(hass, monkeypatch, fake_controller):
+    from homeassistant.exceptions import HomeAssistantError
+
+    plant = await setup_plant(hass, monkeypatch, lossy_controller(fake_controller), mutate=dhw_plant)
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        flow = plant.entities[f"{KEY}:number:ACO38I58AAE"]
+        wh = plant.entities[f"{KEY}:water_heater:dhw"]
+        assert c.preset_mode == "comfort" and c.hvac_mode == "heat"
+
+        # Absolute values: unknown -> written, whatever the cache says.
+        fake.fail_reads = 1
+        fake.writes.clear()
+        await c.async_set_preset_mode("comfort")
+        assert fake.writes == [(OP1, 0), (CE1, 0)]
+        cached = flow.native_value
+        fake.fail_reads = 1
+        fake.writes.clear()
+        await flow.async_set_native_value(cached)
+        assert fake.writes == [(FLOW_NORM1, cached)]
+
+        # Relative change: refused, never computed from the cached values.
+        assert c.target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
+        fake.fail_reads = 1
+        fake.writes.clear()
+        with pytest.raises(HomeAssistantError) as err:
+            await c.async_set_temperature(temperature=22.5)
+        assert err.value.translation_key in {"room_offset_unknown", "room_target_unknown"}
+        assert fake.writes == [] and fake.fail_reads == 0
+        # The cache is left alone (the next poll or command reads again).
+        assert c.target_temperature == 21.5
+
+        # DHW setpoint: which setpoint is active is unknown -> refused.
+        fake.fail_reads = 1
+        with pytest.raises(HomeAssistantError) as err:
+            await wh.async_set_temperature(temperature=47)
+        assert err.value.translation_key == "dhw_operation_unknown"
+        assert fake.writes == []
+        await wh.async_set_temperature(temperature=47)
+        assert fake.writes == [(DHW_COMFORT_SP, 47.0)]
     finally:
         await teardown(hass, plant)
 

@@ -191,6 +191,9 @@
     }
   },
   "exceptions": {
+    "dhw_operation_unknown": {
+      "message": "The hot water operating mode is unknown (the heat pump did not report it), so it is not clear which setpoint is active. Nothing was written; please try again later."
+    },
     "room_offset_unknown": {
       "message": "The heating circuit's room setpoint correction is unknown (the heat pump did not report it). Nothing was written; please try again later."
     },
