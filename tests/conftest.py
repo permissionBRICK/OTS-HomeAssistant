@@ -94,7 +94,10 @@ class FakeController:
     async def read(self, ids, *, on_http_request=None):
         ids = [i for i in ids if i]
         self.reads.append(list(ids))
-        return {"values": {i: self.values[i] for i in ids if i in self.values}}
+        return {
+            "values": {i: self.values[i] for i in ids if i in self.values},
+            "states": {i: 5 for i in ids if i not in self.values},
+        }
 
     async def read_raw(self, ids, *, on_http_request=None):
         ids = [i for i in ids if i]

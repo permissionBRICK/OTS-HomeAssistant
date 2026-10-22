@@ -1615,6 +1615,85 @@ async def test_section_change_reloads_entry_once(hass, monkeypatch, fake_control
     assert reload.call_count == 2
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", ["unanswered", "superseded", "absent"])
+async def test_section_change_counts_only_accepted_observations(hass, monkeypatch, fake_controller, case):
+    from homeassistant.core import CoreState
+
+    plant = await setup_plant(hass, monkeypatch, held_poll_controller(fake_controller))
+    fake, coordinator, reload = plant.fake, plant.ctrl["coordinator"], plant.reload
+    HC3_AVAIL, HC4_AVAIL = "ESMvhAAAAAE=", "ESPI9AAAAAE="
+    sections = P.section_ids()
+    hass.set_state(CoreState.running)
+    real_read = fake.read
+
+    async def fresh(**changes):
+        for k, v in changes.items():
+            fake.set(k, v)
+        await coordinator.async_refresh_ids(sections)
+
+    async def answer_once(edit):
+        async def read(ids, *, on_http_request=None):
+            fake.read = real_read
+            out = await real_read(ids, on_http_request=on_http_request)
+            edit(out)
+            return out
+
+        fake.read = read
+        await coordinator.async_refresh_ids(sections)
+
+    try:
+        if case == "unanswered":
+            # A change seen once, then confirmation reads that answer nothing
+            # or leave a section point out: retained values confirm nothing.
+            await fresh(**{HC4_AVAIL: 27})
+            await answer_once(lambda out: out.update(values={}, states={}))
+            await answer_once(lambda out: out["values"].pop(HC3_AVAIL))
+            assert not reload.called
+        elif case == "superseded":
+            # A poll that read the changed sections but lost to a newer read
+            # does not count as the confirmation of that read's observation.
+            fake.set(HC4_AVAIL, 27)
+            coordinator.request_poll(sections)
+            gate, task = await _start_held_poll(hass, coordinator, fake)
+            assert set(sections) <= set(fake.held)
+            await fresh()  # first observation
+            gate.set()
+            await task
+            assert coordinator.last_update_success and not reload.called
+        else:
+            # HC3 removed: the controller reports its availability point
+            # absent (states: 5). That is an observation: the old value is
+            # dropped and the change confirmed. No answer at all is none.
+            fake.drop(HC3_AVAIL)
+            for _ in range(3):
+                await answer_once(lambda out: out["states"].pop(HC3_AVAIL))
+            assert not reload.called and coordinator.data["values"][HC3_AVAIL] == [27, 27]
+            await fresh()
+            assert HC3_AVAIL not in coordinator.data["values"] and not reload.called
+        # The next complete, accepted reading confirms.
+        await fresh()
+        reload.assert_called_once_with(plant.entry.entry_id)
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_api_read_keeps_explicit_absence():
+    from custom_components.ochsner_local_ots.api import (
+        ClimatixGenericApi, ClimatixGenericConnection, absent_ids,
+    )
+
+    api = ClimatixGenericApi(None, ClimatixGenericConnection("h", 80, "u", "p", ""), max_ids_per_read_request=1)
+    answers = iter([{"values": {"a": [1, 1]}}, {"states": {"b": 5}}, {"states": {"c": 4}}, {}])
+    api._get_json = AsyncMock(side_effect=lambda *a, **kw: next(answers))
+    out = await api.read(["a", "b", "c", "d"])
+    assert out == {"values": {"a": [1, 1]}, "states": {"b": 5, "c": 4}}
+    assert absent_ids(out, ["a", "b", "c", "d"]) == {"b"}  # "c" is not "absent", "d" unanswered
+    api._get_json = AsyncMock(return_value={"values": {"a": [1, 1]}})
+    assert await api.read(["a"]) == {"values": {"a": [1, 1]}}
+
+
 def test_section_signature():
     caps = P.compute_capabilities({"ESNtpAAAAAE=": [27, 27]})
     sig = P.section_signature(caps)

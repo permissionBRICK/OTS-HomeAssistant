@@ -12,7 +12,7 @@ from typing import Any, AsyncIterator, Dict, Iterable, List
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import ClimatixGenericApi, extract_first_value
+from .api import ClimatixGenericApi, absent_ids, extract_first_value
 from .const import (
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
@@ -88,9 +88,12 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # Ids invalidated after a write: polled on the next cycle whatever
         # their polling mode.
         self._force_poll: set[str] = set()
-        # Ids actually read (successfully) by the update the listeners are
-        # being told about: empty after a failed poll or an update that only
-        # forgot values. Lets listeners tell fresh readings from old ones.
+        # Ids the update the listeners are being told about freshly observed:
+        # a value it published, or the controller's explicit "absent"
+        # (states: 5). Not ids it asked for but got no answer to, nor ids a
+        # newer read or write superseded. Empty after a failed poll or an
+        # update that only forgot values. Lets listeners tell fresh readings
+        # from old ones.
         self.last_read_ids: frozenset[str] = frozenset()
         self._next_read_ids: frozenset[str] = frozenset()
 
@@ -205,9 +208,12 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
     def _publishable(self, oid: str, ticket: int) -> bool:
         return self._id_seq.get(oid, 0) < ticket
 
-    def _merge_read(self, new_values: Dict[str, Any], ticket: int) -> tuple[Dict[str, Any], Dict[str, Any], set]:
+    def _merge_read(
+        self, new_values: Dict[str, Any], ticket: int, absent: Iterable[str] = ()
+    ) -> tuple[Dict[str, Any], Dict[str, Any], set]:
         """Merge a read onto the CURRENT data (not a snapshot from before the
-        read). Returns (current values, merged values, ids published)."""
+        read). Ids the controller reported absent lose their old value.
+        Returns (current values, merged values, ids published)."""
         current = self.data if isinstance(self.data, dict) else {}
         current_values = current.get("values") if isinstance(current, dict) else None
         if not isinstance(current_values, dict):
@@ -219,6 +225,13 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             if not self._publishable(k, ticket):
                 continue
             merged[k] = v
+            self._id_seq[k] = ticket
+            published.add(k)
+        for k in absent:
+            k = str(k)
+            if k in new_values or not self._publishable(k, ticket):
+                continue
+            merged.pop(k, None)
             self._id_seq[k] = ticket
             published.add(k)
         return current_values, merged, published
@@ -262,10 +275,15 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 payload = await self.api.read(
                     self.ids, on_http_request=self._note_http_request
                 )
+                values = payload.get("values") if isinstance(payload, dict) else None
+                if not isinstance(values, dict):
+                    values = {}
                 for oid in self.ids:
                     self._poll_state.setdefault(str(oid), _PollState(counter=0))
-                self.last_read_ids = frozenset(str(oid) for oid in self.ids)
-                return payload
+                self.last_read_ids = frozenset(
+                    {str(k) for k in values} | absent_ids(payload, self.ids)
+                )
+                return {"values": values}
 
             current = self.data if isinstance(self.data, dict) else {}
 
@@ -299,7 +317,9 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             # Merge the polled subset into the data as it is NOW: commands may
             # have written / re-read values while this read was in flight;
             # their values win (no await between here and publication).
-            current_values, merged_values, published = self._merge_read(new_values, ticket)
+            current_values, merged_values, published = self._merge_read(
+                new_values, ticket, absent_ids(payload, ids_to_poll)
+            )
             stale = {oid for oid in ids_to_poll if oid in new_values and oid not in published}
 
             out = dict(self.data) if isinstance(self.data, dict) else {}
@@ -345,7 +365,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 else:
                     state.counter = 0
 
-            self.last_read_ids = frozenset(ids_to_poll)
+            self.last_read_ids = frozenset(published)
             return out
         except Exception as err:  # noqa: BLE001
             self.last_read_ids = frozenset()
@@ -372,11 +392,13 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             return set()
         self._force_poll.difference_update(str(k) for k in values)
 
-        current_values, merged_values, published = self._merge_read(values, ticket)
+        current_values, merged_values, published = self._merge_read(
+            values, ticket, absent_ids(payload, ids)
+        )
         current = self.data if isinstance(self.data, dict) else {}
         new_data = dict(current)
         new_data["values"] = merged_values
-        self._next_read_ids = frozenset(ids)
+        self._next_read_ids = frozenset(published)
         self.async_set_updated_data(new_data)
 
         # Treat targeted refreshes as real polls for counter tracking.

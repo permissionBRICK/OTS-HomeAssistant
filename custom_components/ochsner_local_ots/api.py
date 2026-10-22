@@ -126,6 +126,7 @@ class ClimatixGenericApi:
             return {"values": {}}
 
         merged_values: Dict[str, Any] = {}
+        merged_states: Dict[str, Any] = {}
         # Chunk requests to avoid too-long URLs (which can lead to auth/PIN being dropped).
         for i in range(0, len(oa_list), self._max_ids_per_read_request):
             chunk = oa_list[i : i + self._max_ids_per_read_request]
@@ -140,6 +141,7 @@ class ClimatixGenericApi:
             payload = await self._get_json(params, on_http_request=on_http_request)
 
             values = payload.get("values") if isinstance(payload, dict) else None
+            states = payload.get("states") if isinstance(payload, dict) else None
             if isinstance(values, dict):
                 for k, v in values.items():
                     merged_values[str(k)] = v
@@ -147,7 +149,14 @@ class ClimatixGenericApi:
                 # Treat controller errors as failures so we don't silently filter everything during probing.
                 if isinstance(payload, dict) and payload.get("Error") not in (0, None):
                     raise RuntimeError(f"Controller error during read: {payload}")
+            if isinstance(states, dict):
+                for k, v in states.items():
+                    merged_states[str(k)] = v
 
+        # "states" (only when sent) lets callers tell an id the controller
+        # reports absent (states: 5) from one it did not answer.
+        if merged_states:
+            return {"values": merged_values, "states": merged_states}
         return {"values": merged_values}
 
     async def read_raw(
@@ -281,6 +290,19 @@ class ClimatixGenericApiWriteHook:
             await self._after_write(generic_id, True)
         await self._on_write(generic_id)
         return resp
+
+
+def absent_ids(payload: Any, requested: Iterable[str]) -> set:
+    """Requested ids the controller explicitly reports absent (``states: 5``)."""
+    states = payload.get("states") if isinstance(payload, dict) else None
+    if not isinstance(states, dict):
+        return set()
+    wanted = {str(i) for i in requested}
+    out = set()
+    for k, v in states.items():
+        if str(k) in wanted and str(v) == "5":
+            out.add(str(k))
+    return out
 
 
 def extract_first_value(payload: Dict[str, Any], generic_id: str) -> Optional[Any]:

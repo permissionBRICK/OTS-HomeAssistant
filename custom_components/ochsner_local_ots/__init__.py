@@ -1083,9 +1083,10 @@ def _async_watch_sections(
     """Reload the entry once when its plant sections change for good.
 
     The new set must be seen on two consecutive FRESH observations (updates
-    that re-read every section id; a failed update starts over), so neither
-    a flapping value nor an old value republished by an unrelated update
-    reloads. Once a change shows, the section ids are polled on the next
+    whose accepted results cover every section id, as a value or as the
+    controller's explicit "absent"; a failed update starts over), so
+    neither a flapping value nor an old value republished by an unrelated,
+    incomplete or superseded update reloads. Once a change shows, the section ids are polled on the next
     cycle to confirm it. Reloads only while Home Assistant is running and
     the entry is loaded, at most once per SECTION_RELOAD_MIN_INTERVAL_SEC.
     """
