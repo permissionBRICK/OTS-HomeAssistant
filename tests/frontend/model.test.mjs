@@ -47,8 +47,8 @@ test("circuit icon kind is inferred from the name", () => {
 });
 
 test("real AirHawk plant → 3 heat-only circuits, buffer, aux, no DHW/cooling UI", () => {
-  const { catalog, snapshot } = fixtures();
-  const fp = new FakePlant({ catalog, snapshot, variant: "house" });
+  const { catalog, snapshot, backend } = fixtures();
+  const fp = new FakePlant({ catalog, snapshot, backend, variant: "house" });
   const plant = fp.plantPayload();
   const live = fp.event();
   const s = sections(plant, live);
@@ -72,12 +72,12 @@ test("real AirHawk plant → 3 heat-only circuits, buffer, aux, no DHW/cooling U
 });
 
 test("sections adapt: DHW+cooling+pool, 1 circuit/no buffer, bms, circuit filter", () => {
-  const { catalog, snapshot } = fixtures();
-  const full = new FakePlant({ catalog, snapshot, variant: "full" });
+  const { catalog, snapshot, backend } = fixtures();
+  const full = new FakePlant({ catalog, snapshot, backend, variant: "full" });
   const s = sections(full.plantPayload(), full.event());
   assert.deepEqual(s.circuits.map((c) => [c.index, c.cool]), [[1, true], [2, true]]);
   assert.ok(s.dhw && s.pool && s.cooling && s.buffer);
-  const compact = new FakePlant({ catalog, snapshot, variant: "compact" });
+  const compact = new FakePlant({ catalog, snapshot, backend, variant: "compact" });
   const c = sections(compact.plantPayload(), compact.event());
   assert.equal(c.circuits.length, 1);
   assert.ok(c.dhw && !c.buffer && !c.aux && !c.power && !c.silent);

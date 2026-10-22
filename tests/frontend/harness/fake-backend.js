@@ -5,31 +5,37 @@
 // and applied to the fake controller (B4/B5 semantics) so the UI reacts.
 // Runs in Node and in the browser (no DOM use).
 
-// ---- datapoint ids ---------------------------------------------------------
+// ---- datapoint ids (mirror plant.py of the backend) --------------------------
 
 const HC1 = {
   name: "BCNL7o58AAE=", op_program: "AiIQvY58IgE=", op_program_present: "AiIQvY58AAE=",
   comfort_eco: "AiPKUI58AAE=", season: "AiMN7I58AAE=", room_offset: "ACNZw458AAE=",
   target_selector: "CyP/dY58AAE=", badge: "CyPmL458AAE=", status: "CyMogo58AAE=",
   heat_limit_status: "CyO9/o58AAE=", cool_limit_status: "CyNm0I58AAE=",
-  room_target_current: "CiMeXI58AAE=", room_target_heat: "CiPcW458AAE=", room_target_cool: "CiO36o58AAE=",
-  flow_target: "ACJz7Y58AAE=", dew_point: "CiMeMY58AAE=",
+  room_target_heat: "CiPcW458AAE=", room_target_cool: "CiO36o58AAE=", flow_target: "ACJz7Y58AAE=",
   setpoint_normal_heat: "ASMhEo58AAE=", setpoint_reduced_heat: "ASOkTo58AAE=",
   setpoint_normal_cool: "ASNKo458AAE=", setpoint_reduced_cool: "ASPP/458AAE=",
-  setpoint_frost_room: "ASOcQo58AAE=", setpoint_manual: "ASMXeI58AAE=",
+  setpoint_frost_room: "ASOcQo58AAE=",
   heat_curve_base_outdoor: "ACPl8458AAE=", heat_curve_base_flow: "ACPUwI58AAE=",
   heat_curve_norm_outdoor: "ACOGw458AAE=", heat_curve_norm_flow: "ACO38I58AAE=",
   heat_curve_max_flow: "ACM5mY58AAE=", heat_limit: "ACM8vI58AAE=", heat_curve_ref_room: "ACNx1I58AAE=",
   cool_curve_base_outdoor: "ACN5nI58AAE=", cool_curve_base_flow: "ACNIr458AAE=",
   cool_curve_norm_outdoor: "ACMarI58AAE=", cool_curve_norm_flow: "ACMrn458AAE=",
   cool_limit: "ACPdII58AAE=", cool_curve_ref_room: "ACNxpY58AAE=",
+  party_on: "AiMMLY58AAE=", party_hours: "ACMqxI58AAE=", party_temp: "ACOd7I58AAE=",
 };
 const HC_TAGS = { 1: 31886, 2: 19693, 3: 23756, 4: 11307 };
+// Per-circuit points that are not a re-tag of the HC1 id (HC1..HC4).
 const HC_IO = {
-  availability: { 1: "ESNtpAAAAAE=", 2: "ESMOlAAAAAE=", 3: "ESMvhAAAAAE=", 4: "ESPI9AAAAAE=" },
-  flow_actual: { 1: "AyKvbyiJAAE=", 2: "AyLrQiiJAAE=", 3: "AyLIqSiJAAE=" },
-  mixer: { 1: "BiJEkiiJSjA=", 2: "BiIAvyiJSjA=", 3: "BiIjVCiJSjA=" },
-  pump: { 1: "ByIPECiJAAE=", 2: "ByJ62CiJAAE=", 3: "ByKpnyiJAAE=" },
+  availability: ["ESNtpAAAAAE=", "ESMOlAAAAAE=", "ESMvhAAAAAE=", "ESPI9AAAAAE="],
+  room_target_current: ["CiMeXI58AAE=", "CiPkJO1MAAE=", "CiOt/MxcAAE=", "CiMQ1SssAAE="],
+  room_temp: ["AyI4FSiJAAE=", "AyJN3SiJAAE=", "AyKemiiJAAE=", "AyKGXSiJAAE="],
+  humidity: ["AyJLCiiJAAE=", "AyKEuyiJAAE=", "AyLB1CiJAAE=", "AyI7yCiJAAE="],
+  dew_point: ["CiMeMY58AAE=", "CiP+/+1MAAE=", "CiNeusxcAAE=", "CiMfcissAAE="],
+  setpoint_manual: ["ASMXeI58AAE=", "ASPYye1MAAE=", "ASOdpsxcAAE=", null],
+  flow_actual: ["AyKvbyiJAAE=", "AyLrQiiJAAE=", "AyLIqSiJAAE=", "AyJjGCiJAAE="],
+  mixer: ["BiJEkiiJSjA=", "BiIAvyiJSjA=", "BiIjVCiJSjA=", "BiKI5SiJSjA="],
+  pump: ["ByIPECiJAAE=", "ByJ62CiJAAE=", "ByKpnyiJAAE=", "ByKxWCiJAAE="],
 };
 const HP = {
   "hp.outdoor": "AyKWuiiJAAE=", "hp.outdoor_avg": "ACMZwiiJAAE=",
@@ -38,7 +44,8 @@ const HP = {
   "hp.program": "AiMu5MdZAAE=", "hp.aux_program": "AiNiMcdZAAE=", "hp.aux_status": "CyM4OMdZAAE=",
   "hp.aux_flow": "AyIkniiJAAE=", "hp.silent_program": "AiP5J8dZAAE=",
   "hp.heat_output": "CiO6JyiJAAE=", "hp.el_power": "CiPAhCiJAAE=", "hp.pressure": "AyKaCCiJAAE=",
-  "hp.cycles_today": "AyMePiiJAAE=", "hp.defrosts_today": "AyNkR4r8AAE=", "hp.defrosts_total": "AyOVHIr8AAE=",
+  "hp.cycles_today": "AyMePiiJAAE=", "hp.cycles_total": "AyNkcSiJAAE=",
+  "hp.defrosts_today": "AyNkR4r8AAE=", "hp.defrosts_total": "AyOVHIr8AAE=",
   "hp.hours_total": "AyOvsSiJAAE=", "hp.energy_heat_total": "AyMXFSiJAAE=",
   "hp.energy_heat_year": "DCNBAiiJAAE=", "hp.energy_el_year": "DCP7vSiJAAE=",
   "hp.energy_heat_prev_year": "DCPOmiiJAAE=", "hp.energy_el_prev_year": "DCM2oyiJAAE=",
@@ -57,8 +64,15 @@ const DHW = {
   "dhw.offset": "ACPOwnXZAAE=", "dhw.setpoint_comfort": "ASMv1XXZAAE=", "dhw.setpoint_eco": "ASOp1XXZAAE=",
   "dhw.setpoint_reduced": "ASOXCHXZAAE=", "dhw.setpoint_boost": "ASPuhXXZAAE=",
 };
-// Pool roles are not in the B1 table yet; keys assumed by the frontend.
-const POOL = { "pool.temp": "ASPmx0LcAAE=", "pool.program": "AiIQvULcIgE=", "pool.status": "CyMogkLcAAE=" };
+const POOL = { "pool.mode": "AiIQvULcIgE=", "pool.setpoint": "ASPmx0LcAAE=", "pool.status": "CyMogkLcAAE=" };
+
+// Roles agreed in the contract that the backend does not send yet (no
+// datapoint id here; values only come from variant overrides).
+const EMERGENCY_LABELS = {
+  de: { 0: "Passiv", 1: "Reduziert, unbestätigt", 2: "Reduziert, bestätigt", 3: "Standard, bestätigt", 4: "Anlagenfehler" },
+  en: { 0: "Passive", 1: "Reduced, unconfirmed", 2: "Reduced, confirmed", 3: "Standard, confirmed", 4: "Plant fault" },
+};
+export const PENDING_ROLES = ["hp.emergency_status", "dhw.emergency_status"];
 
 export const BADGES = [
   "off_grey", "fault_orange", "auto_comfort_grey", "auto_comfort_red", "auto_comfort_blue",
@@ -90,22 +104,43 @@ export function descriptorId(id) {
 export function roleIds() {
   const out = { ...HP, ...AVAIL, ...DHW, ...POOL };
   for (let n = 1; n <= 4; n++) {
-    for (const [k, id] of Object.entries(HC1)) out[`hc${n}.${k}`] = retag(id, HC_TAGS[n]);
-    for (const [k, ids] of Object.entries(HC_IO)) if (ids[n]) out[`hc${n}.${k}`] = ids[n];
+    for (const [k, id] of Object.entries(HC1)) out[`hc${n}.${k}`] = n === 1 ? id : retag(id, HC_TAGS[n]);
+    for (const [k, ids] of Object.entries(HC_IO)) if (ids[n - 1]) out[`hc${n}.${k}`] = ids[n - 1];
   }
   return out;
 }
 
-// Writable datapoints missing from the catalog (B2 supplement entities).
-const SUPPLEMENT = {
-  comfort_eco: { platform: "select", de: "Komfort/Eco", en: "Comfort/Eco", options: { 0: "Komfort", 1: "Eco" } },
-  room_offset: { platform: "number", de: "Raumsollwert-Korrektur", en: "Room setpoint correction", min: -3, max: 3, step: 0.5, unit: "K" },
-  "dhw.offset": { platform: "number", de: "Warmwasser-Korrektur", en: "DHW correction", min: -9, max: 9, step: 3, unit: "K" },
-  "dhw.comfort_eco": { platform: "select", de: "Warmwasser Komfort/Eco", en: "DHW comfort/eco", options: { 1: "Eco", 2: "Komfort" } },
-  "dhw.program": { platform: "select", de: "Betriebswahl Warmwasser", en: "DHW operating program", options: { 0: "Ein", 1: "Aus" } },
-  "dhw.boost": { platform: "sensor", de: "Boost-Ladung", en: "Boost charging" },
+// Names of the B2 supplement entities (writable points missing from the catalog).
+const SUPPLEMENT_NAMES = {
+  comfort_eco: { de: "Komfort/Eco", en: "Comfort/Eco" },
+  room_offset: { de: "Raumsollwert-Korrektur", en: "Room setpoint correction" },
+  "dhw.offset": { de: "Warmwasser-Korrektur", en: "DHW correction" },
+  "dhw.comfort_eco": { de: "Warmwasser Komfort/Eco", en: "DHW comfort/eco" },
 };
-const NO_ENTITY = new Set(["badge", "target_selector", "op_program_present", "availability"]);
+
+/**
+ * Role metadata as the real backend sends it (fixtures/backend-payload.json,
+ * generated by running the backend's plant_api against the same snapshot):
+ * entity presence, enabled flag, writable, unit, bounds, options, labels.
+ * Circuit roles missing for a circuit fall back to HC1's metadata.
+ */
+export function backendRoleMeta(backend, key, lang = "de") {
+  const variants = Object.values(backend);
+  const find = (k) => {
+    for (const v of variants) {
+      const r = v.plants.plants[0].roles[k];
+      if (r) return { meta: r, labelsEn: v.labels_en[k] };
+    }
+    return null;
+  };
+  const hit = find(key) || (/^hc\d\./.test(key) ? find(key.replace(/^hc\d\./, "hc1.")) : null);
+  if (!hit) return null;
+  const out = { ...hit.meta };
+  if (lang === "en" && hit.labelsEn) out.labels = { ...hit.labelsEn };
+  if (out.labels) out.labels = { ...out.labels };
+  if (out.options) out.options = { ...out.options };
+  return out;
+}
 
 const slug = (s) =>
   String(s)
@@ -150,9 +185,16 @@ export function variantValues(snapshot, variant) {
       "hc2.heat_curve_max_flow": 40, "hc2.heat_limit": 16,
       "dhw.temp": 52.3, "dhw.target": 52, "dhw.status": 0, "dhw.program": 0, "dhw.comfort_eco": 2, "dhw.boost": 0, "dhw.offset": 0,
       "dhw.setpoint_comfort": 52, "dhw.setpoint_eco": 46, "dhw.setpoint_reduced": 40, "dhw.setpoint_boost": 60,
-      "pool.temp": 26.8, "pool.program": 1, "pool.status": 0,
+      "pool.mode": 0, "pool.setpoint": 28, "pool.status": 1, "hp.emergency_status": 0, "dhw.emergency_status": 0,
     });
     for (const k of Object.keys(vals)) if (k.startsWith("hc3.") || k.startsWith("hc4.")) if (!k.endsWith("availability")) delete vals[k];
+  } else if (variant === "dhw_cool_pool") {
+    // Same mutation as the backend snapshot generator (contract tests).
+    Object.assign(vals, {
+      "avail.dhw": 256, "dhw.temp": 48.5, "dhw.target": 50, "dhw.status": 0, "dhw.program": 0, "dhw.comfort_eco": 2,
+      "dhw.boost": 0, "dhw.offset": 0, "dhw.setpoint_comfort": 50, "dhw.setpoint_eco": 45, "dhw.setpoint_reduced": 40,
+      "dhw.setpoint_boost": 60, "hc2.availability": 27 | 4, "avail.pool": 1, "pool.mode": 0, "pool.setpoint": 28, "pool.status": 1,
+    });
   } else if (variant === "compact") {
     Object.assign(vals, {
       "avail.dhw": 256, "avail.buffer": 0, "avail.buffer_aux": 0, "avail.aux": 0, "avail.silent": 0, "avail.emergency": 0,
@@ -201,8 +243,18 @@ export function computeCapabilities(v) {
 // ---- fake plant --------------------------------------------------------------
 
 export class FakePlant {
-  constructor({ catalog, snapshot, variant = "house", host = "192.0.2.80", entryId = "01JFAKEENTRY0000000000000", lang = "de", latency = 250, timers } = {}) {
+  /**
+   * @param {object} o
+   * @param {string} [o.prefix]     entity object-id prefix (distinct ids for a second plant)
+   * @param {boolean} [o.fahrenheit] HA unit system °F: entity states/attributes and
+   *   service data in °F, role metadata native °C plus `display_unit`
+   */
+  constructor({ catalog, snapshot, backend, variant = "house", host = "192.0.2.80", entryId = "01JFAKEENTRY0000000000000", lang = "de", latency = 250, timers, prefix = "", fahrenheit = false } = {}) {
+    if (!backend) throw new Error("FakePlant needs the backend payload fixture");
     this.catalog = new Map(catalog.points.map((p) => [p.id, p]));
+    this.backend = backend;
+    this.prefix = prefix;
+    this.fahrenheit = fahrenheit;
     this.descriptors = snapshot.values;
     this.variant = variant;
     this.host = host;
@@ -253,7 +305,7 @@ export class FakePlant {
   /** Present sections' role keys. */
   roleKeys() {
     const caps = this.capabilities;
-    const keys = Object.keys(this.ids).filter((k) => {
+    const keys = [...Object.keys(this.ids), ...PENDING_ROLES].filter((k) => {
       if (k.startsWith("hp.") || k.startsWith("avail.")) return true;
       if (k.startsWith("dhw.")) return caps.dhw;
       if (k.startsWith("pool.")) return caps.pool;
@@ -264,111 +316,73 @@ export class FakePlant {
     return keys;
   }
 
+  _eid(platform, base) {
+    return `${platform}.${slug(this.prefix + base)}`;
+  }
+
   entities() {
     if (this._entities) return this._entities;
     const used = new Set();
     const ent = {};
     const mk = (platform, base) => {
-      let id = `${platform}.${slug(base)}`;
+      let id = this._eid(platform, base);
       let i = 2;
-      while (used.has(id)) id = `${platform}.${slug(base)}_${i++}`;
+      while (used.has(id)) id = `${this._eid(platform, base)}_${i++}`;
       used.add(id);
       return id;
     };
     for (const key of this.roleKeys()) {
+      const meta = backendRoleMeta(this.backend, key);
+      if (!meta || !meta.entity_id) {
+        ent[key] = null;
+        continue;
+      }
       const short = key.replace(/^hc\d\./, "");
       const n = /^hc(\d)\./.exec(key)?.[1];
       const prefix = n ? this._circuitName(n) + " " : "";
-      if (NO_ENTITY.has(short) || key.startsWith("avail.")) {
-        ent[key] = null;
-        continue;
-      }
-      const sup = SUPPLEMENT[key] || SUPPLEMENT[short];
+      const platform = meta.entity_id.split(".")[0];
+      const sup = SUPPLEMENT_NAMES[key] || SUPPLEMENT_NAMES[short];
       const p = this.catalog.get(this.ids[key]);
-      if (sup && (!p || sup.platform !== "sensor")) {
-        ent[key] = { platform: sup.platform, entity_id: mk(sup.platform, prefix + sup.de), name: prefix + sup[this.lang] || sup.de, sup };
-        continue;
-      }
-      if (!p) {
-        ent[key] = null;
-        continue;
-      }
-      const platform = p.platform === "switch" ? "switch" : p.platform;
-      ent[key] = {
-        platform,
-        entity_id: mk(platform, prefix + (p.name_de || p.name)),
-        name: prefix + ((this.lang === "en" ? p.name_en : p.name_de) || p.name),
-        point: p,
-        enabled: p.enabled_default !== false,
-      };
+      const de = sup ? sup.de : p ? p.name_de || p.name : short;
+      const en = sup ? sup.en : p ? p.name_en || p.name : short;
+      ent[key] = { platform, entity_id: mk(platform, prefix + de), name: prefix + (this.lang === "en" ? en : de), enabled: meta.enabled !== false };
     }
     this._entities = ent;
     return ent;
   }
 
-  _labels(key, lang) {
-    const p = this.catalog.get(this.ids[key]);
-    const e = this.entities()[key];
-    if (e && e.sup && e.sup.options) return { ...e.sup.options };
-    if (!p) return null;
-    if (p.value_map) {
-      if (lang !== "en" || !p.enum_labels_en) return { ...p.value_map };
-      if (Object.keys(p.enum_labels_en).every((k) => /^\d+$/.test(k))) return { ...p.enum_labels_en };
-      // token-keyed English labels: map raw → token via the enum descriptor
-      const desc = this.descriptors[descriptorId(this.ids[key])];
-      const tokens = typeof desc === "string" ? desc.split("*") : [];
-      const out = {};
-      for (const raw of Object.keys(p.value_map)) out[raw] = p.enum_labels_en[(tokens[raw] || "").toLowerCase()] || p.value_map[raw];
-      return out;
-    }
-    if (p.options) {
-      const desc = this.descriptors[descriptorId(this.ids[key])];
-      const tokens = typeof desc === "string" ? desc.split("*") : null;
-      const out = {};
-      const table = lang === "en" ? p.enum_labels_en : p.enum_labels_de;
-      for (const [label, raw] of Object.entries(p.options)) {
-        const tok = tokens && tokens[raw] ? tokens[raw].toLowerCase() : null;
-        out[raw] = (table && tok && table[tok]) || (p.enum_labels_de && tok && p.enum_labels_de[tok]) || label;
-      }
-      return out;
-    }
-    return null;
-  }
-
   roles(lang = this.lang) {
     const out = {};
     for (const key of this.roleKeys()) {
-      const e = this.entities()[key];
-      if (!e) {
-        out[key] = { entity_id: null };
+      if (PENDING_ROLES.includes(key)) {
+        out[key] = { entity_id: null, labels: { ...EMERGENCY_LABELS[lang === "en" ? "en" : "de"] } };
         continue;
       }
-      const r = { entity_id: e.entity_id };
-      if (e.enabled === false) r.enabled = false;
-      const p = e.point;
-      const unit = (e.sup && e.sup.unit) || (p && p.unit);
-      if (unit) r.unit = unit;
-      if (e.platform === "number") {
-        r.writable = true;
-        const src = e.sup || p;
-        r.min = src.min;
-        r.max = src.max;
-        r.step = src.step;
-      }
-      if (e.platform === "select") {
-        r.writable = true;
-        r.options = e.sup ? { ...e.sup.options } : Object.fromEntries(Object.entries(p.options).map(([label, raw]) => [String(raw), label]));
-      }
-      if (e.platform === "switch" || e.platform === "text") r.writable = true;
-      const labels = this._labels(key, lang);
-      if (labels) r.labels = labels;
+      const meta = backendRoleMeta(this.backend, key, lang) || { entity_id: null };
+      const e = this.entities()[key];
+      const r = { ...meta, entity_id: e ? e.entity_id : null };
+      delete r.enabled;
+      if (e && !e.enabled) r.enabled = false;
+      if (this.fahrenheit && e && e.platform === "number" && r.unit === "°C") r.display_unit = "°F";
       out[key] = r;
     }
     return out;
   }
 
   climateId(n) {
-    return `climate.${slug(this._circuitName(n))}`;
+    return this._eid("climate", this._circuitName(n));
+  }
+
+  get waterHeaterId() {
+    return this._eid("water_heater", "Warmwasser");
+  }
+
+  get boostId() {
+    return this._eid("button", "Warmwasser Boost");
+  }
+
+  get flashId() {
+    return this._eid("sensor", "Ochsner Flash Writes");
   }
 
   plantPayload(lang = this.lang) {
@@ -383,10 +397,10 @@ export class FakePlant {
       available: this.available,
       capabilities: caps,
       circuits: this.circuits.map((c) => ({ ...c, name: this._circuitName(c.index), device_id: `dev_hc${c.index}_${this.variant}`, climate: this.climateId(c.index) })),
-      dhw: caps.dhw ? { water_heater: "water_heater.warmwasser", boost_button: "button.warmwasser_boost" } : null,
+      dhw: caps.dhw ? { water_heater: this.waterHeaterId, boost_button: this.boostId } : null,
       badges: BADGES,
       roles: this.roles(lang),
-      flash_writes: "sensor.ochsner_flash_writes",
+      flash_writes: this.flashId,
     };
   }
 
@@ -423,6 +437,18 @@ export class FakePlant {
     return "performance";
   }
 
+  /** Native °C → HA display unit (°F when the fake HA uses imperial units). */
+  disp(v) {
+    if (!this.fahrenheit || typeof v !== "number") return v;
+    return Math.round((v * 9 / 5 + 32) * 100) / 100;
+  }
+
+  /** HA display unit → native °C (what HA hands the integration). */
+  native(v) {
+    if (!this.fahrenheit) return Number(v);
+    return Math.round(((Number(v) - 32) * 5 / 9) * 100) / 100;
+  }
+
   states() {
     const st = {};
     const now = new Date().toISOString();
@@ -431,18 +457,20 @@ export class FakePlant {
     };
     const roles = this.roles();
     const ents = this.entities();
+    const D = (v) => this.disp(v);
     for (const [key, e] of Object.entries(ents)) {
       if (!e || e.enabled === false) continue;
       const raw = this.values[key];
       const r = roles[key];
       const attrs = { friendly_name: e.name };
-      if (r.unit) attrs.unit_of_measurement = r.unit;
-      let state = raw === undefined ? "unavailable" : raw;
+      const isTemp = this.fahrenheit && r.unit === "°C" && typeof raw === "number";
+      if (r.unit) attrs.unit_of_measurement = this.fahrenheit && r.unit === "°C" ? "°F" : r.unit;
+      let state = raw === undefined ? "unavailable" : isTemp ? D(raw) : raw;
       if (e.platform === "select") {
         attrs.options = Object.values(r.options);
         state = raw === undefined ? "unknown" : r.options[String(raw)] ?? "unknown";
       } else if (e.platform === "switch") state = raw === undefined ? "unavailable" : raw === true || Number(raw) === 1 ? "on" : "off";
-      else if (e.platform === "number") Object.assign(attrs, { min: r.min, max: r.max, step: r.step });
+      else if (e.platform === "number") Object.assign(attrs, r.display_unit ? { min: D(r.min), max: D(r.max), step: r.step } : { min: r.min, max: r.max, step: r.step });
       else if (r.labels && raw !== undefined && e.platform === "sensor") state = r.labels[String(raw)] ?? raw;
       put(e.entity_id, state, attrs);
     }
@@ -457,36 +485,36 @@ export class FakePlant {
         hvac_modes,
         preset_modes: ["comfort", "eco"],
         preset_mode: Number(this.values[`hc${n}.comfort_eco`]) === 1 ? "eco" : "comfort",
-        temperature: t,
-        min_temp: t !== undefined ? t - off - 3 : 7,
-        max_temp: t !== undefined ? t - off + 3 : 35,
+        temperature: D(t),
+        min_temp: D(t !== undefined ? t - off - 3 : 7),
+        max_temp: D(t !== undefined ? t - off + 3 : 35),
         target_temp_step: 0.5,
         current_temperature: null,
         hvac_action: badge === "off_grey" ? "off" : badge.endsWith("_red") ? "heating" : badge.endsWith("_blue") ? "cooling" : "idle",
         badge,
         room_offset: off,
-        flow_temperature: this.values[`hc${n}.flow_actual`],
-        flow_target: this.values[`hc${n}.flow_target`],
+        flow_temperature: D(this.values[`hc${n}.flow_actual`]),
+        flow_target: D(this.values[`hc${n}.flow_target`]),
         supported_features: 17,
       });
     }
     if (this.capabilities.dhw) {
       const m = this._dhwMode();
       const sp = m === "eco" ? "dhw.setpoint_eco" : m === "high_demand" ? "dhw.setpoint_boost" : "dhw.setpoint_comfort";
-      put("water_heater.warmwasser", m, {
+      put(this.waterHeaterId, m, {
         friendly_name: "Warmwasser",
         operation_list: ["off", "eco", "performance", "high_demand"],
         operation_mode: m,
-        temperature: this.values[sp],
-        current_temperature: this.values["dhw.temp"],
-        min_temp: m === "high_demand" ? 40 : 5,
-        max_temp: 75,
+        temperature: D(this.values[sp]),
+        current_temperature: D(this.values["dhw.temp"]),
+        min_temp: D(m === "high_demand" ? 40 : 5),
+        max_temp: D(75),
         target_temp_step: 0.5,
         offset: this.values["dhw.offset"],
       });
-      put("button.warmwasser_boost", "unknown", { friendly_name: "Warmwasser Boost" });
+      put(this.boostId, "unknown", { friendly_name: "Warmwasser Boost" });
     }
-    put("sensor.ochsner_flash_writes", this.flashWrites, { friendly_name: "Flash-Schreibzugriffe" });
+    put(this.flashId, this.flashWrites, { friendly_name: "Flash-Schreibzugriffe" });
     return st;
   }
 
@@ -538,7 +566,13 @@ export class FakePlant {
     if (domain === "number" && service === "set_value") {
       const key = this._keyFor(eid);
       if (!key) throw new Error(`unknown entity ${eid}`);
-      this._write(key, Number(data.value));
+      const r = this.roles()[key];
+      const nv = r.display_unit ? this.native(data.value) : Number(data.value);
+      // HA validates against the entity's (display-unit) range.
+      if ((typeof r.min === "number" && nv < r.min - 1e-6) || (typeof r.max === "number" && nv > r.max + 1e-6)) {
+        throw new Error(`Value ${data.value} for ${eid} is outside valid range ${this.disp(r.min)} - ${this.disp(r.max)}`);
+      }
+      this._write(key, nv);
       const m = /^hc(\d)\.room_offset$/.exec(key);
       if (m) this._recomputeTarget(Number(m[1]));
     } else if (domain === "select" && service === "select_option") {
@@ -555,7 +589,7 @@ export class FakePlant {
       if (service === "set_temperature") {
         const t = this._target(n);
         const off = Number(v[`hc${n}.room_offset`]) || 0;
-        const nw = clamp(Math.round((off + Number(data.temperature) - t) * 2) / 2, -3, 3);
+        const nw = clamp(Math.round((off + this.native(data.temperature) - t) * 2) / 2, -3, 3);
         if (nw !== off) this._write(`hc${n}.room_offset`, nw);
         this._recomputeTarget(n);
       } else if (service === "set_hvac_mode") {
@@ -583,8 +617,8 @@ export class FakePlant {
       } else if (service === "set_temperature") {
         const m = this._dhwMode();
         const sp = m === "eco" ? "dhw.setpoint_eco" : m === "high_demand" ? "dhw.setpoint_boost" : "dhw.setpoint_comfort";
-        this._write(sp, Number(data.temperature));
-        v["dhw.target"] = Number(data.temperature);
+        this._write(sp, this.native(data.temperature));
+        v["dhw.target"] = this.native(data.temperature);
       }
     } else if (domain === "button" && service === "press") {
       if (Number(v["dhw.program"]) !== 0) this._write("dhw.program", 0);
@@ -705,7 +739,7 @@ export function fakeHass(plants, { lang = "de", dark = false, onUpdate, noHistor
       locale: { language: lang, number_format: "language", time_format: "language" },
       themes: { darkMode: dark },
       dockedSidebar: "docked",
-      config: { language: lang },
+      config: { language: lang, unit_system: { temperature: plants.some((p) => p.fahrenheit) ? "°F" : "°C" } },
       user: { is_admin: true, name: "Harness" },
       callService: (domain, service, data) => {
         const p = plants.find((x) => Object.keys(x.states()).includes(data.entity_id)) || plants[0];

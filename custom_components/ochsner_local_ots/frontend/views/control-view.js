@@ -6,7 +6,7 @@ import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
 import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
 import { badgeFor, circuitKind, circuitName, displayEntity, enumLabel, hcKey, num, val, writableEntity } from "../lib/model.js";
-import { statusText } from "./plant-view.js";
+import { poolEntity, poolText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
 const ARM_TIME = 2500;
@@ -331,11 +331,14 @@ export class ControlView {
 
   _pool(ctx) {
     const { I, plant, live } = ctx;
-    const pt = num(live, "pool.temp"), pg = num(live, "pool.target");
-    const st = enumLabel(plant, "pool.status", val(live, "pool.status"));
-    const ent = displayEntity(plant, "pool.temp") || displayEntity(plant, "pool.status");
+    const pt = num(live, "pool.temp"), sp = num(live, "pool.setpoint");
+    const st = poolText(ctx);
+    const ent = poolEntity(plant);
+    const vals = [];
+    if (pt !== undefined) vals.push(I.temp(pt));
+    if (sp !== undefined) vals.push(`${I.t("target")} ${I.temp(sp)}`);
     return `<div class="hc" data-key="pool"><div class="hcrow"><button class="hcname"${ent ? ` data-more="${esc(ent)}"` : ""}><span class="badge" style="background:var(--ohp-pipe-off)">${iconSvg("pool", "var(--ohp-ink)")}</span><div><span class="nm">${esc(I.t("pool"))}</span>${st ? `<div class="sub" style="font-weight:400">${esc(st)}</div>` : ""}</div></button>
-      <div class="sub">${[pt, pg].filter((v) => v !== undefined).map((v) => I.temp(v)).join(" / ")}</div></div></div>`;
+      <div class="sub">${esc(vals.join(" · "))}</div></div></div>`;
   }
 
   _dhw(ctx) {

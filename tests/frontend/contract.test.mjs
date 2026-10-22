@@ -1,10 +1,101 @@
-// The harness must emit exactly the B6 payload shapes the backend will send.
+// Contract tests against the real backend. fixtures/backend-payload.json is
+// produced by running the backend's own plant_api (async_build_plants +
+// ws_subscribe) inside Home Assistant against tests/fixtures/airhawk518_snapshot.json
+// ("house" = the snapshot as is, "dhw_cool_pool" = DHW + cooling HC2 + pool).
+// The harness fake must emit exactly those payloads, and every role the
+// frontend reads must exist there (or be an agreed, not yet shipped role).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FakePlant, computeCapabilities, fakeHass, retag, variantValues } from "./harness/fake-backend.js";
-import { fixtures } from "./helpers.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { FakePlant, PENDING_ROLES, computeCapabilities, fakeHass, retag, variantValues } from "./harness/fake-backend.js";
+import { CURVE_KEYS } from "../../custom_components/ochsner_local_ots/frontend/lib/curve.js";
+import { FRONTEND, fixtures } from "./helpers.mjs";
 
 const CAP_KEYS = ["bms", "dhw", "buffer", "buffer_temp", "aux", "aux_temp", "buffer_aux_heater", "pool", "silent", "emergency", "power", "cooling"].sort();
+// Agreed in the contract, optional or not sent by the backend yet.
+const OPTIONAL_ROLES = [...PENDING_ROLES, "dhw.hysteresis", "pool.temp"];
+
+const withoutIds = (roles) => Object.fromEntries(Object.entries(roles).filter(([k]) => !PENDING_ROLES.includes(k)).map(([k, r]) => [k, { ...r, entity_id: !!r.entity_id }]));
+const circuitShape = (cs) => cs.map(({ climate, device_id, ...c }) => ({ ...c, climate: !!climate }));
+
+for (const variant of ["house", "dhw_cool_pool"]) {
+  test(`fake payload and event equal the backend's (${variant})`, () => {
+    const { catalog, snapshot, backend } = fixtures();
+    const real = backend[variant];
+    const rp = real.plants.plants[0];
+    const fp = new FakePlant({ catalog, snapshot, backend, variant });
+    const res = fp.plantPayload("de");
+    assert.equal(real.plants.version, 1);
+    assert.deepEqual(Object.keys(real.plants.settings), ["color_scheme"]);
+    assert.deepEqual(Object.keys(res).sort(), Object.keys(rp).sort());
+    assert.equal(rp.plant_id, `${rp.entry_id}:${rp.host}`);
+    assert.deepEqual(res.capabilities, rp.capabilities);
+    assert.deepEqual(Object.keys(rp.capabilities).sort(), CAP_KEYS);
+    assert.deepEqual(circuitShape(res.circuits), circuitShape(rp.circuits));
+    assert.deepEqual(res.dhw && Object.keys(res.dhw).sort(), rp.dhw && Object.keys(rp.dhw).sort());
+    assert.deepEqual(res.badges, rp.badges);
+    assert.deepEqual(withoutIds(res.roles), withoutIds(rp.roles));
+    const ev = fp.event();
+    assert.deepEqual(Object.keys(ev).sort(), Object.keys(real.event).sort());
+    assert.deepEqual(ev.capabilities, real.event.capabilities);
+    const values = { ...ev.values };
+    for (const k of PENDING_ROLES) delete values[k];
+    assert.deepEqual(values, real.event.values);
+    assert.ok(!Object.values(real.event.values).some(Array.isArray), "values are first elements, not [v, v]");
+    assert.equal(typeof real.event.values["hc1.name"], "string");
+    // English labels too
+    const en = fp.plantPayload("en").roles;
+    for (const [k, labels] of Object.entries(real.labels_en)) assert.deepEqual(en[k].labels, labels, k);
+  });
+}
+
+/** Role keys the shipped frontend reads (string literals + per-circuit keys). */
+function frontendRoles() {
+  const keys = new Set();
+  const circuit = new Set([...CURVE_KEYS, "room_target_heat", "room_target_cool"]);
+  const walk = (dir) => {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, f.name);
+      if (f.isDirectory()) walk(p);
+      else if (f.name.endsWith(".js")) {
+        const src = fs.readFileSync(p, "utf8");
+        for (const m of src.matchAll(/["'`]((?:hp|dhw|pool|avail)\.[a-z_]+)["'`]/g)) keys.add(m[1]);
+        for (const m of src.matchAll(/hcKey\([^,()]+, "([a-z_]+)"\)/g)) circuit.add(m[1]);
+      }
+    }
+  };
+  walk(FRONTEND);
+  for (const k of circuit) keys.add(`hc1.${k}`);
+  return [...keys].sort();
+}
+
+test("every role the frontend reads exists in the backend payload", () => {
+  const { backend } = fixtures();
+  const have = new Set(Object.values(backend).flatMap((v) => Object.keys(v.plants.plants[0].roles)));
+  const used = frontendRoles();
+  assert.ok(used.length > 40, `found ${used.length} role keys`);
+  const missing = used.filter((k) => !have.has(k) && !OPTIONAL_ROLES.includes(k));
+  assert.deepEqual(missing, []);
+  // the agreed emergency/pool roles are what the frontend reads
+  for (const k of ["hp.emergency_status", "dhw.emergency_status", "pool.mode", "pool.setpoint", "pool.status"]) assert.ok(used.includes(k), k);
+  assert.ok(!used.includes("hp.emergency") && !used.includes("pool.program") && !used.includes("pool.target"));
+});
+
+test("writable curve roles carry native unit and bounds", () => {
+  const { backend } = fixtures();
+  const roles = backend.house.plants.plants[0].roles;
+  for (const k of CURVE_KEYS) {
+    const r = roles[`hc1.${k}`];
+    assert.equal(r.writable, true, k);
+    assert.ok(r.entity_id.startsWith("number."), k);
+    assert.equal(r.unit, "°C", k);
+    for (const b of ["min", "max", "step"]) assert.equal(typeof r[b], "number", `${k}.${b}`);
+  }
+  assert.equal(roles["hc1.badge"].entity_id, null);
+  assert.deepEqual(roles["hp.program"].options, { 0: "Automatik", 1: "Handbetrieb Heizen", 2: "Handbetrieb Kühlen", 3: "Abgeschaltet" });
+  assert.equal(roles["hp.status"].labels["1"], "Heizen");
+});
 
 test("role ids: HC2–4 are the HC1 ids re-tagged", () => {
   assert.equal(retag("BCNL7o58AAE=", 19693), "BCNL7u1MAAE=");
@@ -25,40 +116,25 @@ test("live availability 27 27 27 0 → three heat-only circuits (B3)", () => {
   assert.equal(caps.aux, true);
 });
 
-test("plants payload + event have the B6 shape", async () => {
-  const { catalog, snapshot } = fixtures();
-  const fp = new FakePlant({ catalog, snapshot, variant: "full" });
+test("fake websocket serves the plants payload per language", async () => {
+  const { catalog, snapshot, backend } = fixtures();
+  const fp = new FakePlant({ catalog, snapshot, backend, variant: "full" });
   const fake = fakeHass([fp]);
   const res = await fake.conn.sendMessagePromise({ type: "ochsner_local_ots/plants", language: "de" });
   assert.equal(res.version, 1);
-  assert.deepEqual(Object.keys(res.settings), ["color_scheme"]);
   const p = res.plants[0];
-  for (const k of ["plant_id", "entry_id", "host", "device_id", "title", "model", "available", "capabilities", "circuits", "dhw", "badges", "roles", "flash_writes"]) assert.ok(k in p, k);
   assert.equal(p.plant_id, `${p.entry_id}:${p.host}`);
-  assert.deepEqual(Object.keys(p.capabilities).sort(), CAP_KEYS);
-  for (const c of p.circuits) for (const k of ["index", "name", "device_id", "heat", "cool", "room_sensor", "humidity", "climate"]) assert.ok(k in c, k);
   assert.deepEqual(Object.keys(p.dhw).sort(), ["boost_button", "water_heater"]);
-  assert.equal(p.badges.length, 23);
-  const r = p.roles["hc1.heat_curve_norm_flow"];
-  assert.equal(typeof r.entity_id, "string");
-  assert.equal(r.writable, true);
-  for (const k of ["min", "max", "step", "unit"]) assert.ok(k in r, k);
-  assert.equal(p.roles["hc1.badge"].entity_id, null);
-  assert.deepEqual(p.roles["hp.program"].options, { 0: "Automatik", 1: "Handbetrieb Heizen", 2: "Handbetrieb Kühlen", 3: "Abgeschaltet" });
   assert.equal(p.roles["hp.status"].labels["1"], "Heizen");
+  assert.ok(p.roles["pool.mode"] && p.roles["pool.setpoint"] && p.roles["pool.status"]);
+  assert.ok(p.roles["hp.emergency_status"].labels && p.roles["dhw.emergency_status"].labels);
   const en = await fake.conn.sendMessagePromise({ type: "ochsner_local_ots/plants", language: "en" });
   assert.equal(en.plants[0].roles["hp.status"].labels["1"], "Heating");
-  const ev = fp.event();
-  assert.deepEqual(Object.keys(ev).sort(), ["available", "capabilities", "plant_id", "updated", "values"]);
-  assert.equal(typeof ev.values["hp.outdoor"], "number");
-  assert.equal(typeof ev.values["hc1.name"], "string");
-  assert.equal(typeof ev.values["hp.dhw_valve"], "boolean");
-  assert.ok(!Object.values(ev.values).some(Array.isArray), "values are first elements, not [v, v]");
 });
 
 test("fake controller applies B4/B5 write semantics", async () => {
-  const { catalog, snapshot } = fixtures();
-  const fp = new FakePlant({ catalog, snapshot, variant: "full", latency: 0 });
+  const { catalog, snapshot, backend } = fixtures();
+  const fp = new FakePlant({ catalog, snapshot, backend, variant: "full", latency: 0 });
   await fp.callService("climate", "set_temperature", { entity_id: "climate.erdgeschoss", temperature: 25 });
   assert.equal(fp.values["hc1.room_offset"], 1);
   assert.equal(fp.states()["climate.erdgeschoss"].attributes.temperature, 25);

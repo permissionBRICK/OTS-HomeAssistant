@@ -13,6 +13,27 @@ export function statusText(ctx) {
   return enumLabel(ctx.plant, "hp.status", raw) || ctx.I.t(ctx.mode === "off" ? "off" : ctx.mode === "fault" ? "fault" : ctx.mode === "standby" ? "standby" : ctx.mode === "heat" ? "heating" : ctx.mode === "cool" ? "cooling" : ctx.mode === "dhw" ? "dhw" : "defrost");
 }
 
+// pool.mode: 0 auto, 1 off, 2 on, 3 holiday.
+const POOL_OFF = 1;
+
+/** Pool status text: status label, else the mode label. */
+export function poolText(ctx) {
+  const { I, plant, live } = ctx;
+  const mode = val(live, "pool.mode");
+  return enumLabel(plant, "pool.status", val(live, "pool.status"))
+    || enumLabel(plant, "pool.mode", mode)
+    || (mode === undefined ? "" : Number(mode) === POOL_OFF ? I.t("off") : I.t("auto"));
+}
+
+export function poolActive(live) {
+  const st = num(live, "pool.status");
+  return st !== undefined && st > 0 && num(live, "pool.mode") !== POOL_OFF;
+}
+
+export function poolEntity(plant) {
+  return displayEntity(plant, "pool.temp") || displayEntity(plant, "pool.status") || displayEntity(plant, "pool.setpoint") || displayEntity(plant, "pool.mode");
+}
+
 /** Chip text for a circuit row / the B tile status. */
 export function circuitPresetText(ctx, c) {
   const { I, plant, live } = ctx;
@@ -69,22 +90,20 @@ export class PlantView {
       };
     });
     if (sec.pool) {
-      const pt = num(live, "pool.temp");
-      const pg = num(live, "pool.target");
+      const pt = num(live, "pool.temp"); // optional: not every pool module reports it
+      const sp = num(live, "pool.setpoint");
       const parts = [];
       if (pt !== undefined) parts.push(`${t("water")} ${I.temp(pt)}`);
-      if (pg !== undefined) parts.push(`${t("target")} ${I.temp(pg)}`);
-      const ps = val(live, "pool.status");
-      const prog = val(live, "pool.program");
+      if (sp !== undefined) parts.push(`${t("target")} ${I.temp(sp)}`);
       rows.push({
         type: "pool",
         name: t("pool"),
         kind: "pool",
         sub: parts.join(" · "),
-        chip: enumLabel(plant, "pool.status", ps) || (prog !== undefined ? (Number(prog) === 1 ? t("off") : t("auto")) : ""),
-        active: mode !== "dhw" && ps !== undefined && Number(ps) > 0 && Number(prog) !== 1,
+        chip: poolText(ctx),
+        active: mode !== "dhw" && poolActive(live),
         cooling: false,
-        entity: displayEntity(plant, "pool.temp") || displayEntity(plant, "pool.status"),
+        entity: poolEntity(plant),
       });
     }
     let dhw = null;
@@ -155,9 +174,12 @@ export class PlantView {
       const l = enumLabel(plant, "hp.silent_program", s);
       if (l) chip("", "silent", `${esc(t("silent"))} <b>${esc(l)}</b>`, displayEntity(plant, "hp.silent_program"));
     }
-    if (sec.emergency) {
-      const e = val(live, "hp.emergency");
-      if (e !== undefined && Number(e) > 0) chip("warn", "emergency", `<b>${esc(t("emergency"))}</b>`, displayEntity(plant, "hp.emergency"));
+    // Emergency operation (enum 0 passive, 1 reduced unconfirmed, 2 reduced
+    // confirmed, 3 standard confirmed, 4 plant fault): only when not passive.
+    for (const [key, label, show] of [["hp.emergency_status", "emergency_hp", sec.emergency], ["dhw.emergency_status", "emergency_dhw", sec.emergency && sec.dhw]]) {
+      const e = num(live, key);
+      if (!show || e === undefined || e === 0) continue;
+      chip("warn", key, `⚠ <b>${esc(t(label))}</b> ${esc(enumLabel(plant, key, e) || "")}`, displayEntity(plant, key));
     }
     const dewCirc = sec.circuits.find((c) => c.cool && circuitCooling(plant, live, c, ctx.mode) && num(live, hcKey(c.index, "dew_point")) !== undefined);
     if (dewCirc) chip("", "dew", `${esc(t("dew_point"))} <b>${I.temp(num(live, hcKey(dewCirc.index, "dew_point")))}</b>`, displayEntity(plant, hcKey(dewCirc.index, "dew_point")));

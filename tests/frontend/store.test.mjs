@@ -8,8 +8,8 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
 
 function setup(t, variant = "house") {
   t.mock.timers.enable({ apis: ["setTimeout"] });
-  const { catalog, snapshot } = fixtures();
-  const plant = new FakePlant({ catalog, snapshot, variant, latency: 0 });
+  const { catalog, snapshot, backend } = fixtures();
+  const plant = new FakePlant({ catalog, snapshot, backend, variant, latency: 0 });
   const conn = fakeConnection([plant]);
   const store = new PlantStore(conn);
   return { plant, conn, store };
@@ -89,8 +89,8 @@ test("circuit/DHW presence change in the feed re-fetches plants exactly once", a
 
 test("missing integration (unknown command) is reported, not thrown", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
-  const { catalog, snapshot } = fixtures();
-  const conn = fakeConnection([new FakePlant({ catalog, snapshot })], { failPlants: true });
+  const { catalog, snapshot, backend } = fixtures();
+  const conn = fakeConnection([new FakePlant({ catalog, snapshot, backend })], { failPlants: true });
   const store = new PlantStore(conn);
   store.addListener(() => {});
   await flush();
