@@ -207,3 +207,48 @@ export function circuitsForDevice(plant, deviceId) {
   const c = (plant.circuits || []).find((x) => x.device_id === deviceId);
   return c ? [c.index] : null;
 }
+
+// ---- units -----------------------------------------------------------------
+// Feed values and number-role metadata (unit/min/max/step) are in the
+// controller's native unit. Entities may be shown by HA in another unit
+// (`display_unit`, e.g. °F) and number.set_value expects that unit, so a
+// value is converted exactly once, at the service call. Deltas (unit K, e.g.
+// offsets) are never converted. Climate/water_heater attributes are in HA's
+// temperature unit (hass.config.unit_system.temperature).
+
+const TEMP_UNITS = { "°C": "C", "℃": "C", "°F": "F", "℉": "F" };
+
+/** Absolute temperature °C ↔ °F; undefined when not convertible. */
+export function convertTemp(v, from, to) {
+  const a = TEMP_UNITS[from], b = TEMP_UNITS[to];
+  if (typeof v !== "number" || !a || !b) return undefined;
+  if (a === b) return v;
+  return a === "C" ? (v * 9) / 5 + 32 : ((v - 32) * 5) / 9;
+}
+
+/** A temperature difference (K) in display units (°F degrees are 5/9 K). */
+export function convertDelta(v, from, to) {
+  if (typeof v !== "number") return undefined;
+  const a = TEMP_UNITS[from] || (from === "K" ? "C" : null), b = TEMP_UNITS[to] || (to === "K" ? "C" : null);
+  if (!a || !b || a === b) return v;
+  return a === "C" ? (v * 9) / 5 : (v * 5) / 9;
+}
+
+const round4 = (v) => Math.round(v * 1e4) / 1e4;
+
+/**
+ * Native value → the value number.set_value expects for this role's entity.
+ * null = units differ in a way we cannot convert (refuse to write).
+ */
+export function toServiceValue(r, v) {
+  const du = r && r.display_unit;
+  if (!du || du === r.unit || r.unit === "K") return v;
+  const out = convertTemp(v, r.unit, du);
+  return out === undefined ? null : round4(out);
+}
+
+/** HA's temperature unit (climate / water_heater attributes are in it). */
+export function haTempUnit(hass) {
+  const u = hass && hass.config && hass.config.unit_system && hass.config.unit_system.temperature;
+  return TEMP_UNITS[u] ? u : "°C";
+}

@@ -166,3 +166,42 @@ test("handles are frozen while Apply runs; no edit gets lost", { skip }, async (
     "number.set_value number.fussboden_heizgrenze 16.8",
   ]);
 });
+
+test("Fahrenheit HA: curve maths stay native, number.set_value gets °F", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=30&fahrenheit=1");
+  const c = on(page);
+  // the editor shows and edits native °C values
+  assert.match(await c.text('[data-h="heat_limit"] text'), /16,7°/);
+  await c.focusKey('[data-h="heat_norm"]', "ArrowUp");
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  assert.match(await c.text(".pendbar"), /Norm-Vorlauf 36 → 36,1 °C/);
+  await c.click('[data-cact="apply"]');
+  await page.waitFor("harness.writes().length === 2", 3000);
+  assert.deepEqual(await writes(page), [
+    "number.set_value number.fussboden_vorlauftemperatur_bei_norm_aussentemperatur 96.98",
+    "number.set_value number.fussboden_heizgrenze 62.24",
+  ]);
+  // HA hands the integration native values again; the feed confirms them
+  assert.equal(await page.eval("harness.plant.values['hc1.heat_curve_norm_flow']"), 36.1);
+  assert.equal(await page.eval("harness.plant.values['hc1.heat_limit']"), 16.8);
+  await page.waitFor(`!${c.root}.querySelector(".pendbar")`, 3000);
+});
+
+test("Fahrenheit HA: steppers and the DHW gauge work in HA's unit", { skip }, async () => {
+  const page = await b.open("variant=full&view=controls&latency=30&fahrenheit=1");
+  const c = on(page);
+  // climate target 24 °C = 75.2 °F (cooling target of the full variant)
+  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /75,2°F/);
+  await c.click('.hc[data-key="hc1"] [data-d="1"]');
+  assert.match(await c.text('.hc[data-key="hc1"] .stepper .v'), /75,5°F/, "snaps to the 0.5° grid of HA's unit");
+  assert.match(await c.text('.hc[data-key="hc1"]'), /Korrektur \+0,2 K/, "0.3 °F = 0.17 K");
+  const scale = await page.eval(`[...${c.root}.querySelectorAll(".gscale span")].map((s) => s.textContent)`);
+  assert.ok(parseInt(scale[0], 10) <= 125 && parseInt(scale[2], 10) >= 130, JSON.stringify(scale));
+  assert.match(scale[1], /Soll 126°F/);
+  await c.click('[data-act="dhwstep"][data-d="1"]');
+  await page.waitFor("harness.writes().length === 2", 3000);
+  assert.deepEqual(await writes(page), [
+    "climate.set_temperature climate.erdgeschoss 75.5",
+    "water_heater.set_temperature water_heater.warmwasser 126",
+  ]);
+});

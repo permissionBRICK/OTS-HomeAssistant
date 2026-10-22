@@ -9,7 +9,7 @@ import {
   aboveHeatLimit, axes, constrain, coolFlowAt, coolOrder, coolPointsOrdered, curveProblems, curveShift, dragStep,
   effectAt, hasCoolCurve, hasHeatCurve, heatFlowAt, nudge, pendingDiff, reflects, ticks, valueProblems, writeOrder,
 } from "../lib/curve.js";
-import { hcKey, num, writableEntity, role } from "../lib/model.js";
+import { hcKey, num, role, toServiceValue, writableEntity } from "../lib/model.js";
 
 const AWAIT_TIMEOUT = 90000;
 const P = { l: 34, r: 12, t: 14, b: 24 };
@@ -339,10 +339,20 @@ export class CurveEditor {
     }
     // Bind every write to this plant's entities now: whatever happens while
     // the writes run (tab switch, refetch), they go exactly here.
-    const plan = diff.map((d) => ({ ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key), "number") }));
+    // Curve maths are native; the entity takes its display unit (e.g. °F).
+    const plan = diff.map((d) => {
+      const r = role(ctx.plant, hcKey(n, d.key));
+      return { ...d, entity: writableEntity(ctx.plant, hcKey(n, d.key), "number"), value: toServiceValue(r, d.to), unit: r && r.display_unit };
+    });
     const ro = plan.find((d) => !d.entity);
     if (ro) {
       s.error = I.t("handle_readonly", { name: I.t("r_" + ro.key) });
+      this.card.requestRender();
+      return;
+    }
+    const nounit = plan.find((d) => d.value === null);
+    if (nounit) {
+      s.error = I.t("apply_refused", { why: I.t("invalid_unit", { name: I.t("r_" + nounit.key), unit: nounit.unit }) });
       this.card.requestRender();
       return;
     }
@@ -369,7 +379,7 @@ export class CurveEditor {
       s.applying.i++;
       this.card.requestRender();
       try {
-        await this.card.call("number", "set_value", { entity_id: d.entity, value: d.to });
+        await this.card.call("number", "set_value", { entity_id: d.entity, value: d.value });
         if (s.pending[d.key] === d.to) delete s.pending[d.key];
         s.awaiting[d.key] = { v: d.to, at: Date.now() };
       } catch (err) {

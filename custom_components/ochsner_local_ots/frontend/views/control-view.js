@@ -5,13 +5,16 @@ import { esc } from "../lib/dom.js";
 import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
 import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
-import { badgeFor, circuitKind, circuitName, displayEntity, enumLabel, hcKey, num, ofDomain, val, writableEntity } from "../lib/model.js";
+import { badgeFor, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, val, writableEntity } from "../lib/model.js";
 import { poolEntity, poolText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
 const ARM_TIME = 2500;
 
 const errText = (err) => (err && (err.message || err.code)) || String(err);
+
+/** Temperature in HA's unit: "°" for °C (like the rest of the card), "°F" spelled out. */
+const tempIn = (I, v, unit, d) => (unit === "°F" && Number.isFinite(Number(v)) ? I.temp(v, d) + "F" : I.temp(v, d));
 
 /** Current circuit mode for the Komfort | Eco | Aus chips. */
 export function presetState(ctx, c) {
@@ -36,6 +39,7 @@ export function circuitTarget(ctx, c) {
       max: typeof a.max_temp === "number" ? a.max_temp : a.temperature + 3,
       step: a.target_temp_step || 0.5,
       writable: st.state !== "unavailable",
+      climate: true,
     };
   }
   const n = c.index;
@@ -223,8 +227,9 @@ export class ControlView {
         const step = a.target_temp_step || 0.5;
         const c = this._coal("dhw", wh, "water_heater");
         const base = c.display() ?? a.temperature;
-        const lo = typeof a.min_temp === "number" ? a.min_temp : 5;
-        const hi = typeof a.max_temp === "number" ? a.max_temp : 75;
+        const tu = haTempUnit(ctx.hass);
+        const lo = typeof a.min_temp === "number" ? a.min_temp : convertTemp(5, "°C", tu);
+        const hi = typeof a.max_temp === "number" ? a.max_temp : convertTemp(75, "°C", tu);
         c.push(Number(Math.min(hi, Math.max(lo, Math.round((base + Number(d.d) * step) / step) * step)).toFixed(2)));
         return;
       }
@@ -329,7 +334,9 @@ export class ControlView {
     const shown = coal && coal.value !== undefined ? coal.value : tg.value;
     const pend = coal && coal.value !== undefined;
     const off = num(live, hcKey(n, "room_offset"));
-    const shownOff = off !== undefined && pend && tg.value !== undefined ? off + (shown - tg.value) : off;
+    // The stepper is in HA's unit (climate attributes), the offset in K.
+    const tu = tg.climate ? haTempUnit(ctx.hass) : "°C";
+    const shownOff = off !== undefined && pend && tg.value !== undefined ? off + convertDelta(shown - tg.value, tu, "K") : off;
     const fa = num(live, hcKey(n, "flow_actual"));
     const ft = num(live, hcKey(n, "flow_target"));
     const subParts = [];
@@ -358,7 +365,7 @@ export class ControlView {
     return `<div class="hc" data-key="hc${n}"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
         <div class="stepper"${roTitle}><button data-act="step" data-c="${n}" data-d="-1" aria-label="${esc(I.t("lower") + " " + name)}"${minus}>−</button>
-          <div class="v${pend ? " pend" : ""}" aria-live="polite">${shown !== undefined ? I.temp(shown) : "–"}</div>
+          <div class="v${pend ? " pend" : ""}" aria-live="polite">${shown !== undefined ? tempIn(I, shown, tu) : "–"}</div>
           <button data-act="step" data-c="${n}" data-d="1" aria-label="${esc(I.t("raise") + " " + name)}"${plus}>+</button></div></div>
       <div class="sub" style="margin-top:4px">${esc(subParts.join(" · "))}</div>
       ${chips}${this._noteHtml(`hc${n}`)}</div>`;
@@ -381,8 +388,12 @@ export class ControlView {
     const wh = plant.dhw && plant.dhw.water_heater;
     const st = wh ? ctx.state(wh) : null;
     const a = (st && st.attributes) || {};
-    const temp = typeof a.current_temperature === "number" ? a.current_temperature : num(live, "dhw.temp");
-    const target = typeof a.temperature === "number" ? a.temperature : num(live, "dhw.target");
+    // All gauge maths in HA's unit (the water heater's attributes); native
+    // feed values (°C, K) are converted into it.
+    const tu = haTempUnit(ctx.hass);
+    const D = (v) => convertTemp(v, "°C", tu);
+    const temp = typeof a.current_temperature === "number" ? a.current_temperature : D(num(live, "dhw.temp"));
+    const target = typeof a.temperature === "number" ? a.temperature : D(num(live, "dhw.target"));
     const coal = this.coal.get("dhw");
     if (coal) coal.sync();
     const shown = coal && coal.value !== undefined ? coal.value : target;
@@ -392,28 +403,32 @@ export class ControlView {
     const heating = mode === "dhw";
     const dis = ctx.disabled ? " disabled" : "";
     const canSet = !!st && typeof a.temperature === "number" && !ctx.disabled;
-    const lo = Math.min(30, Math.floor(((temp ?? 30) - 5) / 5) * 5);
-    const hi = Math.max(65, Math.ceil(((shown ?? 60) + 5) / 5) * 5);
+    const minT = typeof a.min_temp === "number" ? a.min_temp : D(5);
+    const maxT = typeof a.max_temp === "number" ? a.max_temp : D(75);
+    const margin = convertDelta(5, "K", tu);
+    const lo = Math.min(D(30), Math.floor(((temp ?? D(30)) - margin) / 5) * 5);
+    const hi = Math.max(D(65), Math.ceil(((shown ?? D(60)) + margin) / 5) * 5);
     const X = (v) => Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
-    const hyst = num(live, "dhw.hysteresis");
+    const hyst = convertDelta(num(live, "dhw.hysteresis"), "K", tu);
+    const T = (v, d) => tempIn(I, v, tu, d);
     let gauge = `<div class="gauge" aria-hidden="true"><div style="left:0;right:0;background:var(--ohp-pipe-off)"></div>`;
-    if (hyst !== undefined && shown !== undefined) gauge += `<div title="${esc(I.t("charges_below", { t: I.temp(shown - hyst) }))}" style="left:${X(shown - hyst)}%;width:${X(shown) - X(shown - hyst)}%;border-radius:0;background:color-mix(in srgb, var(--ohp-dhw) 35%, transparent)"></div>`;
+    if (hyst !== undefined && shown !== undefined) gauge += `<div title="${esc(I.t("charges_below", { t: T(shown - hyst) }))}" style="left:${X(shown - hyst)}%;width:${X(shown) - X(shown - hyst)}%;border-radius:0;background:color-mix(in srgb, var(--ohp-dhw) 35%, transparent)"></div>`;
     if (temp !== undefined) gauge += `<div style="left:0;width:${X(temp)}%;background:var(--ohp-dhw)"></div>`;
     if (shown !== undefined) gauge += `<div class="mark" style="left:calc(${X(shown)}% - 1px)"></div>`;
-    gauge += `</div><div class="gscale"><span>${lo}°</span><span>${hyst !== undefined && shown !== undefined ? esc(I.t("charges_below", { t: I.temp(shown - hyst, 0) })) + " · " : ""}${esc(I.t("target"))} ${I.temp(shown, 0)}</span><span>${hi}°</span></div>`;
+    gauge += `</div><div class="gscale"><span>${Math.round(lo)}°</span><span>${hyst !== undefined && shown !== undefined ? esc(I.t("charges_below", { t: T(shown - hyst, 0) })) + " · " : ""}${esc(I.t("target"))} ${T(shown, 0)}</span><span>${Math.round(hi)}°</span></div>`;
     const curMode = st ? st.state : null;
     const mShown = this._busyTarget("dhwmode", curMode) ?? curMode;
     const chipDis = !st || ctx.disabled ? " disabled" : "";
     const chip = (v, label, cls) => `<button class="mc${mShown === v ? " on " + cls : ""}" data-act="dhwmode" data-v="${v}" aria-pressed="${mShown === v}"${chipDis}>${esc(label)}</button>`;
-    const minus = canSet && shown > (a.min_temp ?? 5) + 1e-6 ? "" : " disabled";
-    const plus = canSet && shown < (a.max_temp ?? 75) - 1e-6 ? "" : " disabled";
+    const minus = canSet && shown > minT + 1e-6 ? "" : " disabled";
+    const plus = canSet && shown < maxT - 1e-6 ? "" : " disabled";
     const boostBtn = plant.dhw && plant.dhw.boost_button
       ? `<button class="boost${running ? " running" : ""}" data-act="boost"${running || ctx.disabled ? " disabled" : ""}>${boltSvg} ${esc(running ? I.t("boost_running") : I.t("boost"))}</button>`
       : "";
     return `<div class="sect"><div class="lab">${esc(I.t("section_dhw"))}</div><div class="hc" data-key="dhw"><div class="hcrow">
-        <button class="hcname"${wh ? ` data-more="${esc(wh)}"` : ""}><span class="badge" style="background:${heating ? "var(--ohp-dhw)" : "var(--ohp-pipe-off)"}">${showerSvg(heating ? "#111" : "var(--ohp-ink)")}</span><div><span class="nm">${I.temp(temp, 0)}</span><div class="sub" style="font-weight:400">${esc(I.t("target"))} ${I.temp(target, 0)}</div></div></button>
+        <button class="hcname"${wh ? ` data-more="${esc(wh)}"` : ""}><span class="badge" style="background:${heating ? "var(--ohp-dhw)" : "var(--ohp-pipe-off)"}">${showerSvg(heating ? "#111" : "var(--ohp-ink)")}</span><div><span class="nm">${T(temp, 0)}</span><div class="sub" style="font-weight:400">${esc(I.t("target"))} ${T(target, 0)}</div></div></button>
         <div class="stepper"><button data-act="dhwstep" data-d="-1" aria-label="${esc(I.t("lower") + " " + I.t("dhw"))}"${minus}>−</button>
-          <div class="v${coal && coal.value !== undefined ? " pend" : ""}">${I.temp(shown, 0)}</div>
+          <div class="v${coal && coal.value !== undefined ? " pend" : ""}">${T(shown, 0)}</div>
           <button data-act="dhwstep" data-d="1" aria-label="${esc(I.t("raise") + " " + I.t("dhw"))}"${plus}>+</button></div></div>
       ${gauge}
       <div class="hcrow" style="margin-top:8px"><div class="modechips" style="margin-top:0">${chip("performance", I.t("comfort"), "dhwc")}${chip("eco", I.t("eco"), "eco")}${chip("off", I.t("off"), "offc")}</div>${boostBtn}</div>

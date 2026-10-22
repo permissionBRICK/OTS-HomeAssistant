@@ -3,7 +3,7 @@
 import { esc } from "../lib/dom.js";
 import { modeColor, textTint } from "../lib/colors.js";
 import { plantSVG } from "../lib/plant-svg.js";
-import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, displayEntity, enumLabel, hcKey, isProducing, liveCop, num, val } from "../lib/model.js";
+import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, isProducing, liveCop, num, val } from "../lib/model.js";
 
 // Aux heater status enum Off*Htg*Stby*Dhw*BIP*Error*Frost*…: these mean "heating now".
 const AUX_ON = new Set([1, 3, 6]);
@@ -111,8 +111,11 @@ export class PlantView {
       const wh = plant.dhw && plant.dhw.water_heater;
       const st = wh ? ctx.state(wh) : null;
       const a = (st && st.attributes) || {};
-      const temp = a.current_temperature !== undefined ? a.current_temperature : num(live, "dhw.temp");
-      const target = a.temperature !== undefined && a.temperature !== null ? a.temperature : num(live, "dhw.target");
+      // The schematic shows native °C like every other value in it; the
+      // water heater's attributes are in HA's unit.
+      const tu = haTempUnit(ctx.hass);
+      const temp = convertTemp(a.current_temperature, tu, "°C") ?? num(live, "dhw.temp");
+      const target = convertTemp(a.temperature, tu, "°C") ?? num(live, "dhw.target");
       const boost = Number(val(live, "dhw.boost")) === 1;
       const valve = val(live, "hp.dhw_valve");
       dhw = {

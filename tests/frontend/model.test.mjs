@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, enumLabel, hpMode, isProducing, layoutSignature, liveCop, parseBadge, pickPlant, sections, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
+import { badgeFor, capabilities, circuitActive, circuitKind, circuitName, circuitsForDevice, convertDelta, convertTemp, enumLabel, haTempUnit, hpMode, isProducing, layoutSignature, liveCop, parseBadge, pickPlant, sections, toServiceValue, writableEntity } from "../../custom_components/ochsner_local_ots/frontend/lib/model.js";
 import { BADGES, FakePlant } from "./harness/fake-backend.js";
 import { fixtures } from "./helpers.mjs";
 
@@ -112,4 +112,22 @@ test("pickPlant by plant id, main device or circuit device", () => {
   assert.deepEqual(circuitsForDevice(plants[1], "c22"), [2]);
   assert.equal(circuitsForDevice(plants[1], "d2"), null);
   assert.equal(pickPlant([], {}), null);
+});
+
+test("units: native values are converted only at the service call", () => {
+  assert.equal(convertTemp(36.5, "°C", "°F"), 97.7);
+  assert.equal(convertTemp(97.7, "°F", "°C").toFixed(6), "36.500000");
+  assert.equal(convertTemp(20, "°C", "°C"), 20);
+  assert.equal(convertTemp(20, "K", "°F"), undefined, "K is a delta here, not an absolute unit");
+  assert.equal(convertDelta(5, "K", "°F"), 9);
+  assert.equal(convertDelta(0.5, "°F", "K").toFixed(4), "0.2778");
+  assert.equal(convertDelta(1.5, "K", "°C"), 1.5);
+  const flow = { unit: "°C", display_unit: "°F", min: 20, max: 90, step: 0.1 };
+  assert.equal(toServiceValue(flow, 36.1), 96.98);
+  assert.equal(toServiceValue(flow, -14), 6.8);
+  assert.equal(toServiceValue({ unit: "°C", min: 20 }, 36.1), 36.1, "no display unit → native");
+  assert.equal(toServiceValue({ unit: "K", display_unit: "°F" }, 1.5), 1.5, "offsets (K) are not converted");
+  assert.equal(toServiceValue({ unit: "°C", display_unit: "bar" }, 2), null, "unconvertible → refuse");
+  assert.equal(haTempUnit({ config: { unit_system: { temperature: "°F" } } }), "°F");
+  assert.equal(haTempUnit({}), "°C");
 });
