@@ -312,3 +312,18 @@ test("controller recovery re-enables the controls from the live feed alone", { s
   await sleep(120);
   assert.ok(await page.eval(`!!${sr}.querySelector(".banner")`));
 });
+
+test("curve handles expose native slider values and ≥ 44 px hit areas; Auto uses HA's heat-cool colour", { skip: !CHROME && "no chromium" }, async () => {
+  const page = await open("variant=full&view=all&theme=light&scheme=ha", { width: 760 });
+  const attrs = (id) => page.eval(`(() => { const e = ${sr}.querySelector('[data-h="${id}"]'); return ["role", "aria-valuenow", "aria-valuemin", "aria-valuemax", "aria-valuetext"].map((a) => e.getAttribute(a)); })()`);
+  assert.deepEqual(await attrs("heat_norm"), ["slider", "35", "20", "90", "−15,0° → 35,0°"]);
+  assert.deepEqual(await attrs("heat_limit"), ["slider", "16.7", "0", "30", "Heizgrenze 16,7°"]);
+  assert.deepEqual((await attrs("heat_max")).slice(1, 4), ["40", "0", "70"]);
+  const size = (sel) => page.eval(`(() => { const r = ${sr}.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; })()`);
+  assert.ok((await size('[data-h="heat_limit"] .hit'))[0] >= 44);
+  assert.ok((await size('[data-h="heat_max"] .hit'))[1] >= 44);
+  assert.ok((await size('[data-h="heat_norm"] .hit'))[0] >= 44);
+  // full variant: HC1 is in Auto (heat/cool) → the HA theme's heat-cool colour (amber)
+  const bg = await page.eval(`getComputedStyle(${sr}.querySelector('[data-act="season"][data-c="1"][data-v="heat_cool"]')).backgroundColor`);
+  assert.equal(bg, "rgb(255, 193, 7)");
+});

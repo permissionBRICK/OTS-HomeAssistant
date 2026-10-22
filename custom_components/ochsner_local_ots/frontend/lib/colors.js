@@ -27,7 +27,9 @@ export const SCHEMES = {
       ...THEME_NEUTRALS,
       "--ohp-heat": "var(--state-climate-heat-color, var(--deep-orange-color, #ff6f22))",
       "--ohp-cool": "var(--state-climate-cool-color, var(--blue-color, #2196f3))",
-      "--ohp-heatcool": "var(--state-climate-heat_cool-color, var(--amber-color, #ffc107))",
+      "--ohp-heatcool": "var(--state-climate-heat-cool-color, var(--amber-color, #ffc107))",
+      "--ohp-auto-bg": "var(--ohp-heatcool)",
+      "--ohp-on-auto": "#111",
       "--ohp-dhw": "var(--amber-color, #ffc107)",
       "--ohp-eco": "var(--state-water_heater-eco-color, var(--green-color, #4caf50))",
       "--ohp-warn": "var(--warning-color, #ffa600)",
@@ -59,6 +61,9 @@ export const SCHEMES = {
       "--ohp-on-cool": "#fff",
       "--ohp-on-dhw": "#111",
       "--ohp-on-eco": "#111",
+      // Auto (heat/cool) in the app's colours: from heat to cool.
+      "--ohp-auto-bg": "linear-gradient(90deg, var(--ohp-heat), var(--ohp-cool))",
+      "--ohp-on-auto": "#fff",
     },
     dark: {
       "--ohp-heat": "#FE7675",

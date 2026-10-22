@@ -13,7 +13,7 @@ import { hcKey, num, role, toServiceValue, writableEntity } from "../lib/model.j
 
 const AWAIT_TIMEOUT = 90000;
 const P = { l: 34, r: 12, t: 14, b: 24 };
-const HIT_R = 22;
+const HIT_R = 22; // ≥ 44 px touch target (points: radius, lines: half width)
 
 const errText = (err) => (err && (err.message || err.code)) || String(err);
 
@@ -545,13 +545,20 @@ export class CurveEditor {
     let points = "";
     const boxes = []; // label boxes the "now" label must avoid
     const frozen = !!s.applying;
-    const handleAttrs = (id, keys, label, valuetext) => {
+    // valueKey: the value the slider reports (points: their flow, lines:
+    // their only axis) — native numbers with the entity's bounds.
+    const handleAttrs = (id, keys, label, valuetext, valueKey) => {
       const ro = keys.every((k) => !writable.has(k)) || ctx.disabled;
+      const bd = bounds[valueKey] || {};
+      const isX = HANDLES[id].kind === "vline" || (HANDLES[id].kind === "point" && valueKey === HANDLES[id].x);
+      const vmin = typeof bd.min === "number" ? bd.min : isX ? ax.xmin : ax.ymin;
+      const vmax = typeof bd.max === "number" ? bd.max : isX ? ax.xmax : ax.ymax;
+      const aria = `aria-valuenow="${vals[valueKey]}" aria-valuemin="${vmin}" aria-valuemax="${vmax}"`;
       const tip = ro && !ctx.disabled ? I.t("handle_readonly", { name: roName(keys) }) : frozen ? I.t("handle_frozen") : label;
       // Frozen handles keep their tab stop (keyboard focus survives the Apply).
       return {
         ro,
-        open: `<g class="h${ro ? " ro" : ""}${frozen ? " frozen" : ""}${active === id ? " act" : ""}" data-h="${id}" data-key="h-${id}" ${ro ? "" : 'tabindex="0" '}role="slider" aria-label="${esc(label)}" aria-valuetext="${esc(valuetext)}"${ro || frozen ? ' aria-disabled="true"' : ""}><title>${esc(tip)}</title>`,
+        open: `<g class="h${ro ? " ro" : ""}${frozen ? " frozen" : ""}${active === id ? " act" : ""}" data-h="${id}" data-key="h-${id}" ${ro ? "" : 'tabindex="0" '}role="slider" aria-label="${esc(label)}" ${aria} aria-valuetext="${esc(valuetext)}"${ro || frozen ? ' aria-disabled="true"' : ""}><title>${esc(tip)}</title>`,
       };
     };
     const vline = (id, key, col, labelKey, labelTop) => {
@@ -559,12 +566,12 @@ export class CurveEditor {
       if (typeof v !== "number" || v < ax.xmin || v > ax.xmax) return;
       const x = r1(X(v));
       const txt = I.t(labelKey, { t: I.temp(v) });
-      const a = handleAttrs(id, [key], I.t("h_" + id), txt);
+      const a = handleAttrs(id, [key], I.t("h_" + id), txt, key);
       const tw = txt.length * 5.8;
       const flip = x + 6 + tw > W - P.r;
       const ty = labelTop ? P.t + 9 : H - P.b - 6;
       boxes.push([flip ? x - 8 - tw : x + 8, ty - 10, tw, 12], [x - 6, labelTop ? P.t - 2 : H - P.b - 18, 12, 20]);
-      lines += `${a.open}<rect class="hit" x="${x - 11}" y="${P.t}" width="22" height="${ph}"/>`
+      lines += `${a.open}<rect class="hit" x="${x - HIT_R}" y="${P.t}" width="${2 * HIT_R}" height="${ph}"/>`
         + `<line class="lineh" x1="${x}" x2="${x}" y1="${P.t}" y2="${H - P.b}" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 4" opacity=".85"/>`
         + (a.ro ? "" : `<rect class="ring" x="${x - 4}" y="${labelTop ? P.t - 2 : H - P.b - 18}" width="8" height="20" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
         + `<text class="axl" x="${r1(flip ? x - 8 : x + 8)}" y="${ty}" text-anchor="${flip ? "end" : "start"}">${esc(txt)}</text></g>`;
@@ -574,10 +581,10 @@ export class CurveEditor {
       if (typeof v !== "number" || v < ax.ymin || v > ax.ymax) return;
       const y = r1(Y(v));
       const txt = I.t("max_flow_label", { t: I.temp(v, 0) });
-      const a = handleAttrs(id, [key], I.t("h_" + id), txt);
+      const a = handleAttrs(id, [key], I.t("h_" + id), txt, key);
       const tw = txt.length * 5.8;
       boxes.push([W - P.r - tw, y - 15, tw, 12], [P.l, y - 6, 24, 12]);
-      lines += `${a.open}<rect class="hit" x="${P.l}" y="${y - 11}" width="${pw}" height="22"/>`
+      lines += `${a.open}<rect class="hit" x="${P.l}" y="${y - HIT_R}" width="${pw}" height="${2 * HIT_R}"/>`
         + `<line class="lineh" x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.2" stroke-dasharray="6 4" opacity=".7"/>`
         + (a.ro ? "" : `<rect class="ring" x="${P.l + 2}" y="${y - 4}" width="20" height="8" rx="4" fill="var(--ohp-card)" stroke="${col}" stroke-width="1.5"/>`)
         + `<text class="axl" x="${W - P.r}" y="${y - 5}" text-anchor="end">${esc(txt)}</text></g>`;
@@ -588,7 +595,7 @@ export class CurveEditor {
       if (typeof x !== "number" || typeof y !== "number") return;
       const cx = r1(X(x)), cy = r1(Y(y));
       const vt = `${I.temp(x)} → ${I.temp(y)}`;
-      const a = handleAttrs(id, [h.x, h.y], I.t("h_" + id), vt);
+      const a = handleAttrs(id, [h.x, h.y], I.t("h_" + id), vt, h.y);
       points += `${a.open}<circle class="hit" cx="${cx}" cy="${cy}" r="${HIT_R}"/>`
         + `<circle class="ring" cx="${cx}" cy="${cy}" r="12" fill="none" stroke="none"/>`
         + `<circle class="dotv" cx="${cx}" cy="${cy}" r="6.5" fill="${a.ro ? col : "var(--ohp-card)"}" stroke="${col}" stroke-width="2.5"/></g>`;

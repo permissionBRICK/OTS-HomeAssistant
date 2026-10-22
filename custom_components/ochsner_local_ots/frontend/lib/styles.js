@@ -107,7 +107,8 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .mc.on.eco { color: var(--ohp-on-eco); background: var(--ohp-eco); }
 .mc.on.offc { color: #111; background: var(--ohp-idle); }
 .mc.on.cool { color: var(--ohp-on-cool); background: var(--ohp-cool); }
-.mc.on.auto { color: #fff; background: linear-gradient(90deg, var(--ohp-heat), var(--ohp-cool)); text-shadow: 0 0 3px rgba(0,0,0,.35); }
+.mc.on.auto { color: var(--ohp-on-auto); background: var(--ohp-auto-bg); }
+:host([scheme="ochsner"]) .mc.on.auto { text-shadow: 0 0 3px rgba(0,0,0,.35); }
 .mc.on.dhwc { color: var(--ohp-on-dhw); background: var(--ohp-dhw); }
 .mc.busy { opacity: .6; }
 .mc:disabled { cursor: default; opacity: .55; }

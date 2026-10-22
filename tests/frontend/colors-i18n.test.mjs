@@ -13,7 +13,9 @@ test("ha scheme maps to HA theme variables with fallbacks", () => {
   const v = schemeVars("ha", true);
   assert.match(v["--ohp-heat"], /^var\(--state-climate-heat-color, .+\)$/);
   assert.match(v["--ohp-cool"], /^var\(--state-climate-cool-color, /);
-  assert.match(v["--ohp-heatcool"], /--state-climate-heat_cool-color/);
+  assert.match(v["--ohp-heatcool"], /--state-climate-heat-cool-color/, "HA's variable name (hyphen, not heat_cool)");
+  assert.equal(v["--ohp-auto-bg"], "var(--ohp-heatcool)", "Auto uses the theme's heat/cool colour");
+  assert.match(schemeVars("ochsner", true)["--ohp-auto-bg"], /linear-gradient\(90deg, var\(--ohp-heat\), var\(--ohp-cool\)\)/);
   assert.match(v["--ohp-err"], /--error-color/);
   assert.match(v["--ohp-warn"], /--warning-color/);
   assert.match(v["--ohp-ok"], /--success-color/);
