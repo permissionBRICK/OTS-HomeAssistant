@@ -550,12 +550,12 @@ export class ControlView {
       const minus = can && !(typeof r.min === "number" && v <= r.min + 1e-6) ? "" : " disabled";
       const plus = can && !(typeof r.max === "number" && v >= r.max - 1e-6) ? "" : " disabled";
       const title = !can && !ctx.disabled ? I.t("entity_missing") : I.t("setpoint_title", { name: full });
-      const act = active === s.key;
-      const tag = act ? `<small class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</small>` : "";
+      // the setpoint not in effect right now is greyed out (only when the active one is known)
+      const idle = !!active && active !== s.key;
       const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_normal"))}</span>`;
       const btn = (d, sym, verb, dis) => `<button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="${d}" aria-label="${esc(`${verb} ${name}: ${full}`)}"${dis}>${sym}</button>`;
       const stepper = `<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
-          <div class="v${pend ? " pend" : ""}${act ? " act" : ""}" aria-live="polite"><span>${v !== undefined ? I.temp(v) : "–"}</span>${tag}</div>
+          <div class="v${pend ? " pend" : ""}${idle ? " idle" : ""}" aria-live="polite"><span>${v !== undefined ? I.temp(v) : "–"}</span></div>
           ${btn(1, "+", I.t("raise"), plus)}</div>`;
       // the small stepper is the main one scaled down as a whole, centred under it
       return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}${main ? stepper : `<div class="spbox">${stepper}</div>`}</div>`;

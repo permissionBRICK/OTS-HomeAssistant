@@ -1,5 +1,5 @@
 // Card B circuit setpoints in a real browser: the main setpoint of the
-// selected mode with the other one of the pair below it, the "active" marker,
+// selected mode with the other one of the pair below it, the inactive one greyed out,
 // coalesced number.set_value writes on the role's entity, bounds, cooling
 // pair, the correction chip, read-only entities; room readings on cards A/B.
 import test, { after, before } from "node:test";
@@ -19,8 +19,8 @@ const disabled = (page, c, sel) => page.eval(`${c.root}.querySelector(${JSON.str
 const attr = (page, c, sel, name) => page.eval(`${c.root}.querySelector(${JSON.stringify(sel)}).getAttribute(${JSON.stringify(name)})`);
 /** [setpoint key, value text, badge text] of a circuit's main or second row. */
 const rowOf = (page, c, sel) => page.eval(`(() => { const e = ${c.root}.querySelector(${JSON.stringify(sel)}); if (!e) return null; return [e.dataset.sp, e.querySelector(".v > span").textContent, (e.querySelector(".spbadge") || {}).textContent || ""]; })()`);
-/** Rows carrying the "active" marker, as "hc<n>.<key>:main|alt". */
-const active = (page, c) => page.eval(`[...${c.root}.querySelectorAll(".hc .sp")].filter((e) => e.querySelector(".sptag")).map((e) => e.closest(".hc").dataset.key + "." + e.dataset.sp + ":" + (e.classList.contains("main") ? "main" : "alt"))`);
+/** Active rows, as "hc<n>.<key>:main|alt": not greyed out while the tile greys out the other one. */
+const active = (page, c) => page.eval(`[...${c.root}.querySelectorAll(".hc .sp")].filter((e) => !e.querySelector(".v.idle") && e.closest(".hc").querySelector(".sp .v.idle")).map((e) => e.closest(".hc").dataset.key + "." + e.dataset.sp + ":" + (e.classList.contains("main") ? "main" : "alt"))`);
 /** Change feed values and push an update (like a coordinator refresh). */
 const setValues = (page, vals) => page.eval(`(() => { Object.assign(harness.plant.values, ${JSON.stringify(vals)}); harness.plant.push(); return true; })()`);
 
@@ -55,11 +55,15 @@ test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and 
   assert.equal(await attr(page, c, `${alt(3)} .spbadge`, "title"), "Normal (Comfort, day)");
 });
 
-test("at night in Komfort the main stays the day setpoint; the active marker moves to the night row", { skip }, async () => {
+test("at night in Komfort the main stays the day setpoint; the grey-out moves to it from the night row", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
   assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_heat:main", "hc2.setpoint_normal_heat:main", "hc3.setpoint_reduced_heat:main"]);
-  assert.match(await c.text(`${main(1)} .v`), /^21,5°aktiv$/);
+  assert.equal(await c.text(`${main(1)} .v`), "21,5°", "no active badge");
+  const color = (sel) => page.eval(`getComputedStyle(${c.root}.querySelector(${JSON.stringify(sel + " .v")})).color`);
+  const ink2 = await page.eval(`(() => { const e = document.createElement("span"); e.style.color = "var(--ohp-ink2)"; ${c.root}.appendChild(e); const v = getComputedStyle(e).color; e.remove(); return v; })()`);
+  assert.equal(await color(alt(1)), ink2, "by day the night setpoint is grey");
+  assert.notEqual(await color(main(1)), ink2, "the active one keeps the normal text colour");
   // night: the controller follows reduced 19 + correction 0.5
   await setValues(page, { "hc1.room_offset": 0.5, "hc1.room_target_heat": 19.5 });
   await sleep(60);
@@ -69,6 +73,7 @@ test("at night in Komfort the main stays the day setpoint; the active marker mov
   await setValues(page, { "hc1.room_offset": 0, "hc1.room_target_heat": 12, "hc1.badge": 16 });
   await sleep(60);
   assert.ok(!(await active(page, c)).some((k) => k.startsWith("hc1.")));
+  assert.ok(!(await c.exists(`${tile(1)} .v.idle`)), "neither in effect: nothing greyed out");
   assert.deepEqual(await writes(page), []);
   assert.deepEqual(page.errors, []);
 });
@@ -141,7 +146,8 @@ test("cooling pair by target_selector, only on cool-capable circuits", { skip },
   assert.deepEqual(await rowOf(page, c, alt(2)), ["setpoint_normal_cool", "22,0°", "Normal"]);
   assert.equal(await attr(page, c, `${alt(2)} .spbadge`, "title"), "Normal Kühlen");
   assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_cool:main", "hc2.setpoint_reduced_cool:main"]);
-  assert.ok(await c.exists(`${main(2)} .sptag.cool`));
+  assert.ok(await c.exists(`${alt(2)} .v.idle`) && !(await c.exists(`${main(2)} .v.idle`)), "the inactive cooling setpoint is greyed out");
+  assert.ok(!(await c.exists(".sptag")), "no active badge any more");
   // the controller switches HC1's target to heating: the heating pair
   await setValues(page, { "hc1.target_selector": 2, "hc1.room_target_heat": 21.5 });
   await sleep(60);

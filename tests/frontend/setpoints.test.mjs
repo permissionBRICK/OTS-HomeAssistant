@@ -144,7 +144,6 @@ test("setpoint and room labels exist in German and English", () => {
     sp_setpoint_reduced_heat: ["Reduziert (Eco, Nacht)", "Reduced (Eco, night)"],
     sp_setpoint_normal_cool: ["Normal Kühlen", "Normal cooling"],
     sp_setpoint_reduced_cool: ["Reduziert Kühlen", "Reduced cooling"],
-    sp_active: ["aktiv", "active"],
     room: ["Raum", "Room"],
   };
   for (const [k, [de, en]] of Object.entries(exp)) {

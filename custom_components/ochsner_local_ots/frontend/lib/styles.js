@@ -99,13 +99,13 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .stepper button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--ohp-line); background: var(--ohp-card); color: var(--ohp-ink); font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; touch-action: manipulation; }
 .stepper button:disabled { opacity: .4; cursor: default; }
 .stepper .v { min-width: 58px; text-align: center; font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+/* the setpoint not in effect right now */
+.stepper .v.idle { color: var(--ohp-ink2); }
 .stepper .v.pend { color: var(--ohp-aux-text); }
 .hc .room { margin-top: 6px; font-size: 13px; color: var(--ohp-ink2); font-variant-numeric: tabular-nums; }
 .hc .room b { font-size: 14px; font-weight: 500; color: var(--ohp-ink); }
 .sp { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex: none; }
 .sp.alt { margin-top: 4px; }
-/* "aktiv" under the value inside the stepper: costs no width */
-.stepper .v.act { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
 /* small stepper = the main one (34 / 6 / 58 px) scaled to ~82 % as a whole,
    centred in a box as wide as the main stepper so the values line up */
 .spbox { width: 138px; display: flex; justify-content: center; flex: none; }
@@ -113,8 +113,6 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .stepper.sm button { width: 28px; height: 28px; font-size: 15px; }
 .stepper.sm .v { min-width: 48px; font-size: 14px; font-weight: 400; }
 .spbadge { font-size: 11px; line-height: 1.6; padding: 0 6px; border-radius: 999px; border: 1px solid var(--ohp-line); color: var(--ohp-ink2); white-space: nowrap; }
-.sptag { display: block; margin-top: 1px; font-size: 9.5px; font-weight: 500; line-height: 1.3; letter-spacing: .2px; padding: 0 6px; border-radius: 999px; white-space: nowrap; color: var(--ohp-on-heat); background: var(--ohp-heat); }
-.sptag.cool { color: var(--ohp-on-cool); background: var(--ohp-cool); }
 /* circuit tile: one grid, its own width picks the arrangement */
 .hc.circuit { container: hc / inline-size; }
 .hcg { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 4px; align-items: center;
