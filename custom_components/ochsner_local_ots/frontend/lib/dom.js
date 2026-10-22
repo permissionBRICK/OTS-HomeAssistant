@@ -94,15 +94,12 @@ function morphChildren(from, to) {
   }
 }
 
-const tplCache = { doc: null };
-
 /** Patch `target`'s children to match `html`. */
 export function morph(target, html) {
   const doc = target.ownerDocument || document;
   const tpl = doc.createElement("template");
   tpl.innerHTML = html;
   morphChildren(target, tpl.content);
-  tplCache.doc = doc;
 }
 
 /** requestAnimationFrame-batched callback. */
