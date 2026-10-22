@@ -3,7 +3,7 @@
 import { esc } from "../lib/dom.js";
 import { modeColor, textTint } from "../lib/colors.js";
 import { plantSVG } from "../lib/plant-svg.js";
-import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, isProducing, legacyProgram, liveCop, num, val } from "../lib/model.js";
+import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, isProducing, legacyProgram, liveCop, num, roomReading, val } from "../lib/model.js";
 
 // Aux heater status enum Off*Htg*Stby*Dhw*BIP*Error*Frost*…: these mean "heating now".
 const AUX_ON = new Set([1, 3, 6]);
@@ -84,14 +84,19 @@ export class PlantView {
       const fa = num(live, hcKey(n, "flow_actual"));
       const ft = num(live, hcKey(n, "flow_target"));
       const name = circuitName(c, live);
+      // Sub line parts with a keep priority: the schematic drops the lowest
+      // ones first when the line does not fit the row.
       const parts = [];
-      if (fa !== undefined) parts.push(`${ctx.narrow ? t("flow_short") : t("flow")} ${I.temp(fa)}`);
-      if (ft !== undefined) parts.push(`${t("target")} ${I.temp(ft)}`);
+      const rd = roomReading(c, live, c.climate ? ctx.state(c.climate) : null, haTempUnit(ctx.hass));
+      if (rd && rd.temp !== undefined) parts.push({ t: `${t("room")} ${I.temp(rd.temp, 1, rd.unit)}`, keep: 4 });
+      if (rd && rd.hum !== undefined) parts.push({ t: `${I.int(rd.hum)} %`, keep: 2 });
+      if (fa !== undefined) parts.push({ t: `${ctx.narrow || rd ? t("flow_short") : t("flow")} ${I.temp(fa)}`, keep: 3 });
+      if (ft !== undefined) parts.push({ t: `${t("target")} ${I.temp(ft)}`, keep: 1 });
       return {
         type: "hc",
         name,
         kind: circuitKind(name),
-        sub: parts.join(" · "),
+        sub: parts,
         chip: circuitPresetText(ctx, c),
         active,
         cooling: circuitCooling(plant, live, c, mode),

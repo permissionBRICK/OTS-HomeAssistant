@@ -199,6 +199,55 @@ export function circuitCooling(plant, live, circuit, mode) {
   return mode === "cool";
 }
 
+// ---- room setpoints ----------------------------------------------------------
+// The app's setpoint screen: normal (Komfort by day) and reduced (Eco, and
+// Komfort at night) room setpoints for heating, plus both for cooling on
+// cool-capable circuits. The current target is the active one + room_offset.
+
+export const SETPOINTS = [
+  { key: "setpoint_normal_heat", cool: false, reduced: false },
+  { key: "setpoint_reduced_heat", cool: false, reduced: true },
+  { key: "setpoint_normal_cool", cool: true, reduced: false },
+  { key: "setpoint_reduced_cool", cool: true, reduced: true },
+];
+
+/** Setpoint rows a circuit offers: heating unless heat is off, cooling only with the cooling bit; roles the payload lacks are left out. */
+export function setpointRows(plant, circuit) {
+  return SETPOINTS.filter((s) => (s.cool ? !!circuit.cool : circuit.heat !== false) && !!role(plant, hcKey(circuit.index, s.key)));
+}
+
+/** Does the circuit's current target follow the cooling setpoints (target_selector 1/3)? */
+export function targetIsCool(live, n) {
+  const sel = num(live, hcKey(n, "target_selector"));
+  return sel === 1 || sel === 3;
+}
+
+export const ACTIVE_TOLERANCE = 0.05;
+
+/**
+ * Setpoint key ("setpoint_normal_heat", …) the circuit's current target is
+ * derived from right now: value + room_offset equals room_target_heat/_cool
+ * (per target_selector) within 0.05 K. null when none matches (frost
+ * protection, party, holiday, values missing). If normal and reduced are
+ * equal, the reduced one wins under Eco or the legacy "Reduziert" program.
+ */
+export function activeSetpoint(plant, live, circuit) {
+  const n = circuit.index;
+  const cool = targetIsCool(live, n);
+  const target = num(live, hcKey(n, cool ? "room_target_cool" : "room_target_heat"));
+  if (target === undefined) return null;
+  const off = num(live, hcKey(n, "room_offset")) ?? 0;
+  const hits = setpointRows(plant, circuit).filter((s) => {
+    const v = num(live, hcKey(n, s.key));
+    return s.cool === cool && v !== undefined && Math.abs(v + off - target) <= ACTIVE_TOLERANCE + 1e-9;
+  });
+  if (!hits.length) return null;
+  if (hits.length === 1) return hits[0].key;
+  const prog = num(live, hcKey(n, "op_program"));
+  const reduced = num(live, hcKey(n, "comfort_eco")) === 1 || prog === 2 || prog === 6;
+  return (hits.find((s) => s.reduced === reduced) || hits[0]).key;
+}
+
 /** Pick the plant for a card config ({plant} | {device_id}), first plant otherwise. */
 export function pickPlant(plants, config = {}) {
   if (!plants || !plants.length) return null;
@@ -269,6 +318,27 @@ export function serviceValue(r, v, liveUnit) {
   if (!r || !TEMP_UNITS[r.unit]) return { value: v, stale: false };
   if (liveUnit !== (r.display_unit || r.unit)) return { value: null, stale: true };
   return { value: toServiceValue(r, v), stale: false };
+}
+
+/**
+ * Room sensor readings of a circuit (availability bit 32 room sensor, 64
+ * humidity), or null without a room sensor. `temp` is in HA's unit `unit`:
+ * the climate entity's current_temperature, else the feed's native value
+ * converted. `hum` in %. `dew` (native °C, like the flow values) only for
+ * cool-capable circuits with a humidity sensor.
+ */
+export function roomReading(circuit, live, climateState, unit = "°C") {
+  if (!circuit || !circuit.room_sensor) return null;
+  const n = circuit.index;
+  const a = (climateState && climateState.state !== "unavailable" && climateState.attributes) || {};
+  const temp = typeof a.current_temperature === "number" ? a.current_temperature : convertTemp(num(live, hcKey(n, "room_temp")), "°C", unit);
+  let hum, dew;
+  if (circuit.humidity) {
+    hum = typeof a.current_humidity === "number" ? a.current_humidity : num(live, hcKey(n, "humidity"));
+    if (circuit.cool) dew = num(live, hcKey(n, "dew_point"));
+  }
+  if (temp === undefined && hum === undefined) return null;
+  return { temp, unit, hum, dew };
 }
 
 /** HA's temperature unit (climate / water_heater attributes are in it). */

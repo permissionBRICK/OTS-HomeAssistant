@@ -4,14 +4,38 @@
 import { esc } from "../lib/dom.js";
 import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
-import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
-import { badgeFor, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, val, writableEntity } from "../lib/model.js";
+import { boltSvg, chevronSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
+import { activeSetpoint, badgeFor, roomReading, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, role, serviceValue, SETPOINTS, setpointRows, targetIsCool, val, writableEntity } from "../lib/model.js";
 import { poolEntity, poolText, programText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
 const ARM_TIME = 2500;
 
 const errText = (err) => (err && (err.message || err.code)) || String(err);
+
+// Open setpoint fold-outs ("<plant_id>:<circuit>") for the browser session,
+// shared by every card and the panel.
+const FOLD_KEY = "ochsner-heatpump.setpoints-open";
+const foldOpen = (() => {
+  try {
+    return new Set(JSON.parse(globalThis.sessionStorage.getItem(FOLD_KEY) || "[]"));
+  } catch (_e) {
+    return new Set();
+  }
+})();
+function setFold(id, open) {
+  if (open) foldOpen.add(id);
+  else foldOpen.delete(id);
+  try {
+    globalThis.sessionStorage.setItem(FOLD_KEY, JSON.stringify([...foldOpen]));
+  } catch (_e) { /* storage blocked: remembered until the page reloads */ }
+}
+
+/** "hc3.setpoint_reduced_heat" → { n: 3, key: "setpoint_reduced_heat" }, else null. */
+const setpointKey = (key) => {
+  const m = /^hc(\d+)\.(setpoint_\w+)$/.exec(key);
+  return m && SETPOINTS.some((s) => s.key === m[2]) ? { n: Number(m[1]), key: m[2] } : null;
+};
 
 /** Temperature in `unit` (HA's unit for climate/water_heater values; "°F" spelled out). */
 const tempIn = (I, v, unit, d) => I.temp(v, d, unit);
@@ -108,12 +132,22 @@ export class ControlView {
   }
 
   /**
-   * Entity a stepper key ("hc<n>" or "dhw") may write to in `ctx` right now:
+   * Entity a stepper key ("hc<n>", "hc<n>.setpoint_…" or "dhw") may write to in `ctx` right now:
    * its section is shown, the controller is available and the entity is of
    * the right domain and writable. null = no write allowed.
    */
   _target(ctx, key) {
     if (!ctx || ctx.disabled) return null;
+    const sp = setpointKey(key);
+    if (sp) {
+      // Room setpoint (number entity): the circuit is shown, offers this
+      // setpoint, and the role's entity is writable and available.
+      const c = ctx.sec.circuits.find((x) => x.index === sp.n);
+      if (!c || !setpointRows(ctx.plant, c).some((s) => s.key === sp.key)) return null;
+      const ent = writableEntity(ctx.plant, key, "number");
+      const st = ent && ctx.state(ent);
+      return st && st.state !== "unavailable" ? ent : null;
+    }
     if (key === "dhw") {
       if (!ctx.sec.dhw) return null;
       const wh = ofDomain(ctx.plant.dhw && ctx.plant.dhw.water_heater, "water_heater");
@@ -162,18 +196,7 @@ export class ControlView {
       delay: this.card.writeDelay,
       // Re-checked against the newest store/hass right before the write.
       valid: () => this._bindingHolds(key, entityId, conn),
-      send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityId, temperature: v }),
-      current: () => {
-        const st = this.card.stateOf(entityId);
-        return st && st.attributes ? st.attributes.temperature : undefined;
-      },
-      // The target belongs to the active mode (hvac mode + preset, or the
-      // water heater's operation mode): another mode has another setpoint.
-      context: () => {
-        const st = this.card.stateOf(entityId);
-        if (!st) return "";
-        return domain === "climate" ? `${st.state}|${(st.attributes && st.attributes.preset_mode) || ""}` : st.state;
-      },
+      ...(domain === "number" ? this._setpointIo(key, entityId) : this._targetIo(entityId, domain)),
       onChange: () => {
         const I = this.card.i18n;
         if (c.state === "error") this._note(key, "err", `${I.t("error")}: ${c.error}`, 8000);
@@ -190,6 +213,72 @@ export class ControlView {
     return c;
   }
 
+  /** Coalescer I/O of a climate/water_heater target (set_temperature, HA's unit). */
+  _targetIo(entityId, domain) {
+    return {
+      send: (v) => this.card.call(domain, "set_temperature", { entity_id: entityId, temperature: v }),
+      current: () => {
+        const st = this.card.stateOf(entityId);
+        return st && st.attributes ? st.attributes.temperature : undefined;
+      },
+      // The target belongs to the active mode (hvac mode + preset, or the
+      // water heater's operation mode): another mode has another setpoint.
+      context: () => {
+        const st = this.card.stateOf(entityId);
+        if (!st) return "";
+        return domain === "climate" ? `${st.state}|${(st.attributes && st.attributes.preset_mode) || ""}` : st.state;
+      },
+    };
+  }
+
+  /**
+   * Coalescer I/O of a room setpoint (number entity, native unit): value
+   * from the feed, written with number.set_value in the unit HA shows the
+   * entity in right now.
+   */
+  _setpointIo(key, entityId) {
+    const { n } = setpointKey(key);
+    const snap = () => this.card.snapshot();
+    return {
+      send: (v) => this._sendSetpoint(key, entityId, v),
+      current: () => {
+        const s = snap();
+        return s ? num(s.live, key) : undefined;
+      },
+      // A mode change (on/off, preset, season, operating program) drops a
+      // queued setpoint edit, like the circuit's target stepper.
+      context: () => {
+        const s = snap();
+        if (!s) return "";
+        const c = s.sec.circuits.find((x) => x.index === n);
+        const st = c && c.climate ? s.hass.states[c.climate] : null;
+        const a = (st && st.attributes) || {};
+        return [st ? st.state : "", a.preset_mode || "", num(s.live, hcKey(n, "op_program")), num(s.live, hcKey(n, "comfort_eco")), num(s.live, hcKey(n, "season"))].join("|");
+      },
+    };
+  }
+
+  async _sendSetpoint(key, entityId, v) {
+    const I = this.card.i18n;
+    const snap = this.card.snapshot();
+    const r = snap && role(snap.plant, key);
+    if (!r) throw new Error(I.t("dropped_gone"));
+    const name = I.t("sp_" + setpointKey(key).key);
+    if ((typeof r.min === "number" && v < r.min - 1e-6) || (typeof r.max === "number" && v > r.max + 1e-6)) {
+      throw new Error(I.t("sp_out_of_range", { name, min: I.temp(r.min), max: I.temp(r.max) }));
+    }
+    // Native → the unit HA shows the entity in now (e.g. °F), exactly once, here.
+    const st = this.card.stateOf(entityId);
+    const unit = st && st.attributes ? st.attributes.unit_of_measurement : undefined;
+    const sv = serviceValue(r, v, unit);
+    if (sv.stale) {
+      if (this.card.store) this.card.store.refetch(true);
+      throw new Error(I.t("sp_unit_changed", { name, unit: unit || "–" }));
+    }
+    if (sv.value === null) throw new Error(I.t("invalid_unit", { name, unit: unit || "–" }));
+    return this.card.call("number", "set_value", { entity_id: entityId, value: sv.value });
+  }
+
   /**
    * A mode/preset/season/on-off change re-targets the section's setpoint:
    * drop a queued (not yet sent) temperature edit instead of letting it land
@@ -198,6 +287,12 @@ export class ControlView {
   _dropQueued(key) {
     const c = this.coal.get(key);
     if (c && c.state === "waiting") c.cancel();
+  }
+
+  /** Mode change on circuit n: drop its queued target and setpoint edits. */
+  _dropCircuit(n) {
+    this._dropQueued(`hc${n}`);
+    for (const s of SETPOINTS) this._dropQueued(hcKey(n, s.key));
   }
 
   async _service(key, target, noteKey, domain, service, data) {
@@ -228,7 +323,15 @@ export class ControlView {
 
   _act(act, d) {
     const ctx = this.card.ctx;
-    if (!ctx || ctx.disabled || ctx.plant.plant_id !== this.plantId) return;
+    if (!ctx || ctx.plant.plant_id !== this.plantId) return;
+    if (act === "spfold") {
+      // Folding is view state only: allowed while the plant is unreachable.
+      const id = `${this.plantId}:${d.c}`;
+      setFold(id, !foldOpen.has(id));
+      this.card.requestRender();
+      return;
+    }
+    if (ctx.disabled) return;
     const { plant } = ctx;
     const found = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
     // Only ever call a domain's services on an entity of that domain.
@@ -258,9 +361,24 @@ export class ControlView {
         c.push(Number(next.toFixed(2)));
         return;
       }
+      case "spstep": {
+        const key = hcKey(Number(d.c), d.k);
+        const ent = this._target(ctx, key);
+        if (!ent) return;
+        const r = role(plant, key);
+        const step = r.step > 0 ? r.step : 0.5;
+        const c = this._coal(key, ent, "number");
+        const base = c.display();
+        if (base === undefined) return;
+        const lo = typeof r.min === "number" ? r.min : -Infinity;
+        const hi = typeof r.max === "number" ? r.max : Infinity;
+        const next = Math.min(hi, Math.max(lo, Math.round((base + Number(d.s) * step) / step) * step));
+        c.push(Number(next.toFixed(4)));
+        return;
+      }
       case "preset": {
         if (!circuit || !circuit.climate) return;
-        this._dropQueued(`hc${circuit.index}`);
+        this._dropCircuit(circuit.index);
         const key = `p${circuit.index}`;
         if (d.v === "off") this._service(key, "off", `hc${circuit.index}`, "climate", "set_hvac_mode", { entity_id: circuit.climate, hvac_mode: "off" });
         else this._service(key, d.v, `hc${circuit.index}`, "climate", "set_preset_mode", { entity_id: circuit.climate, preset_mode: d.v });
@@ -268,7 +386,7 @@ export class ControlView {
       }
       case "season": {
         if (!circuit || !circuit.climate) return;
-        this._dropQueued(`hc${circuit.index}`);
+        this._dropCircuit(circuit.index);
         this._service(`s${circuit.index}`, d.v, `hc${circuit.index}`, "climate", "set_hvac_mode", { entity_id: circuit.climate, hvac_mode: d.v });
         return;
       }
@@ -401,7 +519,11 @@ export class ControlView {
     if (shownOff !== undefined) subParts.push(`${I.t("correction")} ${I.signed(shownOff)} K`);
     if (fa !== undefined || ft !== undefined) subParts.push(`${I.t("flow")} ${I.temp(fa)} / ${I.temp(ft)}`);
     const canStep = tg.writable && !ctx.disabled && !!c.climate;
-    const roTitle = !canStep && !ctx.disabled ? ` title="${esc(I.t("entity_missing"))}"` : "";
+    // The main stepper is the app's temporary correction (room_offset), not a setpoint.
+    const offRole = role(ctx.plant, hcKey(n, "room_offset"));
+    const offMax = offRole && typeof offRole.max === "number" && typeof offRole.min === "number" ? Math.max(Math.abs(offRole.min), Math.abs(offRole.max)) : 3;
+    const hint = I.t("correction_hint", { k: I.auto(offMax) });
+    const roTitle = ` role="group" aria-label="${esc(`${name}: ${hint}`)}" title="${esc(!canStep && !ctx.disabled ? I.t("entity_missing") : hint)}"`;
     const minus = canStep && shown !== undefined && shown > tg.min + 1e-6 ? "" : " disabled";
     const plus = canStep && shown !== undefined && shown < tg.max - 1e-6 ? "" : " disabled";
 
@@ -430,8 +552,62 @@ export class ControlView {
         <div class="stepper"${roTitle}><button data-act="step" data-c="${n}" data-d="-1" aria-label="${esc(I.t("lower") + " " + name)}"${minus}>−</button>
           <div class="v${pend ? " pend" : ""}" aria-live="polite">${shown !== undefined ? tempIn(I, shown, tu) : "–"}</div>
           <button data-act="step" data-c="${n}" data-d="1" aria-label="${esc(I.t("raise") + " " + name)}"${plus}>+</button></div></div>
-      <div class="sub" style="margin-top:4px">${esc(subParts.join(" · "))}</div>
-      ${chips}${this._noteHtml(`hc${n}`)}</div>`;
+      ${this._roomLine(ctx, c)}<div class="sub" style="margin-top:4px">${esc(subParts.join(" · "))}</div>
+      ${chips}${this._noteHtml(`hc${n}`)}${this._setpoints(ctx, c, name)}</div>`;
+  }
+
+  /** "Raum 22,4° · 48 % · Taupunkt 15,2°" for circuits with a room sensor, else "". */
+  _roomLine(ctx, c) {
+    const { I } = ctx;
+    const rd = roomReading(c, ctx.live, c.climate ? ctx.state(c.climate) : null, haTempUnit(ctx.hass));
+    if (!rd) return "";
+    const parts = [];
+    if (rd.temp !== undefined) parts.push(`<b>${esc(I.t("room"))} ${tempIn(I, rd.temp, rd.unit)}</b>`);
+    if (rd.hum !== undefined) parts.push(`<span title="${esc(I.t("humidity"))}">${I.int(rd.hum)} %</span>`);
+    if (rd.dew !== undefined) parts.push(`${esc(I.t("dew_point"))} ${I.temp(rd.dew)}`);
+    return `<div class="room">${parts.join(" · ")}</div>`;
+  }
+
+  /** Fold-out with the circuit's room setpoints (normal/reduced heating, cooling if cool-capable). */
+  _setpoints(ctx, c, name) {
+    const rows = setpointRows(ctx.plant, c);
+    if (!rows.length) return "";
+    const { I, live, plant } = ctx;
+    const n = c.index;
+    const open = foldOpen.has(`${this.plantId}:${n}`);
+    const active = activeSetpoint(plant, live, c);
+    const shownOf = (key) => {
+      const coal = this.coal.get(key);
+      if (coal) coal.sync();
+      const pend = !!coal && coal.value !== undefined;
+      return { pend, v: pend ? coal.value : num(live, key) };
+    };
+    // Closed: the two setpoints the current target follows (heating or cooling).
+    const cool = targetIsCool(live, n) && rows.some((s) => s.cool);
+    const sum = rows.filter((s) => s.cool === cool).map((s) => shownOf(hcKey(n, s.key)).v).filter((v) => v !== undefined).map((v) => I.temp(v)).join(" / ");
+    const id = `${ctx.uid}-sp${n}`;
+    let h = `<div class="spfold${open ? " open" : ""}"><button class="sptoggle" data-act="spfold" data-c="${n}" aria-expanded="${open}" aria-controls="${id}">${chevronSvg}<span>${esc(I.t("setpoints"))}</span>${open ? "" : `<span class="spsum">${esc(sum)}</span>`}</button>`;
+    if (open) {
+      h += `<div class="sprows" id="${id}">`;
+      for (const s of rows) {
+        const key = hcKey(n, s.key);
+        const r = role(plant, key);
+        const { pend, v } = shownOf(key);
+        const can = !!this._target(ctx, key) && v !== undefined;
+        const lbl = I.t("sp_" + s.key);
+        const ro = !can && !ctx.disabled ? ` title="${esc(I.t("entity_missing"))}"` : "";
+        const minus = can && !(typeof r.min === "number" && v <= r.min + 1e-6) ? "" : " disabled";
+        const plus = can && !(typeof r.max === "number" && v >= r.max - 1e-6) ? "" : " disabled";
+        const tag = active === s.key ? `<span class="sptag${s.cool ? " cool" : ""}" title="${esc(I.t("sp_active_title"))}">${esc(I.t("sp_active"))}</span>` : "";
+        const aria = (verb) => ` aria-label="${esc(`${verb} ${name} ${lbl}`)}"`;
+        h += `<div class="sprow" data-key="${key}"><div class="splab"><span>${esc(lbl)}</span>${tag}</div>
+          <div class="stepper sm"${ro}><button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="-1"${aria(I.t("lower"))}${minus}>−</button>
+          <div class="v${pend ? " pend" : ""}" aria-live="polite">${v !== undefined ? I.temp(v) : "–"}</div>
+          <button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="1"${aria(I.t("raise"))}${plus}>+</button></div></div>${this._noteHtml(key)}`;
+      }
+      h += `</div>`;
+    }
+    return h + `</div>`;
   }
 
   _pool(ctx) {

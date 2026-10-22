@@ -168,7 +168,10 @@ export function variantValues(snapshot, variant) {
       "hp.outdoor": 29.4, "hp.outdoor_avg": 28.1, "hp.flow": 17.8, "hp.return": 21.3,
       "hp.buffer_top": 18.4, "hp.heat_output": 4.2, "hp.el_power": 1.1, "hp.flow_rate": 1.12,
       "hp.cycles_today": 4, "hp.defrosts_today": 0, "hp.dhw_valve": false, "hp.capability": 7,
-      "hc1.availability": 31, "hc2.availability": 31, "hc3.availability": 0, "hc4.availability": 0,
+      // Cooling circuits with room sensor + humidity (bits 32/64; harness-only, the backend fixture has none).
+      "hc1.availability": 127, "hc2.availability": 127, "hc3.availability": 0, "hc4.availability": 0,
+      "hc1.room_temp": 24.6, "hc1.humidity": 52, "hc2.room_temp": 25.3, "hc2.humidity": 48,
+      "hc2.setpoint_reduced_cool": 25.5,
       "hc1.name": "Erdgeschoss", "hc2.name": "Obergeschoss",
       "hc1.badge": 4, "hc2.badge": 7, "hc1.season": 4, "hc2.season": 2, "hc1.comfort_eco": 0, "hc2.comfort_eco": 1,
       "hc1.target_selector": 3, "hc2.target_selector": 3, "hc1.op_program": 0, "hc2.op_program": 0,
@@ -485,7 +488,8 @@ export class FakePlant {
         min_temp: D(t !== undefined ? t - off - 3 : 7),
         max_temp: D(t !== undefined ? t - off + 3 : 35),
         target_temp_step: 0.5,
-        current_temperature: null,
+        current_temperature: c.room_sensor && typeof this.values[`hc${n}.room_temp`] === "number" ? D(this.values[`hc${n}.room_temp`]) : null,
+        ...(c.humidity && typeof this.values[`hc${n}.humidity`] === "number" ? { current_humidity: this.values[`hc${n}.humidity`] } : {}),
         hvac_action: badge === "off_grey" ? "off" : badge.endsWith("_red") ? "heating" : badge.endsWith("_blue") ? "cooling" : "idle",
         badge,
         room_offset: off,
@@ -572,9 +576,22 @@ export class FakePlant {
       if ((typeof r.min === "number" && nv < r.min - 1e-6) || (typeof r.max === "number" && nv > r.max + 1e-6)) {
         throw new Error(`Value ${data.value} for ${eid} is outside valid range ${this.disp(r.min)} - ${this.disp(r.max)}`);
       }
+      const old = v[key];
       this._write(key, nv);
       const m = /^hc(\d)\.room_offset$/.exec(key);
       if (m) this._recomputeTarget(Number(m[1]));
+      // The controller recomputes the room target when its active setpoint changes.
+      const sp = /^hc(\d)\.setpoint_(normal|reduced)_(heat|cool)$/.exec(key);
+      if (sp && typeof old === "number") {
+        const n = Number(sp[1]);
+        const off = Number(v[`hc${n}.room_offset`]) || 0;
+        const tk = `hc${n}.room_target_${sp[3]}`;
+        if (typeof v[tk] === "number" && Math.abs(old + off - v[tk]) <= 0.05) {
+          v[tk] = nv + off;
+          const sel = Number(v[`hc${n}.target_selector`]);
+          if ((sel === 1 || sel === 3) === (sp[3] === "cool")) this.baseTarget[n] = nv;
+        }
+      }
     } else if (domain === "select" && service === "select_option") {
       const key = this._keyFor(eid);
       const opts = this.roles()[key].options;

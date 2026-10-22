@@ -24,6 +24,21 @@ export function fitText(s, maxW, size) {
   return str.slice(0, n) + "…";
 }
 
+/**
+ * Join sub-line parts ([{t, keep}]) with " · ", dropping the lowest `keep`
+ * first until the line fits maxW; a lone part that still does not fit is cut.
+ */
+export function fitParts(parts, maxW, size) {
+  if (!Array.isArray(parts)) return fitText(parts, maxW, size);
+  let list = parts.slice();
+  const join = () => list.map((p) => p.t).join(" · ");
+  while (list.length > 1 && textWidth(join(), size) > maxW) {
+    const low = list.reduce((m, p) => (p.keep < m.keep ? p : m));
+    list = list.filter((p) => p !== low);
+  }
+  return fitText(join(), maxW, size);
+}
+
 const label = (x, y, t, anchor = "middle", cls = "lbl") =>
   `<text x="${r(x)}" y="${r(y)}" text-anchor="${anchor}" class="${cls}">${esc(t)}</text>`;
 
@@ -67,7 +82,7 @@ function row(rw, vm, x, y, w, h, narrow) {
   const nameMax = chipX - (x + 52) - 8;
   s += label(x + 52, y - 4, fitText(rw.name, nameMax, 14), "start", "name");
   const subMax = narrow ? w - 60 : chipX - (x + 52) - 8;
-  s += label(x + 52, y + 15, fitText(rw.sub, subMax, 12), "start", "lbl dim");
+  s += label(x + 52, y + 15, fitParts(rw.sub, subMax, 12), "start", "lbl dim");
   if (rw.chip) {
     s += `<rect x="${r(chipX)}" y="${r(chipY)}" width="${r(tw)}" height="${chipH}" rx="${chipH / 2}" fill="${rw.chipColor || (rw.active ? col : "var(--ohp-pipe-off)")}" fill-opacity=".2"/>`;
     s += label(chipX + tw / 2, chipY + chipH / 2 + 4, rw.chip, "middle", "chip");

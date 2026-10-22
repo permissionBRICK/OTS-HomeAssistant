@@ -63,7 +63,7 @@ To enter a new address yourself, open **Settings → Devices & services → Ochs
 The last setup step asks whether to show the **Heat pump** view in the sidebar. It contains three parts, which are also available as separate cards in the dashboard card picker (search for "Ochsner"):
 
 - **Plant schematic:** outdoor unit, buffer tank, hot water tank and heating circuits, with live temperatures. Pipes move while water flows and take the colour of the current mode.
-- **Controls:** heat pump Auto/Off, and for each heating circuit Komfort/Eco/Off and the room setpoint correction (−/+, in 0.5 K steps, like the Ochsner app). Circuits that can cool also get Heat/Auto/Cool, and the hot water section has its mode, setpoint and a Boost button.
+- **Controls:** heat pump Auto/Off, and for each heating circuit Komfort/Eco/Off and the room setpoint correction (−/+, in 0.5 K steps, like the Ochsner app). Circuits that can cool also get Heat/Auto/Cool, and the hot water section has its mode, setpoint and a Boost button. A **Setpoints** fold-out per circuit changes the normal (Komfort by day) and reduced (Eco and Komfort at night) room setpoints, plus both cooling setpoints on circuits that can cool, and marks the one the circuit currently follows. Circuits with a room sensor show the room temperature and humidity, and circuits that can cool also show the dew point.
 - **Heating curve and efficiency:** the heating curve of each circuit with today's operating point, and the last 24 hours of heat output split into electricity and ambient heat.
 
 The view adapts to your plant the same way the Ochsner app does. Circuits, cooling, hot water, the buffer tank, the auxiliary heater and the pool only appear if the controller reports them.
