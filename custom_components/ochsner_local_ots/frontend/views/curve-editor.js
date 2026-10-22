@@ -86,9 +86,13 @@ export class CurveEditor {
   }
 
   _bounds(ctx, n) {
+    return this._boundsOf(ctx.plant, n);
+  }
+
+  _boundsOf(plant, n) {
     const b = {};
     for (const k of CURVE_KEYS) {
-      const r = role(ctx.plant, hcKey(n, k));
+      const r = role(plant, hcKey(n, k));
       if (!r) continue;
       b[k] = { min: typeof r.min === "number" ? r.min : undefined, max: typeof r.max === "number" ? r.max : undefined, step: typeof r.step === "number" && r.step > 0 ? r.step : 0.5, unit: r.unit || "°C" };
     }
@@ -359,7 +363,7 @@ export class CurveEditor {
       const r = role(ctx.plant, hcKey(n, d.key));
       const entity = writableEntity(ctx.plant, hcKey(n, d.key), "number");
       const liveUnit = this._unitNow(entity);
-      return { ...d, entity, liveUnit, ...serviceValue(r, d.to, liveUnit), unit: liveUnit || (r && r.display_unit) };
+      return { ...d, entity, liveUnit, bounds: bounds[d.key], displayUnit: r && r.display_unit, ...serviceValue(r, d.to, liveUnit), unit: liveUnit || (r && r.display_unit) };
     });
     const ro = plan.find((d) => !d.entity);
     if (ro) {
@@ -392,6 +396,13 @@ export class CurveEditor {
     this.card.requestRender();
     for (const d of writes) {
       if (!owned()) break; // checked after every await
+      // The plan was bound when Apply started: each write goes out only while
+      // that binding still holds as of now. Never retarget, never write blind.
+      const lost = this._bindingProblem(I, n, d);
+      if (lost) {
+        s.error = I.t("apply_refused", { why: lost });
+        break;
+      }
       // The controller state may have moved since: never write a value that
       // turns a valid curve into a crossed one.
       const now = this._baseFrom(this._liveNow(store), bounds, n);
@@ -417,6 +428,27 @@ export class CurveEditor {
     }
     s.applying = null;
     if (!this.disposed) this.card.requestRender();
+  }
+
+  /**
+   * Why the planned write `d` must not go out any more, judged on the newest
+   * store and hass (not the last render): controller unavailable, circuit
+   * gone, role mapped to another entity or no longer writable/enabled, or
+   * other bounds/step/unit than planned. null = the binding still holds.
+   */
+  _bindingProblem(I, n, d) {
+    const snap = this.card.snapshot();
+    if (!snap || snap.plant.plant_id !== this.plantId) return I.t("apply_unavailable");
+    if (!snap.available) return I.t("apply_unavailable");
+    const av = num(snap.live, hcKey(n, "availability"));
+    if (!snap.sec.circuits.some((c) => c.index === n) || (av !== undefined && (av & 1) !== 1)) return I.t("circuit_gone");
+    const name = I.t("r_" + d.key);
+    const r = role(snap.plant, hcKey(n, d.key));
+    if (!r || r.entity_id !== d.entity) return I.t("binding_changed", { name });
+    if (writableEntity(snap.plant, hcKey(n, d.key), "number") !== d.entity) return I.t("binding_readonly", { name });
+    const b = this._boundsOf(snap.plant, n)[d.key], p = d.bounds || {};
+    if (!b || b.min !== p.min || b.max !== p.max || b.step !== p.step || b.unit !== p.unit || r.display_unit !== d.displayUnit) return I.t("bounds_changed", { name });
+    return null;
   }
 
   /** Unit the entity's state is shown in now (undefined without a state). */

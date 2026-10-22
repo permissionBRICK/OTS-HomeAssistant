@@ -275,6 +275,55 @@ test("handles are frozen while Apply runs; no edit gets lost", { skip }, async (
   ]);
 });
 
+// Each change hits the second write (heating limit) while the first one is on the wire.
+const refetch = "harness.el.store.refetch(true); true";
+for (const [what, change, why] of [
+  ["its role is mapped to another entity", `harness.plant.roleOverrides["hc1.heat_limit"] = { entity_id: "number.fussboden_heizgrenze_neu" }; ${refetch}`, /Heizgrenze gehört inzwischen zu einer anderen Entität/],
+  ["its role is no longer writable", `harness.plant.roleOverrides["hc1.heat_limit"] = { writable: false }; ${refetch}`, /Heizgrenze ist nicht mehr beschreibbar/],
+  ["its entity is disabled", `harness.plant.roleOverrides["hc1.heat_limit"] = { enabled: false }; ${refetch}`, /Heizgrenze ist nicht mehr beschreibbar/],
+  ["its bounds changed", `harness.plant.roleOverrides["hc1.heat_limit"] = { max: 16 }; ${refetch}`, /Für Heizgrenze gelten inzwischen andere Grenzen/],
+  ["the circuit is gone", "harness.plant.values['hc1.availability'] = 0; harness.plant.push(); true", /Heizkreis ist nicht mehr vorhanden/],
+  ["the controller became unavailable", "harness.plant.available = false; harness.plant.push(); true", /Anlage ist nicht erreichbar/],
+]) {
+  test(`Apply re-checks the binding before every write: stops when ${what}`, { skip }, async () => {
+    const page = await b.open("variant=house&view=efficiency&latency=300");
+    const c = on(page);
+    await c.focusKey('[data-h="heat_max"]', "ArrowUp");
+    await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+    await c.click('[data-cact="apply"]');
+    await page.waitFor("harness.plant.calls.length === 1", 2000);
+    await page.eval(change);
+    await sleep(900);
+    assert.deepEqual(await writes(page), ["number.set_value number.fussboden_maximale_vorlauftemperatur 41"], "nothing goes to the old binding");
+    const st = await curveState(page);
+    assert.deepEqual(st.pending, { heat_limit: 16.8 }, "the unsent edit stays pending");
+    assert.equal(st.applying, false);
+    assert.match(st.error, why);
+    assert.match(st.error, /^Nicht übernommen: /);
+    if (await c.exists(".pendbar")) assert.match(await c.text(".pendbar .err"), why);
+    await sleep(600);
+    assert.equal((await writes(page)).length, 1, "and nothing is retargeted later");
+    assert.deepEqual(page.errors, []);
+  });
+}
+
+test("Apply re-checks the binding before the first write too (changed after the last render)", { skip }, async () => {
+  const page = await b.open("variant=house&view=efficiency&latency=30");
+  const c = on(page);
+  await c.focusKey('[data-h="heat_limit"]', "ArrowRight");
+  // the payload maps the role elsewhere; no render has run since
+  await page.eval(`(() => {
+    harness.el.requestRender = () => {};
+    harness.plant.roleOverrides["hc1.heat_limit"] = { entity_id: "number.fussboden_heizgrenze_neu" };
+    return harness.el.store.refetch(true).then(() => harness.el._views.efficiency.curve.apply(1)).then(() => true);
+  })()`);
+  await sleep(200);
+  assert.deepEqual(await writes(page), []);
+  const st = await curveState(page);
+  assert.deepEqual(st.pending, { heat_limit: 16.8 });
+  assert.match(st.error, /Heizgrenze gehört inzwischen zu einer anderen Entität/);
+});
+
 test("Fahrenheit HA: curve maths stay native, number.set_value gets °F", { skip }, async () => {
   const page = await b.open("variant=house&view=efficiency&latency=30&fahrenheit=1");
   const c = on(page);
