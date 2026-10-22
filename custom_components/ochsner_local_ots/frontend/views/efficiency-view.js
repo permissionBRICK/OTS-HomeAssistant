@@ -44,6 +44,10 @@ export class EfficiencyView {
     this.curve.dispose();
   }
 
+  pause() {
+    this.curve.pause();
+  }
+
   bind(el) {
     this.curve.bind(el);
     el.addEventListener("click", (e) => {

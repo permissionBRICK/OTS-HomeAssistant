@@ -70,7 +70,12 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._skeleton = null;
     this._schemeKey = null;
     this.writeDelay = 1500;
-    this.requestRender = rafBatch(() => this._render());
+    const render = rafBatch(() => this._render());
+    // Nothing is scheduled for a card that is not on the page (late async
+    // completions included); connecting renders anyway.
+    this.requestRender = () => {
+      if (this.isConnected) render();
+    };
     this._onStore = () => this.requestRender();
     this._ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver((entries) => this._resized(entries)) : null;
     this.shadowRoot.addEventListener("click", (e) => {
@@ -148,8 +153,9 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._unlisten = null;
     if (this._ro) this._ro.disconnect();
     // Removed from the page: queued −/+ writes the user can no longer see
-    // are dropped (an explicitly started curve Apply still completes).
-    for (const v of Object.values(this._views)) if (v.cancelWrites) v.cancelWrites();
+    // are dropped and status/confirmation timers stopped (an explicitly
+    // started curve Apply still completes).
+    for (const v of Object.values(this._views)) if (v.pause) v.pause();
   }
 
   /** Throw away all view state (queued writes, pending edits); rebuilt on the next render. */

@@ -61,9 +61,16 @@ export class ControlView {
 
   dispose() {
     this.disposed = true;
+    this.pause();
+  }
+
+  /** Card left the page: drop queued writes and every timer with its transient state. */
+  pause() {
     this.cancelWrites();
     for (const t of this._timers) clearTimeout(t);
     this._timers.clear();
+    this.busy.clear();
+    this.armed = null;
   }
 
   /** Drop every queued (not yet sent) stepper write. */
@@ -72,7 +79,9 @@ export class ControlView {
     this.coal.clear();
   }
 
+  /** Timer owned by the view; none is started once it is disposed or off the page. */
   _later(ms, fn) {
+    if (this.disposed || !this.card.isConnected) return;
     const id = setTimeout(() => {
       this._timers.delete(id);
       fn();
@@ -193,6 +202,7 @@ export class ControlView {
     this.card.requestRender();
     try {
       await this.card.call(domain, service, data);
+      if (this.disposed) return;
       const b = this.busy.get(key);
       if (b && b.target === target) {
         b.sent = true;
@@ -205,6 +215,7 @@ export class ControlView {
         });
       }
     } catch (err) {
+      if (this.disposed) return;
       this.busy.delete(key);
       this._note(noteKey, "err", `${this.card.i18n.t("error")}: ${errText(err)}`, 8000);
     }

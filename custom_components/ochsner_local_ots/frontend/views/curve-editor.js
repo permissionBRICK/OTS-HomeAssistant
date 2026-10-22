@@ -30,8 +30,14 @@ export class CurveEditor {
   /** View thrown away (other plant/connection): no more UI work. */
   dispose() {
     this.disposed = true;
+    this.pause();
+  }
+
+  /** Card left the page: stop the crosshair timer and any drag (pending edits stay). */
+  pause() {
     this.drag = null;
     if (this._hoverTimer) clearTimeout(this._hoverTimer);
+    this._hoverTimer = null;
   }
 
   /** Current context, only if it still belongs to this editor's plant. */

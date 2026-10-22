@@ -21,6 +21,39 @@ test("removing the card cancels a queued −/+ write", { skip }, async () => {
   assert.deepEqual(page.errors, []);
 });
 
+/** Record pending setTimeouts with the frame that created them. */
+const trackTimers = (page) => page.eval(`(() => {
+  const live = new Map();
+  window.__timers = live;
+  const st = window.setTimeout, ct = window.clearTimeout;
+  window.setTimeout = function (fn, ms, ...args) {
+    const where = (new Error().stack.split("\\n")[2] || "").trim();
+    const id = st.call(window, function () { live.delete(id); return fn.apply(this, arguments); }, ms, ...args);
+    live.set(id, where);
+    return id;
+  };
+  window.clearTimeout = function (id) { live.delete(id); return ct.call(window, id); };
+  return true;
+})()`);
+// Timers of the card and its views (the shared store keeps its own, documented stop delay).
+const cardTimers = (page) => page.eval(`[...__timers.values()].filter((w) => /\\/frontend\\/(views|lib)\\//.test(w) && !/store\\.js/.test(w))`);
+
+test("removing the card during a preset request leaves no timers behind", { skip }, async () => {
+  const page = await b.open("variant=house&view=controls&latency=300");
+  const c = on(page);
+  await trackTimers(page);
+  await c.click('[data-act="hp"][data-v="3"]'); // arms the off confirmation (timer)
+  await c.click('.hc[data-key="hc2"] [data-d="1"]'); // queued write (timer)
+  await c.click('[data-act="preset"][data-c="1"][data-v="eco"]'); // request in flight
+  assert.ok((await cardTimers(page)).length >= 2, JSON.stringify(await cardTimers(page)));
+  await page.eval("harness.el.remove()");
+  assert.deepEqual(await cardTimers(page), [], "cleared on disconnect");
+  await sleep(500); // the preset request completes after the removal
+  assert.deepEqual(await writes(page), ["climate.set_preset_mode climate.fussboden eco"]);
+  assert.deepEqual(await cardTimers(page), [], "no timer scheduled by the late completion");
+  assert.deepEqual(page.errors, []);
+});
+
 const CARD = 'harness.el.shadowRoot.querySelector("ochsner-heatpump-card").shadowRoot';
 
 async function panelTab(page, host) {
