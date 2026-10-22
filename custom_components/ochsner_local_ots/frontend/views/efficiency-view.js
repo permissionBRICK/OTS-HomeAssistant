@@ -236,7 +236,7 @@ export class EfficiencyView {
     const jp = num(live, "hp.jaz_prev_year");
     if (jp !== undefined && jp > 0) t.push([I.num(jp, 2), I.t("jaz_prev")]);
     if (!sec.power) foot = "";
-    return { html: t.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span title="${esc(l)}">${esc(l)}</span></div>`).join(""), foot };
+    return { html: t.map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join(""), foot };
   }
 
   render(ctx) {

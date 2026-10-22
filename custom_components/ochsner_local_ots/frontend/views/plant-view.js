@@ -208,7 +208,8 @@ export class PlantView {
     const kpis = [];
     if (out !== undefined) kpis.push(`<div class="kpi"><b>${I.num(out)}</b><small>°C ${esc(t("outdoor"))}</small></div>`);
     if (q !== undefined) kpis.push(`<div class="kpi"><b>${I.num(q)}</b><small>${esc(t(mode === "cool" ? "kw_cool" : "kw_heat"))}</small></div>`);
-    if (cop !== undefined) kpis.push(`<div class="kpi"><b>${I.num(cop)}</b><small>${esc(t("cop"))}</small></div>`);
+    // Same basis as the 24 h COP tile: compressor power only, hence the "*".
+    if (cop !== undefined) kpis.push(`<div class="kpi" title="${esc(t("cop_live_title"))}"><b>${I.num(cop)}*</b><small>${esc(t("cop"))}</small></div>`);
     return `
       <div class="hdr"><div class="l"><div class="ttl">${esc(plant.title || plant.model || t("heat_pump"))}</div>
         <span class="pill" style="color:${textTint(col)};background:color-mix(in srgb, ${col} 16%, transparent)"><span class="dot" style="background:${col}"></span>${esc(status)}</span></div>

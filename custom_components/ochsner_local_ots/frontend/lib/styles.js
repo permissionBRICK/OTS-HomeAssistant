@@ -36,6 +36,7 @@ ha-card, .card {
 .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 .kpis { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .kpi { white-space: nowrap; }
+.kpi[title] { cursor: help; }
 .kpi b { font-size: 18px; font-weight: 500; }
 .kpi small { color: var(--ohp-ink2); font-size: 11.5px; margin-left: 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -176,7 +177,8 @@ svg.ch .flab text { font-size: 12px; fill: var(--ohp-ink); font-weight: 500; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; margin-top: 10px; }
 .tile { background: var(--ohp-card2); border-radius: 10px; padding: 8px 10px; min-width: 0; }
 .tile b { display: block; font-size: 16px; font-weight: 500; white-space: nowrap; }
-.tile span { font-size: 11px; color: var(--ohp-ink2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* labels wrap to (at most) two lines instead of being cut off */
+.tile span { font-size: 11px; line-height: 1.25; color: var(--ohp-ink2); display: block; overflow-wrap: break-word; hyphens: auto; }
 .foot { font-size: 11px; color: var(--ohp-ink2); margin-top: 8px; line-height: 1.4; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 `;

@@ -339,3 +339,17 @@ test("history covers a full rolling 24 h window", { skip: !CHROME && "no chromiu
   const labels = await page.eval(`[...${sr}.querySelectorAll("svg.bars text")].map((t) => t.textContent).filter((t) => /:00$/.test(t))`);
   assert.ok(labels.length >= 3 && labels.every((l) => ["00:00", "06:00", "12:00", "18:00"].includes(l)), JSON.stringify(labels));
 });
+
+test("efficiency tile labels are never cut off (DE/EN, 360/760/1280 px); live COP carries the * note", { skip: !CHROME && "no chromium" }, async () => {
+  for (const lang of ["en", "de"]) {
+    for (const width of [360, 760, 1280]) {
+      const page = await open(`variant=house&view=all&lang=${lang}&width=${width}`, { width, mobile: width < 500 });
+      await page.waitFor(`${sr}.querySelectorAll(".tile").length >= 6`, 3000);
+      const bad = await page.eval(`[...${sr}.querySelectorAll(".tile span")].map((s) => ({ t: s.textContent, w: s.scrollWidth > s.clientWidth + 1, h: s.getBoundingClientRect().height > 28.5, e: getComputedStyle(s).textOverflow === "ellipsis" })).filter((x) => x.w || x.h || x.e)`);
+      assert.deepEqual(bad, [], `${lang} ${width}px`);
+      const cop = await page.eval(`(() => { const k = [...${sr}.querySelectorAll(".card-plant .kpi")].find((x) => /COP/.test(x.textContent)); return k ? [k.querySelector("b").textContent, k.getAttribute("title")] : null; })()`);
+      assert.ok(cop && cop[0].endsWith("*"), JSON.stringify(cop));
+      assert.match(cop[1], lang === "de" ? /Nur Verdichterstrom/ : /Compressor power only/);
+    }
+  }
+});
