@@ -1,0 +1,126 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { Coalescer } from "../../custom_components/ochsner_local_ots/frontend/lib/coalesce.js";
+
+const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+
+function setup(t, { current = 21.5, fail = null } = {}) {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const sent = [];
+  const state = { current };
+  const c = new Coalescer({
+    delay: 1500,
+    current: () => state.current,
+    send: async (v) => {
+      sent.push(v);
+      if (fail) throw new Error(fail);
+      state.current = v;
+    },
+  });
+  return { c, sent, state };
+}
+
+test("a −/+ burst is shown immediately and written once after 1.5 s idle", async (t) => {
+  const { c, sent } = setup(t);
+  c.push(22);
+  t.mock.timers.tick(700);
+  c.push(22.5);
+  t.mock.timers.tick(700);
+  c.push(23);
+  assert.equal(c.value, 23);
+  assert.equal(c.state, "waiting");
+  t.mock.timers.tick(1499);
+  await flush();
+  assert.deepEqual(sent, []);
+  t.mock.timers.tick(1);
+  await flush();
+  assert.deepEqual(sent, [23]);
+  assert.equal(c.state, "idle");
+  assert.equal(c.value, undefined, "HA reflects the value → optimistic value dropped");
+});
+
+test("no write when the final value equals the current one", async (t) => {
+  const { c, sent } = setup(t);
+  c.push(22);
+  c.push(21.5);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, []);
+  assert.equal(c.value, undefined);
+  assert.equal(c.state, "idle");
+});
+
+test("error reverts the optimistic value and reports it", async (t) => {
+  const { c, sent } = setup(t, { fail: "controller timeout" });
+  c.push(24);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, [24]);
+  assert.equal(c.state, "error");
+  assert.equal(c.error, "controller timeout");
+  assert.equal(c.value, undefined);
+  assert.equal(c.display(), 21.5);
+});
+
+test("optimistic value is kept until HA confirms (sync) or the timeout", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { current: 50 };
+  const sent = [];
+  const c = new Coalescer({ delay: 1500, confirmTimeout: 15000, current: () => state.current, send: async (v) => { sent.push(v); } });
+  c.push(52);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.equal(c.state, "sent");
+  assert.equal(c.display(), 52);
+  assert.equal(c.sync(), false);
+  state.current = 52;
+  assert.equal(c.sync(), true);
+  assert.equal(c.value, undefined);
+  c.push(53);
+  t.mock.timers.tick(1500);
+  await flush();
+  t.mock.timers.tick(15000);
+  assert.equal(c.value, undefined, "dropped after confirm timeout");
+  assert.deepEqual(sent, [52, 53]);
+});
+
+test("input while a write is in flight leads to exactly one follow-up write", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { current: 20 };
+  const sent = [];
+  let release;
+  const c = new Coalescer({
+    delay: 1500,
+    current: () => state.current,
+    send: (v) => new Promise((res) => { sent.push(v); release = () => { state.current = v; res(); }; }),
+  });
+  c.push(21);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, [21]);
+  c.push(21.5);
+  c.push(22);
+  t.mock.timers.tick(1500);
+  await flush();
+  assert.deepEqual(sent, [21], "waits for the running write");
+  release();
+  await flush();
+  await flush();
+  assert.deepEqual(sent, [21, 22]);
+  release();
+  await flush();
+  assert.equal(state.current, 22);
+});
+
+test("flush sends immediately, cancel drops the pending value", async (t) => {
+  const { c, sent } = setup(t);
+  c.push(23);
+  await c.flush();
+  await flush();
+  assert.deepEqual(sent, [23]);
+  c.push(19);
+  c.cancel();
+  t.mock.timers.tick(5000);
+  await flush();
+  assert.deepEqual(sent, [23]);
+});
