@@ -10,8 +10,8 @@ import aiohttp
 import voluptuous as vol
 
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState, SOURCE_IMPORT
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -1076,16 +1076,21 @@ def _async_watch_sections(
 ) -> Callable[[], None]:
     """Reload the entry once when its plant sections change for good.
 
-    The new set must be seen on two consecutive successful updates (no
-    reload for a flapping value) and an entry is reloaded at most once per
-    SECTION_RELOAD_MIN_INTERVAL_SEC.
+    The new set must be seen on two consecutive FRESH observations (updates
+    that re-read every section id; a failed update starts over), so neither
+    a flapping value nor an old value republished by an unrelated update
+    reloads. Once a change shows, the section ids are polled on the next
+    cycle to confirm it. Reloads only while Home Assistant is running and
+    the entry is loaded, at most once per SECTION_RELOAD_MIN_INTERVAL_SEC.
     """
     loaded = plant_lib.section_signature(caps)
+    section_ids = frozenset(plant_lib.section_ids())
     state: Dict[str, Any] = {"candidate": None}
 
     @callback
     def _check() -> None:
         if not coordinator.last_update_success:
+            state["candidate"] = None
             return
         data = coordinator.data if isinstance(coordinator.data, dict) else {}
         values = data.get("values") if isinstance(data.get("values"), dict) else {}
@@ -1094,8 +1099,14 @@ def _async_watch_sections(
         if current == loaded:
             state["candidate"] = None
             return
+        if not section_ids <= coordinator.last_read_ids:
+            coordinator.request_poll(section_ids)
+            return
         if state["candidate"] != current:
             state["candidate"] = current
+            coordinator.request_poll(section_ids)
+            return
+        if hass.state is not CoreState.running or entry.state is not ConfigEntryState.LOADED:
             return
         reloads = hass.data.setdefault(DOMAIN, {}).setdefault("_section_reloads", {})
         now = time.monotonic()
@@ -1103,6 +1114,7 @@ def _async_watch_sections(
         if last is not None and now - last < SECTION_RELOAD_MIN_INTERVAL_SEC:
             return
         reloads[entry.entry_id] = now
+        state["candidate"] = None
         _LOGGER.info(
             "Heat pump sections of %s changed (circuits %s -> %s, DHW %s -> %s); reloading the entry",
             entry.title,

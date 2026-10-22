@@ -348,6 +348,12 @@ def compute_capabilities(values: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def section_ids() -> List[str]:
+    """The ids section_signature is computed from."""
+    ids = [AVAIL_ROLES[k] for k in ("avail.bms", "avail.dhw", "avail.buffer", "avail.pool")]
+    return ids + [hc_availability_id(n) for n in range(1, HC_COUNT + 1)]
+
+
 def section_signature(caps: Mapping[str, Any]) -> Tuple[Any, ...]:
     """What decides the polled role ids and the entities/devices at setup.
 

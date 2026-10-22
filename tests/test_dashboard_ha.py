@@ -555,8 +555,8 @@ async def test_ws_subscribe_pushes_on_updates(hass, monkeypatch, fake_controller
         async_dispatcher_send(hass, SIGNAL_PLANTS_CHANGED)
         await hass.async_block_till_done()
         assert len(conn.messages) == 3
-        # DHW appeared on two consecutive updates: the entry reloads to add it.
-        plant.reload.assert_called_once_with(plant.entry.entry_id)
+        # Not fresh readings of the section points: no reload.
+        plant.reload.assert_not_called()
     finally:
         await teardown(hass, plant)
 
@@ -1320,68 +1320,106 @@ def test_raw_roles_follow_their_section_anchor():
 async def test_section_change_reloads_entry_once(hass, monkeypatch, fake_controller, caplog):
     import logging
 
-    plant = await setup_plant(hass, monkeypatch, fake_controller)
-    coordinator = plant.ctrl["coordinator"]
-    reload = plant.reload
-    HC4_AVAIL = "ESPI9AAAAAE="
+    from homeassistant.core import CoreState
 
-    def update(failed=False, **changes):
-        data = dict(coordinator.data)
-        data["values"] = dict(data["values"], **{k: [v, v] for k, v in changes.items()})
-        if not failed:
-            coordinator.async_set_updated_data(data)
-            return
-        coordinator.data = data  # what listeners see after a failed poll
-        coordinator.last_update_success = False
+    plant = await setup_plant(hass, monkeypatch, fake_controller)
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    reload = plant.reload
+    HC4_AVAIL, DHW_AVAIL, OUTDOOR = "ESPI9AAAAAE=", "ESMSIwAAAAE=", "AyKWuiiJAAE="
+    sections = P.section_ids()
+    hass.set_state(CoreState.running)
+
+    async def fresh(**changes):
+        """An update that re-reads every section point."""
+        for k, v in changes.items():
+            fake.set(k, v)
+        await coordinator.async_refresh_ids(sections)
+
+    def failed():
+        coordinator.last_update_success = False  # what listeners see after a failed poll
         coordinator.async_update_listeners()
         coordinator.last_update_success = True
 
     try:
         # Values that do not change the sections never reload.
-        update(**{"AyKWuiiJAAE=": 3.0})
-        update(**{"AyKWuiiJAAE=": 4.0})
+        await fresh(**{OUTDOOR: 3.0})
+        await fresh(**{OUTDOOR: 4.0})
         assert not reload.called
 
-        # A flapping section is ignored: the new set must hold for two updates.
+        # A flapping section is ignored: the new set must hold for two
+        # fresh readings in a row.
         for _ in range(3):
-            update(**{HC4_AVAIL: 27})
-            update(**{HC4_AVAIL: 0})
-        update(**{HC4_AVAIL: 27, "ESMSIwAAAAE=": 256})
-        update(**{HC4_AVAIL: 27, "ESMSIwAAAAE=": 0})
-        update(**{HC4_AVAIL: 0})
+            await fresh(**{HC4_AVAIL: 27})
+            await fresh(**{HC4_AVAIL: 0})
+        await fresh(**{HC4_AVAIL: 27, DHW_AVAIL: 256})
+        await fresh(**{HC4_AVAIL: 27, DHW_AVAIL: 0})
+        await fresh(**{HC4_AVAIL: 0})
         assert not reload.called
 
-        # A failed update does not count.
-        update(failed=True, **{HC4_AVAIL: 27})
-        update(failed=True, **{HC4_AVAIL: 27})
-        update(**{HC4_AVAIL: 27})
+        # Updates that did not re-read the section points do not count, however
+        # often the changed value is republished (targeted reads, forgotten
+        # values) ...
+        fake.set(HC4_AVAIL, 27)
+        await coordinator.async_refresh_ids([HC4_AVAIL])  # one section id only
+        for _ in range(3):
+            await coordinator.async_refresh_ids([OUTDOOR])
+            coordinator.async_invalidate([OUTDOOR])
         assert not reload.called
+        # ... they make the next poll read every section point (whatever their
+        # polling mode); its reading is the first observation, the next the second.
+        for oid in sections:
+            coordinator._poll_state[oid].counter = 10
+        fake.reads.clear()
+        await coordinator.async_refresh()
+        assert set(sections) <= set(fake.reads[-1]) and not reload.called
+        await coordinator.async_refresh()
+        assert set(sections) <= set(fake.reads[-1])
+        reload.assert_called_once_with(plant.entry.entry_id)
+        reload.reset_mock()
+        hass.data[DOMAIN]["_section_reloads"].clear()
+
+        # A failed update in between starts the confirmation over.
+        await fresh(**{HC4_AVAIL: 27})
+        failed()
+        await fresh(**{HC4_AVAIL: 27})
+        assert not reload.called
+
+        # Not while Home Assistant starts or stops, nor while the entry is not loaded.
+        for core_state in (CoreState.starting, CoreState.stopping):
+            hass.set_state(core_state)
+            await fresh(**{HC4_AVAIL: 27})
+            assert not reload.called
+        hass.set_state(CoreState.running)
+        plant.entry._async_set_state(hass, ConfigEntryState.SETUP_IN_PROGRESS, None)
+        await fresh(**{HC4_AVAIL: 27})
+        assert not reload.called
+        plant.entry._async_set_state(hass, ConfigEntryState.LOADED, None)
 
         # HC4 enabled and stable: one reload, logged.
         caplog.set_level(logging.INFO, logger="custom_components.ochsner_local_ots")
-        update(**{HC4_AVAIL: 27})
+        await fresh(**{HC4_AVAIL: 27})
         reload.assert_called_once_with(plant.entry.entry_id)
         assert "sections of" in caplog.text and "[1, 2, 3] -> [1, 2, 3, 4]" in caplog.text
 
         # Never loops: at most once per 10 minutes per entry.
         for _ in range(5):
-            update(**{HC4_AVAIL: 27})
+            await fresh(**{HC4_AVAIL: 27})
         assert reload.call_count == 1
         reloads = hass.data[DOMAIN]["_section_reloads"]
         reloads[plant.entry.entry_id] -= integration.SECTION_RELOAD_MIN_INTERVAL_SEC + 1
-        update(**{HC4_AVAIL: 27})
+        await fresh(**{HC4_AVAIL: 27})
         assert reload.call_count == 2
 
         # Back to the loaded sections: nothing to do.
-        update(**{HC4_AVAIL: 0})
-        update(**{HC4_AVAIL: 0})
+        await fresh(**{HC4_AVAIL: 0})
+        await fresh(**{HC4_AVAIL: 0})
         assert reload.call_count == 2
     finally:
         await teardown(hass, plant)
     # Unloading removes the watcher.
     reloads[plant.entry.entry_id] = 0.0
-    update(**{"ESMSIwAAAAE=": 256})
-    update(**{"ESMSIwAAAAE=": 256})
+    await fresh(**{DHW_AVAIL: 256})
+    await fresh(**{DHW_AVAIL: 256})
     assert reload.call_count == 2
 
 

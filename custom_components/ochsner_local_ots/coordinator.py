@@ -88,6 +88,11 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # Ids invalidated after a write: polled on the next cycle whatever
         # their polling mode.
         self._force_poll: set[str] = set()
+        # Ids actually read (successfully) by the update the listeners are
+        # being told about: empty after a failed poll or an update that only
+        # forgot values. Lets listeners tell fresh readings from old ones.
+        self.last_read_ids: frozenset[str] = frozenset()
+        self._next_read_ids: frozenset[str] = frozenset()
 
         try:
             pt = int(poll_threshold)
@@ -188,6 +193,15 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             if oid:
                 self._id_seq[str(oid)] = seq
 
+    def async_set_updated_data(self, data: Dict[str, Any]) -> None:
+        self.last_read_ids, self._next_read_ids = self._next_read_ids, frozenset()
+        super().async_set_updated_data(data)
+
+    def request_poll(self, ids: Iterable[str]) -> None:
+        """Poll these ids on the next cycle whatever their polling mode."""
+        polled = set(self.ids)
+        self._force_poll.update(str(i) for i in ids if str(i) in polled)
+
     def _publishable(self, oid: str, ticket: int) -> bool:
         return self._id_seq.get(oid, 0) < ticket
 
@@ -250,6 +264,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 )
                 for oid in self.ids:
                     self._poll_state.setdefault(str(oid), _PollState(counter=0))
+                self.last_read_ids = frozenset(str(oid) for oid in self.ids)
                 return payload
 
             current = self.data if isinstance(self.data, dict) else {}
@@ -268,6 +283,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 for oid_s in skipped:
                     state = self._poll_state.setdefault(oid_s, _PollState())
                     state.counter = int(state.counter) + 1
+                self.last_read_ids = frozenset()
                 return current
 
             ticket = self._ticket()
@@ -329,8 +345,10 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 else:
                     state.counter = 0
 
+            self.last_read_ids = frozenset(ids_to_poll)
             return out
         except Exception as err:  # noqa: BLE001
+            self.last_read_ids = frozenset()
             raise UpdateFailed(str(err)) from err
 
     async def async_refresh_ids(self, ids: List[str]) -> set[str]:
@@ -358,6 +376,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         current = self.data if isinstance(self.data, dict) else {}
         new_data = dict(current)
         new_data["values"] = merged_values
+        self._next_read_ids = frozenset(ids)
         self.async_set_updated_data(new_data)
 
         # Treat targeted refreshes as real polls for counter tracking.
@@ -421,8 +440,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         ids = {str(i) for i in ids if i}
         if not ids:
             return
-        polled = set(self.ids)
-        self._force_poll.update(i for i in ids if i in polled)
+        self.request_poll(ids)
         data = self.data if isinstance(self.data, dict) else {}
         values = data.get("values") if isinstance(data.get("values"), dict) else {}
         if not ids & set(values):
