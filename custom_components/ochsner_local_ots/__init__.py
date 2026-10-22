@@ -926,32 +926,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception:
                 pass
 
-            # The controller recomputes targets, badges, status, ... of the
-            # written section: re-read the polled ones with the write (one
-            # read per command), whichever entity wrote.
-            coordinator_ = target.get("coordinator")
-            if coordinator_ is not None:
-                try:
-                    polled = set(coordinator_.ids)
-                    await coordinator_.async_refresh_after_write(
-                        [oid for oid in plant_lib.write_dependents(written_id) if oid in polled]
-                    )
-                except Exception as err:  # noqa: BLE001
-                    _LOGGER.debug("Re-reading after a write failed: %s", type(err).__name__)
-
         def _stale_ids(written_id: str) -> List[str]:
             # What a poll in flight during the write must not publish.
             return [written_id, *plant_lib.write_dependents(written_id)]
+
+        def _reread_ids(coordinator_: ClimatixCoordinator, written_id: str) -> List[str]:
+            # The controller recomputes targets, badges, status, ... of the
+            # written section: re-read the polled ones with the write (one
+            # read per command), whichever entity wrote.
+            polled = set(coordinator_.ids)
+            return [oid for oid in plant_lib.write_dependents(written_id) if oid in polled]
 
         def _before_write(written_id: str, target: Dict[str, Any] = write_target) -> None:
             coordinator_ = target.get("coordinator")
             if coordinator_ is not None:
                 coordinator_.note_write(_stale_ids(written_id))
+                # Queued before the attempt: a write the controller applied
+                # but whose response was lost changed them too.
+                coordinator_.queue_refresh_after_write(_reread_ids(coordinator_, written_id))
 
         async def _after_write(written_id: str, ok: bool, target: Dict[str, Any] = write_target) -> None:
             coordinator_ = target.get("coordinator")
-            if coordinator_ is not None:
-                coordinator_.note_write(_stale_ids(written_id))
+            if coordinator_ is None:
+                return
+            coordinator_.note_write(_stale_ids(written_id))
+            try:
+                await coordinator_.async_refresh_after_write(_reread_ids(coordinator_, written_id))
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Re-reading after a write failed: %s", type(err).__name__)
 
         api: Any = ClimatixGenericApiWriteHook(
             inner_api, on_write=_on_write, before_write=_before_write, after_write=_after_write,

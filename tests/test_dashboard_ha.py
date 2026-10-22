@@ -968,6 +968,7 @@ async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fak
 
 
 SP_NORMAL1, SP_REDUCED1, TARGET1, BADGE1 = "ASMhEo58AAE=", "ASOkTo58AAE=", "CiPcW458AAE=", "CyPmL458AAE="
+CURRENT_TARGET1 = "CiMeXI58AAE="
 DHW_COMFORT_SP, DHW_OFFSET, DHW_TARGET = "ASMv1XXZAAE=", "ACPOwnXZAAE=", "CiMzqnXZAAE="
 
 
@@ -1040,6 +1041,118 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         fake.reads.clear()
         await other.async_set_native_value(float(other.native_value) + 1)
         assert fake.reads == [[other._read_id]]
+    finally:
+        await teardown(hass, plant)
+
+
+def lossy_controller(fake_controller):
+    """A recomputing fake whose next write is applied but whose response is
+    lost (timeout), and whose next ``fail_reads`` reads fail."""
+
+    class Lossy(recomputing_controller(fake_controller)):
+        lose_response = False
+        fail_reads = 0
+
+        async def read(self, ids, *, on_http_request=None):
+            if self.fail_reads:
+                self.fail_reads -= 1
+                self.reads.append(list(ids))
+                raise asyncio.TimeoutError()
+            return await super().read(ids, on_http_request=on_http_request)
+
+        async def write(self, oid, value):
+            out = await super().write(oid, value)
+            if self.lose_response:
+                self.lose_response = False
+                raise asyncio.TimeoutError()
+            return out
+
+    return Lossy
+
+
+@pytest.mark.asyncio
+async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatch, fake_controller):
+    from homeassistant.exceptions import HomeAssistantError
+
+    plant = await setup_plant(hass, monkeypatch, lossy_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        assert c.target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
+
+        # 22.5 °C: the controller applies +1 K, the response times out.
+        fake.lose_response = True
+        fake.writes.clear()
+        fake.reads.clear()
+        with pytest.raises(HomeAssistantError):
+            await c.async_set_temperature(temperature=22.5)
+        assert fake.writes == [(OFF1, 1.0)] and fake.values[TARGET1] == [22.5, 22.5]
+        assert {OFF1, TARGET1, BADGE1, "CyP/dY58AAE="} <= set(fake.reads[-1])
+        assert c.target_temperature == 22.5
+        # Retrying 22.5 °C writes nothing (it used to write +2 K -> 23.5 °C).
+        await c.async_set_temperature(temperature=22.5)
+        assert fake.writes == [(OFF1, 1.0)] and c.target_temperature == 22.5
+
+        # Lost response and the re-read fails too: target and correction
+        # become unknown instead of keeping their stale values ...
+        fake.lose_response, fake.fail_reads = True, 2  # re-read + fallback poll
+        with pytest.raises(HomeAssistantError):
+            await c.async_set_temperature(temperature=23.0)
+        assert fake.values[OFF1] == [1.5, 1.5] and fake.values[TARGET1] == [23.0, 23.0]
+        assert fake.fail_reads == 0 and not coordinator.last_update_success
+        values = coordinator.data["values"]
+        assert OFF1 not in values and TARGET1 not in values
+        assert c.target_temperature is None
+        # ... so the next relative change reads them first: 23.0 °C is reached.
+        fake.writes.clear()
+        fake.reads.clear()
+        await c.async_set_temperature(temperature=23.0)
+        assert OFF1 in fake.reads[0] and TARGET1 in fake.reads[0]
+        assert fake.writes == [] and c.target_temperature == 23.0
+
+        # Still unreadable: refused with the translated error, nothing written.
+        fake.lose_response, fake.fail_reads = True, 2
+        with pytest.raises(HomeAssistantError):
+            await c.async_set_temperature(temperature=22.0)
+        fake.writes.clear()
+        fake.fail_reads = 1  # the read before planning
+        with pytest.raises(HomeAssistantError) as err:
+            await c.async_set_temperature(temperature=22.0)
+        assert err.value.translation_domain == DOMAIN
+        assert err.value.translation_key in {"room_offset_unknown", "room_target_unknown"}
+        assert fake.writes == []
+        # The invalidated ids are polled on the next cycle whatever their mode.
+        coordinator._poll_state[TARGET1].counter = 10
+        await coordinator.async_refresh()
+        assert coordinator.data["values"][TARGET1] == [22.0, 22.0]
+    finally:
+        await teardown(hass, plant)
+
+
+@pytest.mark.asyncio
+async def test_reread_omitting_a_dependent_marks_it_unknown(hass, monkeypatch, fake_controller):
+    plant = await setup_plant(hass, monkeypatch, recomputing_controller(fake_controller))
+    fake, coordinator = plant.fake, plant.ctrl["coordinator"]
+    try:
+        c = plant.entities[f"{KEY}:climate:hc1"]
+        real_read = fake.read
+
+        async def omit_targets(ids, *, on_http_request=None):
+            out = await real_read(ids, on_http_request=on_http_request)
+            out["values"].pop(TARGET1, None)
+            out["values"].pop(CURRENT_TARGET1, None)
+            return out
+
+        fake.read = omit_targets
+        await c.async_set_temperature(temperature=22.5)
+        assert fake.writes[-1] == (OFF1, 1.0)
+        values = coordinator.data["values"]
+        assert TARGET1 not in values and CURRENT_TARGET1 not in values and OFF1 in values
+        assert c.target_temperature is None
+        fake.read = real_read
+        fake.writes.clear()
+        await c.async_set_temperature(temperature=22.5)
+        assert fake.writes == [] and c.target_temperature == 22.5
     finally:
         await teardown(hass, plant)
 

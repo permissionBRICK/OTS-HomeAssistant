@@ -85,6 +85,9 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         # command never restores a pre-command value.
         self._seq: int = 0
         self._id_seq: Dict[str, int] = {}
+        # Ids invalidated after a write: polled on the next cycle whatever
+        # their polling mode.
+        self._force_poll: set[str] = set()
 
         try:
             pt = int(poll_threshold)
@@ -216,6 +219,8 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         return mode
 
     def _should_poll(self, oid: str) -> bool:
+        if str(oid) in self._force_poll:
+            return True
         state = self._poll_state.setdefault(str(oid), _PollState())
         mode = self._get_mode(str(oid))
 
@@ -273,6 +278,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
             new_values = payload.get("values") if isinstance(payload, dict) else None
             if not isinstance(new_values, dict):
                 new_values = {}
+            self._force_poll.difference_update(ids_to_poll)
 
             # Merge the polled subset into the data as it is NOW: commands may
             # have written / re-read values while this read was in flight;
@@ -327,24 +333,26 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(str(err)) from err
 
-    async def async_refresh_ids(self, ids: List[str]) -> None:
+    async def async_refresh_ids(self, ids: List[str]) -> set[str]:
         """Re-read a subset of OA IDs and merge into coordinator data.
 
         Used after writes to immediately reflect the updated value without
         polling every configured ID. Ids a write touched after this read
         started (or a later read already published) keep their newer value.
+        Returns the ids the controller answered.
         """
 
         ids = [str(x) for x in ids if x]
         if not ids:
-            return
+            return set()
 
         ticket = self._ticket()
         self._note_read_values(len(ids))
         payload = await self.api.read(ids, on_http_request=self._note_http_request)
         values = payload.get("values") if isinstance(payload, dict) else None
         if not isinstance(values, dict):
-            return
+            return set()
+        self._force_poll.difference_update(str(k) for k in values)
 
         current_values, merged_values, published = self._merge_read(values, ticket)
         current = self.data if isinstance(self.data, dict) else {}
@@ -376,6 +384,7 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
         except Exception:
             # Never break state updates due to counter bookkeeping.
             pass
+        return {str(k) for k in values}
 
     @asynccontextmanager
     async def async_write_session(self) -> AsyncIterator[WriteSession]:
@@ -396,6 +405,32 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
                 if session.refresh_ids:
                     await self._async_refresh_after_write(list(session.refresh_ids))
 
+    def queue_refresh_after_write(self, ids: Iterable[str]) -> None:
+        """Re-read ids when the running write session ends (no session: no-op;
+        the caller re-reads with async_refresh_after_write)."""
+        if self._write_session is not None:
+            self._write_session.refresh(ids)
+
+    def async_invalidate(self, ids: Iterable[str]) -> None:
+        """Forget values that may be wrong (unknown until read again).
+
+        After a write whose re-read failed or left ids out: the controller
+        may have changed them, and a stale target or correction would make
+        the next relative change wrong. Polled on the next cycle.
+        """
+        ids = {str(i) for i in ids if i}
+        if not ids:
+            return
+        polled = set(self.ids)
+        self._force_poll.update(i for i in ids if i in polled)
+        data = self.data if isinstance(self.data, dict) else {}
+        values = data.get("values") if isinstance(data.get("values"), dict) else {}
+        if not ids & set(values):
+            return
+        new_data = dict(data)
+        new_data["values"] = {k: v for k, v in values.items() if k not in ids}
+        self.async_set_updated_data(new_data)
+
     async def async_refresh_after_write(self, ids: Iterable[str]) -> None:
         """Re-read ids a write made stale: at the end of the running write
         session (one read for the whole command), else right away."""
@@ -409,7 +444,10 @@ class ClimatixCoordinator(DataUpdateCoordinator[Dict[str, Any]]):
 
     async def _async_refresh_after_write(self, ids: List[str]) -> None:
         try:
-            await self.async_refresh_ids(ids)
+            answered = await self.async_refresh_ids(ids)
         except Exception:
-            # Fallback: refresh everything if the targeted read fails.
+            # Unknown beats stale; then poll what is due (incl. these ids).
+            self.async_invalidate(ids)
             await self.async_request_refresh()
+            return
+        self.async_invalidate([oid for oid in ids if oid not in answered])
