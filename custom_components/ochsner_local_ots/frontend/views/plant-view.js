@@ -3,7 +3,7 @@
 import { esc } from "../lib/dom.js";
 import { modeColor, textTint } from "../lib/colors.js";
 import { plantSVG } from "../lib/plant-svg.js";
-import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, isProducing, liveCop, num, val } from "../lib/model.js";
+import { badgeFor, circuitActive, circuitCooling, circuitKind, circuitName, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, isProducing, legacyProgram, liveCop, num, val } from "../lib/model.js";
 
 // Aux heater status enum Off*Htg*Stby*Dhw*BIP*Error*Frost*…: these mean "heating now".
 const AUX_ON = new Set([1, 3, 6]);
@@ -34,6 +34,12 @@ export function poolEntity(plant) {
   return displayEntity(plant, "pool.temp") || displayEntity(plant, "pool.status") || displayEntity(plant, "pool.setpoint") || displayEntity(plant, "pool.mode");
 }
 
+/** Label of a legacy operating program (Reduziert, Normalbetrieb, …), or null. */
+export function programText(ctx, c) {
+  const lp = legacyProgram(ctx.plant, ctx.live, c.index);
+  return lp ? lp.label || ctx.I.t("program_n", { n: lp.raw }) : null;
+}
+
 /** Chip text for a circuit row / the B tile status. */
 export function circuitPresetText(ctx, c) {
   const { I, plant, live } = ctx;
@@ -46,6 +52,9 @@ export function circuitPresetText(ctx, c) {
   if (b.kind === "vacation") return I.t("vacation");
   if (b.kind === "party") return I.t("party");
   if (b.kind === "fault") return I.t("fault");
+  // A legacy program runs instead of the app's Komfort/Eco control.
+  const legacy = programText(ctx, c);
+  if (legacy) return legacy;
   let preset = b.preset;
   if (!preset) {
     const ce = val(live, hcKey(n, "comfort_eco"));

@@ -87,6 +87,18 @@ export function enumLabel(plant, key, raw) {
   return undefined;
 }
 
+/**
+ * Circuit operating program (hcN.op_program: Comfort*Off*Red*Norm*HeatMan*
+ * CoolMan*Eco*Party*Holiday = 0..8) other than the app's Komfort/Eco (0) and
+ * Aus (1): a legacy program set by the old app or the generic select entity.
+ * Returns { raw, label } (label from the payload, may be undefined) or null.
+ */
+export function legacyProgram(plant, live, n) {
+  const raw = num(live, hcKey(n, "op_program"));
+  if (raw === undefined || raw === 0 || raw === 1) return null;
+  return { raw, label: enumLabel(plant, hcKey(n, "op_program"), raw) };
+}
+
 export function role(plant, key) {
   return (plant && plant.roles && plant.roles[key]) || null;
 }

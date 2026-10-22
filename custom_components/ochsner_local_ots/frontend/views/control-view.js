@@ -6,7 +6,7 @@ import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
 import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
 import { badgeFor, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, val, writableEntity } from "../lib/model.js";
-import { poolEntity, poolText, statusText } from "./plant-view.js";
+import { poolEntity, poolText, programText, statusText } from "./plant-view.js";
 
 const OPT_TIMEOUT = 12000; // optimistic chip state if HA never confirms
 const ARM_TIME = 2500;
@@ -16,11 +16,15 @@ const errText = (err) => (err && (err.message || err.code)) || String(err);
 /** Temperature in HA's unit: "°" for °C (like the rest of the card), "°F" spelled out. */
 const tempIn = (I, v, unit, d) => (unit === "°F" && Number.isFinite(Number(v)) ? I.temp(v, d) + "F" : I.temp(v, d));
 
-/** Current circuit mode for the Komfort | Eco | Aus chips. */
+/**
+ * Current circuit mode for the Komfort | Eco | Aus chips; "program" while a
+ * legacy operating program (Reduziert, Normalbetrieb, …) runs instead.
+ */
 export function presetState(ctx, c) {
   const st = c.climate ? ctx.state(c.climate) : null;
   const prog = val(ctx.live, hcKey(c.index, "op_program"));
   if ((st && st.state === "off") || (!st && Number(prog) === 1)) return "off";
+  if (programText(ctx, c)) return "program";
   const pm = st && st.attributes && st.attributes.preset_mode;
   if (pm === "comfort" || pm === "eco") return pm;
   const ce = val(ctx.live, hcKey(c.index, "comfort_eco"));
@@ -374,7 +378,7 @@ export class ControlView {
         first = b.activity === "heating" ? I.t("heating") : b.activity === "cooling" ? I.t("cooling") : I.t("ready");
     }
     const ps = presetState(ctx, c);
-    const second = ps === "comfort" ? I.t("comfort") : ps === "eco" ? I.t("eco") : "";
+    const second = ps === "comfort" ? I.t("comfort") : ps === "eco" ? I.t("eco") : ps === "program" ? programText(ctx, c) : "";
     return second && ps !== "off" && b.kind !== "off" ? `${first} | ${second}` : first;
   }
 
@@ -404,8 +408,13 @@ export class ControlView {
     const ps = presetState(ctx, c);
     const pShown = this._busyTarget(`p${n}`, ps) ?? ps;
     const chipDis = !c.climate || ctx.disabled ? " disabled" : "";
-    const chip = (v, label, cls) =>
-      `<button class="mc${pShown === v ? " on " + cls : ""}${this.busy.has(`p${n}`) && this.busy.get(`p${n}`).target === v ? " busy" : ""}" data-act="preset" data-c="${n}" data-v="${v}" aria-pressed="${pShown === v}"${chipDis}>${esc(label)}</button>`;
+    // Under a legacy program neither Komfort nor Eco is active; choosing one
+    // switches the circuit to the app's Komfort/Eco control.
+    const legacy = ps === "program" ? programText(ctx, c) : null;
+    const chip = (v, label, cls) => {
+      const tip = legacy && v !== "off" ? ` title="${esc(I.t("program_replace", { program: legacy, choice: label }))}"` : "";
+      return `<button class="mc${pShown === v ? " on " + cls : ""}${this.busy.has(`p${n}`) && this.busy.get(`p${n}`).target === v ? " busy" : ""}" data-act="preset" data-c="${n}" data-v="${v}" aria-pressed="${pShown === v}"${tip}${chipDis}>${esc(label)}</button>`;
+    };
     let chips = `<div class="modechips" role="group">${chip("comfort", I.t("comfort"), "")}${chip("eco", I.t("eco"), "eco")}${chip("off", I.t("off"), "offc")}</div>`;
     if (c.cool) {
       const st = c.climate ? ctx.state(c.climate) : null;
