@@ -127,16 +127,15 @@ class ClimatixGenericText(CoordinatorEntity[ClimatixCoordinator], TextEntity):
     async def async_set_value(self, value: str) -> None:
         desired = "" if value is None else str(value)
 
-        data = self.coordinator.data or {}
-        current = extract_first_value(data, self._read_id)
-        if current is not None and str(current) == desired:
-            return
+        async with self.coordinator.async_write_session() as session:
+            # Read right before deciding: the cached value may be minutes old.
+            values = await self.coordinator.async_fresh_values([self._read_id])
+            current = extract_first_value({"values": values}, self._read_id)
+            if current is not None and str(current) == desired:
+                return
 
-        await self._api.write(self._write_id, desired)
-        try:
-            await self.coordinator.async_refresh_ids([self._read_id])
-        except Exception:
-            await self.coordinator.async_request_refresh()
+            session.refresh([self._read_id])
+            await self._api.write(self._write_id, desired)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:

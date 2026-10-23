@@ -134,3 +134,18 @@ CONF_BUNDLE_MAX = "bundle_max"
 # Optional grouping metadata (used by UI onboarding auto-generator)
 CONF_HEATING_CIRCUIT_UID = "heating_circuit_uid"
 CONF_HEATING_CIRCUIT_NAME = "heating_circuit_name"
+
+# Heat pump dashboard (card + sidebar panel) options.
+CONF_SIDEBAR_PANEL = "sidebar_panel"
+CONF_COLOR_SCHEME = "color_scheme"
+COLOR_SCHEME_HA = "ha"
+COLOR_SCHEME_OCHSNER = "ochsner"
+COLOR_SCHEMES = (COLOR_SCHEME_HA, COLOR_SCHEME_OCHSNER)
+DEFAULT_SIDEBAR_PANEL = True
+
+# Dispatcher signal: a plant was set up or unloaded (websocket subscribers re-attach).
+SIGNAL_PLANTS_CHANGED = f"{DOMAIN}_plants_changed"
+
+# Seconds the controller needs to recompute a section's targets after a
+# write to it (live: under 4 s). Reads in that window may show old targets.
+SETTLE_SECONDS = 8

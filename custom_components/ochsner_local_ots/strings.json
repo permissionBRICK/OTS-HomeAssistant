@@ -47,6 +47,16 @@
           "identity_key": "Heat pump",
           "local_ip": "Local IP address"
         }
+      },
+      "dashboard": {
+        "title": "Heat pump view",
+        "description": "Show the heat pump view in the sidebar?\n\n**Yes:** a \"Heat pump\" entry appears in the sidebar with the plant schematic, the controls and the heating curve.\n**No:** no sidebar entry; the same views are still available as cards you can add to any dashboard (search for \"Ochsner\" in the card picker).\n\nYou can change this later under Configure.",
+        "data": {
+          "sidebar_panel": "Show the heat pump view in the sidebar"
+        },
+        "data_description": {
+          "sidebar_panel": "Off = cards only, addable manually to any dashboard."
+        }
       }
     },
     "error": {
@@ -75,6 +85,8 @@
         "description": "Gated polling default threshold is 20. You can increase it if you see connection errors.",
         "data": {
           "language": "Language of entity names and labels",
+          "sidebar_panel": "Show the heat pump view in the sidebar",
+          "color_scheme": "Heat pump view colours",
           "scan_interval": "Polling interval (seconds)",
           "polling_threshold": "Polling / auto delay multiplier",
           "max_ids_per_read_request": "Max values per read request",
@@ -136,6 +148,16 @@
     }
   },
   "entity": {
+    "button": {
+      "dhw_boost": {
+        "name": "DHW boost"
+      }
+    },
+    "climate": {
+      "heating_circuit": {
+        "name": "Heating circuit"
+      }
+    },
     "sensor": {
       "flash_writes": {
         "name": "Flash writes"
@@ -146,6 +168,11 @@
       "read_rate_5m": {
         "name": "Read rate (5m)"
       }
+    },
+    "water_heater": {
+      "dhw": {
+        "name": "Domestic hot water"
+      }
     }
   },
   "selector": {
@@ -155,6 +182,23 @@
         "de": "Deutsch",
         "en": "English"
       }
+    },
+    "color_scheme": {
+      "options": {
+        "ha": "Home Assistant theme colours",
+        "ochsner": "Ochsner app colours"
+      }
+    }
+  },
+  "exceptions": {
+    "dhw_operation_unknown": {
+      "message": "The hot water operating mode is unknown (the heat pump did not report it), so it is not clear which setpoint is active. Nothing was written; please try again later."
+    },
+    "room_offset_unknown": {
+      "message": "The heating circuit's room setpoint correction is unknown (the heat pump did not report it). Nothing was written; please try again later."
+    },
+    "room_target_unknown": {
+      "message": "The heating circuit's room target is unknown (the heat pump did not report it). Nothing was written; please try again later."
     }
   }
 }

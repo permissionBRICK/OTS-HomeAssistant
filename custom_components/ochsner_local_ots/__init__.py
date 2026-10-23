@@ -3,16 +3,18 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
-from typing import Any, Dict, List
+import time
+from typing import Any, Callable, Dict, List
 
 import aiohttp
 import voluptuous as vol
 
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState, SOURCE_IMPORT
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
 from .api import ClimatixGenericApi, ClimatixGenericApiWriteHook, ClimatixGenericConnection
@@ -59,6 +61,11 @@ from .const import (
     CONF_LOCAL_SCAN_NOW,
     DISCOVERY_SOURCE_LOCAL,
     CONF_POLLING_MODE,
+    CONF_COLOR_SCHEME,
+    CONF_SIDEBAR_PANEL,
+    COLOR_SCHEME_HA,
+    DEFAULT_SIDEBAR_PANEL,
+    SIGNAL_PLANTS_CHANGED,
     POLLING_MODE_AUTOMATIC,
     POLLING_MODE_FAST,
     POLLING_MODE_SLOW,
@@ -81,8 +88,12 @@ from .autodiscovery import (
 from .network_discovery import async_probe, identity_key
 
 from .bundle_generator import generate_entities_from_bundle
+from .catalog import load_catalog
+from .dashboard import async_notify_dashboard_added, async_setup_frontend, async_sync_panel
 from .flash_warnings import async_maybe_create_flash_wear_notifications
-from .local_scan import async_local_scan_merge, async_relocalize_controllers
+from .local_scan import async_local_scan_merge, async_relocalize_controllers, resolve_language
+from . import plant as plant_lib
+from . import plant_api
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -346,11 +357,20 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
+    data = hass.data.setdefault(DOMAIN, {})
+    # Heat pump dashboard: websocket API + card/panel frontend (once per run).
+    if not data.get("_dashboard_setup"):
+        data["_dashboard_setup"] = True
+        plant_api.async_register(hass)
+        try:
+            await async_setup_frontend(hass)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Heat pump dashboard frontend unavailable: %s", err)
+
     cfg = config.get(DOMAIN)
     if not cfg:
         return True
 
-    hass.data.setdefault(DOMAIN, {})
     if hass.data[DOMAIN].get("_import_started"):
         return True
     hass.data[DOMAIN]["_import_started"] = True
@@ -364,6 +384,19 @@ async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
             data=dict(cfg),
         )
     )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """1.1 -> 1.2: dashboard options for existing installs (panel on + one notice)."""
+    if entry.version > 1:
+        return False
+    if entry.version == 1 and entry.minor_version < 2:
+        options = dict(entry.options or {})
+        options.setdefault(CONF_SIDEBAR_PANEL, DEFAULT_SIDEBAR_PANEL)
+        options.setdefault(CONF_COLOR_SCHEME, COLOR_SCHEME_HA)
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
+        async_notify_dashboard_added(hass)
     return True
 
 
@@ -537,11 +570,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         migrated_controllers.append(ctrl_d)
 
     if migrated:
+        # Always store in multi-controller format going forward. Setup goes
+        # on with the migrated controllers, so the update listener (started
+        # eagerly by the update) must not reload the entry.
+        pending = hass.data[DOMAIN].setdefault("_address_updates", {})
+        pending[entry.entry_id] = pending.get(entry.entry_id, 0) + 1
+        changed = False
         try:
-            # Always store in multi-controller format going forward.
-            hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: migrated_controllers})
+            changed = hass.config_entries.async_update_entry(entry, data={CONF_CONTROLLERS: migrated_controllers})
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Failed to persist migrated bundle bounds: %s", err)
+        finally:
+            if not changed and pending.get(entry.entry_id):
+                pending[entry.entry_id] -= 1
+                if not pending[entry.entry_id]:
+                    pending.pop(entry.entry_id)
         controllers = migrated_controllers
 
     # Freeze old entity/device namespaces before any address may change.
@@ -867,7 +910,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 on_address_unknown=_on_address_unknown,
             )
 
-        async def _on_write(host_key: str = stable_key) -> None:
+        # The coordinator is created below; the write hook finds it here.
+        write_target: Dict[str, Any] = {}
+
+        async def _on_write(
+            written_id: str, host_key: str = stable_key, target: Dict[str, Any] = write_target
+        ) -> None:
             write_counts[host_key] = int(write_counts.get(host_key, 0)) + 1
             ent = write_count_entities.get(host_key)
             if ent is not None:
@@ -888,7 +936,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception:
                 pass
 
-        api: Any = ClimatixGenericApiWriteHook(inner_api, on_write=_on_write)
+        def _stale_ids(written_id: str) -> List[str]:
+            # What a poll in flight during the write must not publish.
+            return [written_id, *plant_lib.write_dependents(written_id)]
+
+        def _reread_ids(coordinator_: ClimatixCoordinator, written_id: str) -> List[str]:
+            # The controller recomputes targets, badges, status, ... of the
+            # written section: re-read the polled ones with the write (one
+            # read per command), whichever entity wrote.
+            polled = set(coordinator_.ids)
+            return [oid for oid in plant_lib.write_dependents(written_id) if oid in polled]
+
+        def _note_settle(coordinator_: ClimatixCoordinator, written_id: str) -> None:
+            # The controller recomputes the section's targets only seconds
+            # later: re-read them once more when that has happened.
+            coordinator_.note_section_write(
+                plant_lib.write_section(written_id), written_id, _reread_ids(coordinator_, written_id)
+            )
+
+        def _before_write(written_id: str, target: Dict[str, Any] = write_target) -> None:
+            coordinator_ = target.get("coordinator")
+            if coordinator_ is not None:
+                coordinator_.note_write(_stale_ids(written_id))
+                _note_settle(coordinator_, written_id)
+                # Queued before the attempt: a write the controller applied
+                # but whose response was lost changed them too.
+                coordinator_.queue_refresh_after_write(_reread_ids(coordinator_, written_id))
+
+        async def _after_write(written_id: str, ok: bool, target: Dict[str, Any] = write_target) -> None:
+            coordinator_ = target.get("coordinator")
+            if coordinator_ is None:
+                return
+            coordinator_.note_write(_stale_ids(written_id))
+            _note_settle(coordinator_, written_id)
+            try:
+                await coordinator_.async_refresh_after_write(_reread_ids(coordinator_, written_id))
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Re-reading after a write failed: %s", type(err).__name__)
+
+        def _write_interrupted(written_id: str, target: Dict[str, Any] = write_target) -> None:
+            coordinator_ = target.get("coordinator")
+            if coordinator_ is not None:
+                coordinator_.async_abandon(_stale_ids(written_id))
+                _note_settle(coordinator_, written_id)
+
+        api: Any = ClimatixGenericApiWriteHook(
+            inner_api, on_write=_on_write, before_write=_before_write, after_write=_after_write,
+            write_interrupted=_write_interrupted,
+        )
+
+        # Plant capabilities (which circuits/DHW/... exist) come from a few
+        # availability points; poll them like any entity datapoint.
+        for oa in plant_lib.capability_ids():
+            if oa not in ids:
+                ids.append(oa)
 
         coordinator = ClimatixCoordinator(
             hass,
@@ -898,6 +999,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             poll_threshold=poll_threshold,
             update_interval=timedelta(seconds=scan_interval_sec),
         )
+        write_target["coordinator"] = coordinator
         try:
             await coordinator.async_config_entry_first_refresh()
         except BaseException:
@@ -908,6 +1010,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         base_url = api.base_url
         coordinator.device_id = async_register_controller(hass, entry, ctrl, base_url).id
+
+        plant, supplements = await _async_prepare_plant(
+            hass, entry, ctrl, coordinator,
+            stored={
+                "sensors": sensors, "binary_sensors": binary_sensors, "numbers": numbers,
+                "selects": selects, "texts": texts, "switches": switches,
+            },
+        )
+        # Supplement entities are runtime-only (never persisted in the entry).
+        numbers = numbers + supplements["numbers"]
+        selects = selects + supplements["selects"]
+
         runtime_controllers.append(
             {
                 "api": api,
@@ -928,6 +1042,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "selects": selects,
                 "texts": texts,
                 "switches": switches,
+                "plant": plant,
             }
         )
 
@@ -958,11 +1073,160 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         setups.append("text")
     if any_switches:
         setups.append("switch")
+    caps = [rc["plant"]["caps"] for rc in runtime_controllers]
+    if any(c["circuits"] for c in caps):
+        setups.append("climate")
+    if any(c["dhw"] for c in caps):
+        setups.extend(["water_heater", "button"])
     # Unload exactly what this entry loaded, even if its saved catalog changes.
     hass.data[DOMAIN][entry.entry_id]["platforms"] = list(setups)
     if setups:
         await hass.config_entries.async_forward_entry_setups(entry, setups)
+    hass.data[DOMAIN][entry.entry_id]["unsub"] = [
+        _async_watch_sections(hass, entry, rc["coordinator"], rc["plant"]["caps"])
+        for rc in runtime_controllers
+    ]
+    await _async_dashboard_changed(hass)
     return True
+
+
+# A plant whose sections change at runtime (a circuit, DHW or pool enabled
+# on the controller, BMS switched) needs a reload: role ids are polled and
+# entities/devices created per present section at setup.
+SECTION_RELOAD_MIN_INTERVAL_SEC = 600
+
+
+@callback
+def _async_watch_sections(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: ClimatixCoordinator, caps: Dict[str, Any]
+) -> Callable[[], None]:
+    """Reload the entry once when its plant sections change for good.
+
+    The new set must be seen on two consecutive FRESH observations (updates
+    whose accepted results cover every section id, as a value or as the
+    controller's explicit "absent"; a failed update starts over), so
+    neither a flapping value nor an old value republished by an unrelated,
+    incomplete or superseded update reloads. Once a change shows, the section ids are polled on the next
+    cycle to confirm it. Reloads only while Home Assistant is running and
+    the entry is loaded, at most once per SECTION_RELOAD_MIN_INTERVAL_SEC.
+    """
+    loaded = plant_lib.section_signature(caps)
+    section_ids = frozenset(plant_lib.section_ids())
+    state: Dict[str, Any] = {"candidate": None}
+
+    @callback
+    def _check() -> None:
+        if not coordinator.last_update_success:
+            state["candidate"] = None
+            return
+        data = coordinator.data if isinstance(coordinator.data, dict) else {}
+        values = data.get("values") if isinstance(data.get("values"), dict) else {}
+        new_caps = plant_lib.compute_capabilities(values)
+        current = plant_lib.section_signature(new_caps)
+        if current == loaded:
+            state["candidate"] = None
+            return
+        if not section_ids <= coordinator.last_read_ids:
+            coordinator.request_poll(section_ids)
+            return
+        if state["candidate"] != current:
+            state["candidate"] = current
+            coordinator.request_poll(section_ids)
+            return
+        if hass.state is not CoreState.running or entry.state is not ConfigEntryState.LOADED:
+            return
+        reloads = hass.data.setdefault(DOMAIN, {}).setdefault("_section_reloads", {})
+        now = time.monotonic()
+        last = reloads.get(entry.entry_id)
+        if last is not None and now - last < SECTION_RELOAD_MIN_INTERVAL_SEC:
+            return
+        reloads[entry.entry_id] = now
+        state["candidate"] = None
+        _LOGGER.info(
+            "Heat pump sections of %s changed (circuits %s -> %s, DHW %s -> %s); reloading the entry",
+            entry.title,
+            [c["index"] for c in caps["circuits"]],
+            [c["index"] for c in new_caps["circuits"]],
+            caps["dhw"],
+            new_caps["dhw"],
+        )
+        hass.config_entries.async_schedule_reload(entry.entry_id)
+
+    return coordinator.async_add_listener(_check)
+
+
+async def _async_dashboard_changed(hass: HomeAssistant) -> None:
+    try:
+        await async_sync_panel(hass)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Could not update the heat pump sidebar panel: %s", err)
+    async_dispatcher_send(hass, SIGNAL_PLANTS_CHANGED)
+
+
+async def _async_prepare_plant(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    ctrl: Dict[str, Any],
+    coordinator: ClimatixCoordinator,
+    *,
+    stored: Dict[str, List[Dict[str, Any]]],
+) -> tuple[Dict[str, Any], Dict[str, List[Dict[str, Any]]]]:
+    """Capabilities, role polling and supplement entities for one controller.
+
+    Runs after the first refresh: the availability points decide which
+    sections exist; their role ids join the poll list (one extra read now),
+    then writable app datapoints without a writable entity get a runtime
+    supplement entity.
+    """
+
+    def _current_values() -> Dict[str, Any]:
+        data = coordinator.data if isinstance(coordinator.data, dict) else {}
+        values = data.get("values")
+        return values if isinstance(values, dict) else {}
+
+    caps = plant_lib.compute_capabilities(_current_values())
+    role_ids = plant_lib.role_ids(caps)
+    extra = [oa for oa in dict.fromkeys(role_ids.values()) if oa not in coordinator.ids]
+    if extra:
+        coordinator.ids.extend(extra)
+        try:
+            await coordinator.async_refresh_ids(extra)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Initial plant role read failed: %s", type(err).__name__)
+
+    values = _current_values()
+    language = resolve_language(hass, option_value=entry.options.get(CONF_LANGUAGE), controller=ctrl)
+    circuit_devices = plant_lib.circuit_device_map(stored)
+    supplements = plant_lib.supplement_entities(
+        values=values, caps=caps, existing=stored, circuit_devices=circuit_devices, language=language,
+    )
+
+    # Enum labels the climate attributes show, in the entity language.
+    labels: Dict[str, Dict[str, str]] = {}
+    if caps["circuits"]:
+        try:
+            catalog = await hass.async_add_executor_job(load_catalog)
+        except Exception:  # noqa: BLE001
+            catalog = None
+        index = plant_api.entity_index({"host": "", **stored})
+        for c in caps["circuits"]:
+            ids = plant_lib.circuit_role_ids(int(c["index"]))
+            for key in ("op_program", "status"):
+                role = plant_lib.hc_key(int(c["index"]), key)
+                oid = ids[role]
+                cands = index.get(plant_lib.canonical_id(oid), [])
+                found = plant_api.role_labels(role, cands[0][2] if cands else None, catalog, oid, language)
+                if found:
+                    labels[role] = found
+
+    plant = {
+        "caps": caps,
+        "role_ids": role_ids,
+        "circuit_devices": circuit_devices,
+        "language": language,
+        "labels": labels,
+    }
+    return plant, supplements
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -1040,6 +1304,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unload_ok:
         store = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        # No follow-up re-read after unload.
+        for ctrl in (store.get("controllers") or []) if isinstance(store, dict) else []:
+            if isinstance(ctrl, dict) and ctrl.get("coordinator") is not None:
+                ctrl["coordinator"].async_cancel_settle()
+        for unsub in (store or {}).get("unsub", []) if isinstance(store, dict) else []:
+            unsub()
+        await _async_dashboard_changed(hass)
         # Close per-controller sessions so we don't hold any connections.
         try:
             controllers = (store or {}).get("controllers") if isinstance(store, dict) else None

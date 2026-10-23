@@ -149,17 +149,15 @@ class ClimatixGenericSelect(CoordinatorEntity[ClimatixCoordinator], SelectEntity
             raise ValueError(f"Unknown option: {option}")
         value = self._label_to_value[option]
 
-        data = self.coordinator.data or {}
-        current_raw = extract_first_value(data, self._read_id)
-        if _values_equal(current_raw, value):
-            return
+        async with self.coordinator.async_write_session() as session:
+            # Read right before deciding: the cached value may be minutes old.
+            values = await self.coordinator.async_fresh_values([self._read_id])
+            current_raw = extract_first_value({"values": values}, self._read_id)
+            if _values_equal(current_raw, value):
+                return
 
-        await self._api.write(self._write_id, value)
-        try:
-            await self.coordinator.async_refresh_ids([self._read_id])
-        except Exception:
-            # Fallback: refresh everything if the targeted read fails.
-            await self.coordinator.async_request_refresh()
+            session.refresh([self._read_id])
+            await self._api.write(self._write_id, value)
 
 
 def _values_equal(a: Any, b: Any) -> bool:

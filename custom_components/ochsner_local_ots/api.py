@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 import json
 import logging
+import math
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Tuple
 
 from aiohttp import ClientSession, BasicAuth
@@ -126,6 +128,7 @@ class ClimatixGenericApi:
             return {"values": {}}
 
         merged_values: Dict[str, Any] = {}
+        merged_states: Dict[str, Any] = {}
         # Chunk requests to avoid too-long URLs (which can lead to auth/PIN being dropped).
         for i in range(0, len(oa_list), self._max_ids_per_read_request):
             chunk = oa_list[i : i + self._max_ids_per_read_request]
@@ -140,6 +143,7 @@ class ClimatixGenericApi:
             payload = await self._get_json(params, on_http_request=on_http_request)
 
             values = payload.get("values") if isinstance(payload, dict) else None
+            states = payload.get("states") if isinstance(payload, dict) else None
             if isinstance(values, dict):
                 for k, v in values.items():
                     merged_values[str(k)] = v
@@ -147,7 +151,14 @@ class ClimatixGenericApi:
                 # Treat controller errors as failures so we don't silently filter everything during probing.
                 if isinstance(payload, dict) and payload.get("Error") not in (0, None):
                     raise RuntimeError(f"Controller error during read: {payload}")
+            if isinstance(states, dict):
+                for k, v in states.items():
+                    merged_states[str(k)] = v
 
+        # "states" (only when sent) lets callers tell an id the controller
+        # reports absent (states: 5) from one it did not answer.
+        if merged_states:
+            return {"values": merged_values, "states": merged_states}
         return {"values": merged_values}
 
     async def read_raw(
@@ -220,16 +231,29 @@ class ClimatixGenericApi:
 
 
 class ClimatixGenericApiWriteHook:
-    """Wrapper for ClimatixGenericApi that runs a hook after successful writes."""
+    """Wrapper for ClimatixGenericApi that runs hooks around writes.
+
+    ``before_write(id)`` runs before every write attempt, ``after_write(id,
+    ok)`` after it (also when it failed: the controller may have applied a
+    write whose response was lost), ``on_write(id)`` after a successful one.
+    ``write_interrupted(id)`` (not awaited) replaces ``after_write`` when the
+    write is cancelled: it may or may not have been applied.
+    """
 
     def __init__(
         self,
         inner: ClimatixGenericApi,
         *,
-        on_write: Callable[[], Awaitable[None]],
+        on_write: Callable[[str], Awaitable[None]],
+        before_write: Callable[[str], None] | None = None,
+        after_write: Callable[[str, bool], Awaitable[None]] | None = None,
+        write_interrupted: Callable[[str], None] | None = None,
     ) -> None:
         self._inner = inner
         self._on_write = on_write
+        self._before_write = before_write
+        self._after_write = after_write
+        self._write_interrupted = write_interrupted
 
     @property
     def base_url(self) -> str:
@@ -252,9 +276,59 @@ class ClimatixGenericApiWriteHook:
         return await self._inner.read_raw(ids, on_http_request=on_http_request)
 
     async def write(self, generic_id: str, value: Any) -> Dict[str, Any]:
-        resp = await self._inner.write(generic_id, value)
-        await self._on_write()
+        if self._before_write is not None:
+            self._before_write(generic_id)
+        try:
+            resp = await self._inner.write(generic_id, value)
+        except Exception:
+            if self._after_write is not None:
+                await self._after_write(generic_id, False)
+            raise
+        except BaseException:
+            if self._write_interrupted is not None:
+                self._write_interrupted(generic_id)
+            raise
+        if self._after_write is not None:
+            await self._after_write(generic_id, True)
+        await self._on_write(generic_id)
         return resp
+
+
+def clean_number(value: Any, step: Any = None) -> float:
+    """``value`` without float noise from a unit conversion.
+
+    Home Assistant converts a °F input back to the native °C with noise
+    (30.3 -> 30.300000000000004). A value within a tiny tolerance of a
+    multiple of ``step`` snaps to it; anything else is only rounded to six
+    decimals, so an exact input is written unchanged.
+    """
+    v = float(value)
+    if not math.isfinite(v):
+        return v
+    try:
+        s = abs(float(step)) if step is not None else 0.0
+    except (TypeError, ValueError):
+        s = 0.0
+    if s > 0 and math.isfinite(s):
+        snapped = round(v / s) * s
+        if abs(v - snapped) < 1e-6 * max(1.0, abs(v)):
+            exponent = Decimal(repr(s)).as_tuple().exponent
+            decimals = -exponent if isinstance(exponent, int) and exponent < 0 else 0
+            return round(snapped, min(decimals, 6))
+    return round(v, 6)
+
+
+def absent_ids(payload: Any, requested: Iterable[str]) -> set:
+    """Requested ids the controller explicitly reports absent (``states: 5``)."""
+    states = payload.get("states") if isinstance(payload, dict) else None
+    if not isinstance(states, dict):
+        return set()
+    wanted = {str(i) for i in requested}
+    out = set()
+    for k, v in states.items():
+        if str(k) in wanted and str(v) == "5":
+            out.add(str(k))
+    return out
 
 
 def extract_first_value(payload: Dict[str, Any], generic_id: str) -> Optional[Any]:

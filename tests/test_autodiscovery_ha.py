@@ -113,7 +113,11 @@ async def test_dhcp_requires_api_identity_and_one_click_confirmation(hass, monke
 
     monkeypatch.setattr(flow, "_async_validate_and_scan", scan)
     result = await flow.async_step_discovery_confirm({})
+    # The dashboard question is the last step of every creation path.
+    assert result["type"] == "form" and result["step_id"] == "dashboard"
+    result = await flow.async_step_dashboard({"sidebar_panel": True})
     assert result["type"] == "create_entry"
+    assert result["options"] == {"sidebar_panel": True, "color_scheme": "ha"}
     controller = result["data"][CONF_CONTROLLERS][0]
     assert controller[CONF_IDENTITY_KEY] == "serial:123"
     assert controller[CONF_MAC_ADDRESS] == found.mac

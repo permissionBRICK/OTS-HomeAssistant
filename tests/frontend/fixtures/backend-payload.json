@@ -1,0 +1,3978 @@
+{
+"dhw_cool_pool": {
+"event": {
+"available": true,
+"capabilities": {
+"aux": true,
+"aux_temp": true,
+"bms": false,
+"buffer": true,
+"buffer_aux_heater": false,
+"buffer_temp": true,
+"cooling": true,
+"dhw": true,
+"emergency": true,
+"pool": true,
+"power": true,
+"silent": true
+},
+"plant_id": "entry-1:192.0.2.10",
+"updated": "2026-10-22T10:00:00+00:00",
+"values": {
+"avail.aux": 3901,
+"avail.bms": 0,
+"avail.buffer": 1,
+"avail.buffer_aux": 1040,
+"avail.dhw": 256,
+"avail.emergency": 1,
+"avail.ext_buffer": 0,
+"avail.ext_dhw": 0,
+"avail.pool": 1,
+"avail.silent": 1,
+"dhw.boost": 0,
+"dhw.comfort_eco": 2,
+"dhw.emergency_status": 0,
+"dhw.offset": 0,
+"dhw.program": 0,
+"dhw.setpoint_boost": 60.0,
+"dhw.setpoint_comfort": 50.0,
+"dhw.setpoint_eco": 45.0,
+"dhw.setpoint_reduced": 40.0,
+"dhw.status": 0,
+"dhw.target": 50.0,
+"dhw.temp": 48.5,
+"hc1.availability": 27,
+"hc1.badge": 3,
+"hc1.comfort_eco": 0,
+"hc1.cool_curve_base_flow": 17,
+"hc1.cool_curve_base_outdoor": 20,
+"hc1.cool_curve_norm_flow": 17,
+"hc1.cool_curve_norm_outdoor": 32,
+"hc1.cool_curve_ref_room": 22,
+"hc1.cool_limit": 16.2,
+"hc1.dew_point": 17.6325,
+"hc1.flow_actual": 25.9304,
+"hc1.flow_target": 26.7993,
+"hc1.heat_curve_base_flow": 25,
+"hc1.heat_curve_base_outdoor": 20,
+"hc1.heat_curve_max_flow": 40,
+"hc1.heat_curve_norm_flow": 36,
+"hc1.heat_curve_norm_outdoor": -15,
+"hc1.heat_curve_ref_room": 22,
+"hc1.heat_limit": 16.7,
+"hc1.heat_limit_status": 0,
+"hc1.mixer": 100,
+"hc1.name": "Fußboden",
+"hc1.op_program": 0,
+"hc1.op_program_present": 3,
+"hc1.party_hours": 20,
+"hc1.party_on": 0,
+"hc1.party_temp": 20,
+"hc1.pump": true,
+"hc1.room_offset": 0,
+"hc1.room_target_cool": 24,
+"hc1.room_target_current": 21.5,
+"hc1.room_target_heat": 21.5,
+"hc1.season": 4,
+"hc1.setpoint_frost_room": 10,
+"hc1.setpoint_manual": 39,
+"hc1.setpoint_normal_cool": 24,
+"hc1.setpoint_normal_heat": 21.5,
+"hc1.setpoint_reduced_cool": 26,
+"hc1.setpoint_reduced_heat": 19,
+"hc1.status": 2,
+"hc1.target_selector": 2,
+"hc2.availability": 31,
+"hc2.badge": 3,
+"hc2.comfort_eco": 0,
+"hc2.cool_curve_base_flow": 16,
+"hc2.cool_curve_base_outdoor": 35,
+"hc2.cool_curve_norm_flow": 20,
+"hc2.cool_curve_norm_outdoor": 25,
+"hc2.cool_curve_ref_room": 24,
+"hc2.cool_limit": 18.3,
+"hc2.dew_point": 17.6325,
+"hc2.flow_actual": 25.7521,
+"hc2.flow_target": 26.5618,
+"hc2.heat_curve_base_flow": 21,
+"hc2.heat_curve_base_outdoor": 20,
+"hc2.heat_curve_max_flow": 55,
+"hc2.heat_curve_norm_flow": 50,
+"hc2.heat_curve_norm_outdoor": -15,
+"hc2.heat_curve_ref_room": 22,
+"hc2.heat_limit": 17,
+"hc2.heat_limit_status": 0,
+"hc2.mixer": 100,
+"hc2.name": "Radiatoren",
+"hc2.op_program": 0,
+"hc2.op_program_present": 3,
+"hc2.pump": true,
+"hc2.room_offset": 0,
+"hc2.room_target_cool": 22,
+"hc2.room_target_current": 21.5,
+"hc2.room_target_heat": 21.5,
+"hc2.season": 4,
+"hc2.setpoint_frost_room": 10,
+"hc2.setpoint_manual": 41,
+"hc2.setpoint_normal_cool": 22,
+"hc2.setpoint_normal_heat": 21.5,
+"hc2.setpoint_reduced_cool": 28,
+"hc2.setpoint_reduced_heat": 19,
+"hc2.status": 2,
+"hc2.target_selector": 2,
+"hc3.availability": 27,
+"hc3.badge": 3,
+"hc3.comfort_eco": 0,
+"hc3.cool_curve_base_flow": 16,
+"hc3.cool_curve_base_outdoor": 35,
+"hc3.cool_curve_norm_flow": 20,
+"hc3.cool_curve_norm_outdoor": 25,
+"hc3.cool_curve_ref_room": 25,
+"hc3.cool_limit": 22,
+"hc3.dew_point": 17.6325,
+"hc3.flow_actual": 19.5091,
+"hc3.flow_target": 19.6325,
+"hc3.heat_curve_base_flow": 25,
+"hc3.heat_curve_base_outdoor": 18,
+"hc3.heat_curve_max_flow": 45,
+"hc3.heat_curve_norm_flow": 45,
+"hc3.heat_curve_norm_outdoor": -10,
+"hc3.heat_curve_ref_room": 22,
+"hc3.heat_limit": 17,
+"hc3.heat_limit_status": 0,
+"hc3.mixer": 9.58221,
+"hc3.name": "Wintergarten",
+"hc3.op_program": 2,
+"hc3.op_program_present": 2,
+"hc3.pump": true,
+"hc3.room_offset": 0,
+"hc3.room_target_cool": 28,
+"hc3.room_target_current": 10,
+"hc3.room_target_heat": 10,
+"hc3.season": 4,
+"hc3.setpoint_frost_room": 12,
+"hc3.setpoint_manual": 40,
+"hc3.setpoint_normal_cool": 24,
+"hc3.setpoint_normal_heat": 25,
+"hc3.setpoint_reduced_cool": 28,
+"hc3.setpoint_reduced_heat": 10,
+"hc3.status": 1,
+"hc3.target_selector": 2,
+"hc4.availability": 0,
+"hp.aux_flow": 29.2487,
+"hp.aux_program": 0,
+"hp.aux_status": 4,
+"hp.buffer_top": 26.3472,
+"hp.capability": 7,
+"hp.cycles_today": 4,
+"hp.cycles_total": 6869,
+"hp.defrosts_today": 0,
+"hp.defrosts_total": 1585,
+"hp.dhw_valve": false,
+"hp.el_power": 0.704157,
+"hp.emergency_status": 0,
+"hp.energy_el_prev_year": 3259,
+"hp.energy_el_year": 2322,
+"hp.energy_heat_prev_year": 14301,
+"hp.energy_heat_total": 41491,
+"hp.energy_heat_year": 8806,
+"hp.flow": 29.6373,
+"hp.flow_rate": 1.30177,
+"hp.heat_output": 6.80929,
+"hp.hours_total": 9549,
+"hp.jaz_prev_year": 4.38816,
+"hp.jaz_year": 3.79242,
+"hp.outdoor": 12.1851,
+"hp.outdoor_avg": 12.1841,
+"hp.pressure": 1.75324,
+"hp.program": 0,
+"hp.return": 25.0777,
+"hp.silent_program": 0,
+"hp.status": 1,
+"hp.sum_fault": 1,
+"hp.system_status": 1,
+"pool.mode": 0,
+"pool.setpoint": 28.0,
+"pool.status": 1,
+"pool.temp": 26.3472
+}
+},
+"labels_en": {
+"dhw.boost": {
+"0": "Off",
+"1": "Boost"
+},
+"dhw.comfort_eco": {
+"1": "Eco",
+"2": "Comfort"
+},
+"dhw.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
+},
+"dhw.program": {
+"0": "On",
+"1": "Off"
+},
+"hc1.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc1.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc1.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc1.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc1.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc1.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc1.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc1.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hc2.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc2.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc2.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc2.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc2.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc2.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc2.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc2.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hc3.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc3.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc3.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc3.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc3.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc3.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc3.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc3.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hp.aux_program": {
+"0": "Automatic",
+"1": "Switched off"
+},
+"hp.aux_status": {
+"0": "Standby",
+"1": "Heating mode",
+"10": "Switched off manually",
+"11": "Minimum system pressure",
+"12": "Starting procedure",
+"13": "Shutdown procedure",
+"2": "Standby",
+"3": "DHW",
+"4": "Outdoor temperature shutdown",
+"5": "Fault",
+"6": "Frost protection mode",
+"7": "Maximum temperature shutdown",
+"8": "Locked externally",
+"9": "DHW"
+},
+"hp.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
+},
+"hp.program": {
+"0": "Automatic",
+"1": "Manual heating",
+"2": "Manual cooling",
+"3": "Switched off"
+},
+"hp.silent_program": {
+"0": "Off",
+"1": "Time program"
+},
+"hp.status": {
+"0": "Off",
+"1": "Heating",
+"10": "Operating mode change",
+"11": "Pump pre-run",
+"12": "Standby",
+"13": "Pump overrun",
+"14": "Fault",
+"15": "Current limitation",
+"16": "DHW sequencing",
+"17": "Switched off manually",
+"18": "Starting procedure",
+"19": "Shutdown procedure",
+"2": "Cooling",
+"20": "Minimum system pressure",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"3": "DHW",
+"4": "Defrost",
+"5": "Locked externally",
+"6": "Manual heating",
+"7": "Manual cooling",
+"8": "Outdoor temperature shutdown",
+"9": "Changeover"
+},
+"hp.sum_fault": {
+"0": "None",
+"1": "OK",
+"2": "Lock off",
+"3": "Lock on",
+"4": "Fault off",
+"5": "Fault on",
+"6": "Alarm off",
+"7": "Alarm on",
+"8": "Info off",
+"9": "Info on"
+},
+"hp.system_status": {
+"0": "Switched off",
+"1": "Heating mode",
+"2": "DHW mode",
+"3": "Cooling mode",
+"4": "Defrost mode heating",
+"5": "Defrost mode DHW"
+},
+"pool.mode": {
+"0": "Automatic",
+"1": "Off",
+"2": "On",
+"3": "Holiday"
+}
+},
+"plants": {
+"plants": [
+{
+"available": true,
+"badges": [
+"off_grey",
+"fault_orange",
+"auto_comfort_grey",
+"auto_comfort_red",
+"auto_comfort_blue",
+"auto_eco_grey",
+"auto_eco_red",
+"auto_eco_blue",
+"heat_comfort_grey",
+"heat_comfort_red",
+"heat_eco_grey",
+"heat_eco_red",
+"cool_comfort_grey",
+"cool_comfort_blue",
+"cool_eco_grey",
+"cool_eco_blue",
+"off_frost_red",
+"vacation_grey",
+"vacation_red",
+"party_grey",
+"party_red",
+"party_blue",
+"vacation_blue"
+],
+"capabilities": {
+"aux": true,
+"aux_temp": true,
+"bms": false,
+"buffer": true,
+"buffer_aux_heater": false,
+"buffer_temp": true,
+"cooling": true,
+"dhw": true,
+"emergency": true,
+"pool": true,
+"power": true,
+"silent": true
+},
+"circuits": [
+{
+"climate": "climate.192_0_2_10_climate_hc1",
+"cool": false,
+"device_id": "device-2",
+"heat": true,
+"humidity": false,
+"index": 1,
+"name": "Fußboden",
+"room_sensor": false
+},
+{
+"climate": "climate.192_0_2_10_climate_hc2",
+"cool": true,
+"device_id": "device-3",
+"heat": true,
+"humidity": false,
+"index": 2,
+"name": "Radiatoren",
+"room_sensor": false
+},
+{
+"climate": "climate.192_0_2_10_climate_hc3",
+"cool": false,
+"device_id": "device-4",
+"heat": true,
+"humidity": false,
+"index": 3,
+"name": "Wintergarten",
+"room_sensor": false
+}
+],
+"device_id": "device-1",
+"dhw": {
+"boost_button": "button.192_0_2_10_button_dhw_boost",
+"water_heater": "water_heater.192_0_2_10_water_heater_dhw"
+},
+"entry_id": "entry-1",
+"flash_writes": "sensor.192_0_2_10_flash_writes",
+"host": "192.0.2.10",
+"model": "AIRHAWK518C11A",
+"plant_id": "entry-1:192.0.2.10",
+"roles": {
+"avail.aux": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esm_0gaaaae"
+},
+"avail.bms": {
+"entity_id": null
+},
+"avail.buffer": {
+"entity_id": null
+},
+"avail.buffer_aux": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esnbhqaaaae"
+},
+"avail.dhw": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esmsiwaaaae"
+},
+"avail.emergency": {
+"entity_id": null
+},
+"avail.ext_buffer": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ainnnaaaaae"
+},
+"avail.ext_dhw": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_aip_jgaaaae"
+},
+"avail.pool": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_aim3dqaaaae"
+},
+"avail.silent": {
+"entity_id": null
+},
+"dhw.boost": {
+"entity_id": "sensor.192_0_2_10_sensor_aiozyhxzaae",
+"labels": {
+"0": "Aus",
+"1": "Boost"
+}
+},
+"dhw.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkuhxzaae",
+"labels": {
+"1": "Eco",
+"2": "Komfort"
+},
+"options": {
+"1": "Eco",
+"2": "Komfort"
+},
+"writable": true
+},
+"dhw.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynbrfswaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
+},
+"dhw.offset": {
+"entity_id": "number.192_0_2_10_number_acpownxzaae",
+"max": 9.0,
+"min": -9.0,
+"step": 3.0,
+"unit": "K",
+"writable": true
+},
+"dhw.program": {
+"entity_id": "sensor.192_0_2_10_sensor_aiiqvxxzige",
+"labels": {
+"0": "Ein",
+"1": "Aus"
+}
+},
+"dhw.setpoint_boost": {
+"entity_id": "number.192_0_2_10_number_aspuhxxzaae",
+"max": 75.0,
+"min": 40.0,
+"step": 0.5,
+"unit": "°C",
+"writable": true
+},
+"dhw.setpoint_comfort": {
+"entity_id": "number.192_0_2_10_number_asmv1xxzaae",
+"max": 75.0,
+"min": 5.0,
+"step": 0.5,
+"unit": "°C",
+"writable": true
+},
+"dhw.setpoint_eco": {
+"entity_id": "number.192_0_2_10_number_asop1xxzaae",
+"max": 75.0,
+"min": 5.0,
+"step": 0.5,
+"unit": "°C",
+"writable": true
+},
+"dhw.setpoint_reduced": {
+"entity_id": "number.192_0_2_10_number_asoxchxzaae",
+"max": 75.0,
+"min": 5.0,
+"step": 0.5,
+"unit": "°C",
+"writable": true
+},
+"dhw.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymognxzaae"
+},
+"dhw.target": {
+"entity_id": "sensor.192_0_2_10_sensor_cimzqnxzaae",
+"unit": "°C"
+},
+"dhw.temp": {
+"entity_id": "sensor.192_0_2_10_sensor_aykolyijaae",
+"unit": "°C"
+},
+"hc1.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esntpaaaaae"
+},
+"hc1.badge": {
+"entity_id": null
+},
+"hc1.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkui58aae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc1.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir458aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5ni58aae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn458aae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmari58aae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpy58aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdii58aae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_limit_status": {
+"entity_id": null
+},
+"hc1.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cimemy58aae",
+"unit": "°C"
+},
+"hc1.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_aykvbyijaae",
+"unit": "°C"
+},
+"hc1.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7y58aae",
+"unit": "°C"
+},
+"hc1.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwi58aae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl8458aae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5my58aae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38i58aae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw458aae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1i58aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vi58aae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_o58aae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc1.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc1.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_bijekiijsja",
+"unit": "%"
+},
+"hc1.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7o58aae",
+"writable": true
+},
+"hc1.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqvy58ige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc1.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc1.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc1.party_on": {
+"entity_id": null
+},
+"hc1.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc1.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_byipecijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc1.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw458aae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc1.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36o58aae",
+"unit": "°C"
+},
+"hc1.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cimexi58aae",
+"unit": "°"
+},
+"hc1.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw458aae",
+"unit": "°C"
+},
+"hc1.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc1.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7i58aae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc1.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqo58aae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_asmxei58aae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko458aae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmheo58aae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_458aae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asokto58aae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogo58aae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc1.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc2.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esmolaaaaae"
+},
+"hc2.badge": {
+"entity_id": null
+},
+"hc2.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkuo1maae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc2.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir_1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5no1maae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn_1maae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmaro1maae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpe1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdio1maae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_limit_status": {
+"entity_id": null
+},
+"hc2.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cip_1maae",
+"unit": "°C"
+},
+"hc2.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_aylrqiijaae",
+"unit": "°C"
+},
+"hc2.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7e1maae",
+"unit": "°C"
+},
+"hc2.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwo1maae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl8_1maae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5me1maae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38o1maae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw_1maae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1o1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vo1maae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_u1maae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc2.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc2.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_biiavyijsja",
+"unit": "%"
+},
+"hc2.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7u1maae",
+"writable": true
+},
+"hc2.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqve1mige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc2.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc2.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc2.party_on": {
+"entity_id": null
+},
+"hc2.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc2.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_byj62cijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc2.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw_1maae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc2.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36u1maae",
+"unit": "°C"
+},
+"hc2.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cipkjo1maae",
+"unit": "°"
+},
+"hc2.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw_1maae",
+"unit": "°C"
+},
+"hc2.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc2.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7o1maae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc2.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqu1maae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_aspyye1maae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko_1maae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmheu1maae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_1maae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asoktu1maae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogu1maae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc2.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc3.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esmvhaaaaae"
+},
+"hc3.badge": {
+"entity_id": null
+},
+"hc3.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkumxcaae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc3.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir8xcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5nmxcaae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn8xcaae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmarmxcaae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpcxcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdimxcaae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_limit_status": {
+"entity_id": null
+},
+"hc3.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cineusxcaae",
+"unit": "°C"
+},
+"hc3.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_ayliqsijaae",
+"unit": "°C"
+},
+"hc3.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7cxcaae",
+"unit": "°C"
+},
+"hc3.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwmxcaae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl88xcaae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5mcxcaae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38mxcaae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw8xcaae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1mxcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vmxcaae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_sxcaae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc3.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc3.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_biijvcijsja",
+"unit": "%"
+},
+"hc3.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7sxcaae",
+"writable": true
+},
+"hc3.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqvcxcige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc3.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc3.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc3.party_on": {
+"entity_id": null
+},
+"hc3.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc3.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_bykpnyijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc3.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw8xcaae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc3.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36sxcaae",
+"unit": "°C"
+},
+"hc3.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ciot_mxcaae",
+"unit": "°"
+},
+"hc3.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw8xcaae",
+"unit": "°C"
+},
+"hc3.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc3.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7mxcaae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc3.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqsxcaae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_asodpsxcaae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko8xcaae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmhesxcaae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_8xcaae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asoktsxcaae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogsxcaae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc3.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc4.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_espi9aaaaae"
+},
+"hp.aux_flow": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ayikniijaae",
+"unit": "°C"
+},
+"hp.aux_program": {
+"entity_id": "select.192_0_2_10_select_ainimcdzaae",
+"labels": {
+"0": "Automatik",
+"1": "Abgeschaltet"
+},
+"options": {
+"0": "Automatik",
+"1": "Abgeschaltet"
+},
+"writable": true
+},
+"hp.aux_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cym4omdzaae",
+"labels": {
+"0": "Standby",
+"1": "Heizbetrieb",
+"10": "Manuell abgeschaltet",
+"11": "min. Anlagendruck",
+"12": "Minimale Auszeit",
+"13": "Minimale Einzeit",
+"2": "Standby",
+"3": "Warmwasser",
+"4": "Bivalent gesperrt",
+"5": "Störung",
+"6": "Frostschutzbetrieb",
+"7": "Maximaltemperaturabschaltung",
+"8": "Extern gesperrt",
+"9": "Warmwasser"
+}
+},
+"hp.buffer_top": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjn4iijaae",
+"unit": "°C"
+},
+"hp.capability": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_eso6g8dzaae"
+},
+"hp.cycles_today": {
+"entity_id": "sensor.192_0_2_10_sensor_aymepiijaae"
+},
+"hp.cycles_total": {
+"entity_id": "sensor.192_0_2_10_sensor_aynkcsijaae"
+},
+"hp.defrosts_today": {
+"entity_id": "sensor.192_0_2_10_sensor_aynkr4r8aae"
+},
+"hp.defrosts_total": {
+"entity_id": "sensor.192_0_2_10_sensor_ayovhir8aae"
+},
+"hp.dhw_valve": {
+"entity_id": "switch.192_0_2_10_switch_byidxcijaae",
+"writable": true
+},
+"hp.el_power": {
+"entity_id": "sensor.192_0_2_10_sensor_cipahcijaae",
+"unit": "kW"
+},
+"hp.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynfylwvaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
+},
+"hp.energy_el_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcm2oyijaae",
+"unit": "kWh"
+},
+"hp.energy_el_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcp7vsijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcpomiijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_total": {
+"entity_id": "sensor.192_0_2_10_sensor_aymxfsijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcnbaiijaae",
+"unit": "kWh"
+},
+"hp.flow": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjzqiijaae",
+"unit": "°C"
+},
+"hp.flow_rate": {
+"entity_id": "sensor.192_0_2_10_sensor_ayizciijaae",
+"unit": "m³/h"
+},
+"hp.heat_output": {
+"entity_id": "sensor.192_0_2_10_sensor_cio6jyijaae",
+"unit": "kW"
+},
+"hp.hours_total": {
+"entity_id": "sensor.192_0_2_10_sensor_ayovssijaae",
+"unit": "h"
+},
+"hp.jaz_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_cim6siijaae"
+},
+"hp.jaz_year": {
+"entity_id": "sensor.192_0_2_10_sensor_cimuvyijaae"
+},
+"hp.outdoor": {
+"entity_id": "sensor.192_0_2_10_sensor_aykwuiijaae",
+"unit": "°C"
+},
+"hp.outdoor_avg": {
+"entity_id": "sensor.192_0_2_10_sensor_acmzwiijaae",
+"unit": "°C"
+},
+"hp.pressure": {
+"entity_id": "number.192_0_2_10_number_aykaccijaae",
+"max": 16.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "bar",
+"writable": true
+},
+"hp.program": {
+"entity_id": "select.192_0_2_10_select_aimu5mdzaae",
+"labels": {
+"0": "Automatik",
+"1": "Handbetrieb Heizen",
+"2": "Handbetrieb Kühlen",
+"3": "Abgeschaltet"
+},
+"options": {
+"0": "Automatik",
+"1": "Handbetrieb Heizen",
+"2": "Handbetrieb Kühlen",
+"3": "Abgeschaltet"
+},
+"writable": true
+},
+"hp.return": {
+"entity_id": "sensor.192_0_2_10_sensor_ayilscijaae",
+"unit": "°C"
+},
+"hp.silent_program": {
+"entity_id": "select.192_0_2_10_select_aip5j8dzaae",
+"labels": {
+"0": "Aus",
+"1": "Zeitprogramm"
+},
+"options": {
+"0": "Aus",
+"1": "Zeitprogramm"
+},
+"writable": true
+},
+"hp.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cynmemdzaae",
+"labels": {
+"0": "Aus",
+"1": "Heizen",
+"10": "Betriebsartwechsel",
+"11": "Pumpenvorlauf",
+"12": "Standby",
+"13": "Pumpennachlauf",
+"14": "Störung",
+"15": "Strombegrenzung",
+"16": "Warmwasser Folgeschaltung",
+"17": "Manuell abgeschaltet",
+"18": "Minimale Auszeit",
+"19": "Minimale Einzeit",
+"2": "Kühlen",
+"20": "min. Anlagendruck",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"3": "Warmwasser",
+"4": "Abtauen",
+"5": "Extern gesperrt",
+"6": "Handbetrieb Heizen",
+"7": "Handbetrieb Kühlen",
+"8": "Bivalent gesperrt",
+"9": "Umschaltung"
+}
+},
+"hp.sum_fault": {
+"entity_id": "select.192_0_2_10_select_bslz1iwcaae",
+"labels": {
+"0": "Null",
+"1": "Störungsfrei",
+"2": "Sperre aus",
+"3": "Sperre ein",
+"4": "Störung aus",
+"5": "Störung ein",
+"6": "Alarm aus",
+"7": "Alarm ein",
+"8": "Info aus",
+"9": "Info ein"
+},
+"options": {
+"0": "Null",
+"1": "OK",
+"2": "Sperre aus",
+"3": "Sperre ein",
+"4": "Störung aus",
+"5": "Störung ein",
+"6": "Alarm aus",
+"7": "Alarm ein",
+"8": "Info aus",
+"9": "Info ein"
+},
+"writable": true
+},
+"hp.system_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymoimdzaae",
+"labels": {
+"0": "Abgeschaltet",
+"1": "Heizbetrieb",
+"2": "Warmwasserbetrieb",
+"3": "Kühlbetrieb",
+"4": "Abtaubetrieb Heizen",
+"5": "Abtaubetrieb Warmwasser"
+}
+},
+"pool.mode": {
+"entity_id": "sensor.192_0_2_10_sensor_aiiqvulcige",
+"labels": {
+"0": "Automatik",
+"1": "Aus",
+"2": "Ein",
+"3": "Urlaub"
+}
+},
+"pool.setpoint": {
+"entity_id": "sensor.192_0_2_10_sensor_aspmx0lcaae",
+"unit": "°C"
+},
+"pool.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogklcaae"
+},
+"pool.temp": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjn4iijaae",
+"unit": "°C"
+}
+},
+"title": "AIRHAWK518C11A (192.0.2.10)"
+}
+],
+"settings": {
+"color_scheme": "ha"
+},
+"version": 1
+}
+},
+"house": {
+"event": {
+"available": true,
+"capabilities": {
+"aux": true,
+"aux_temp": true,
+"bms": false,
+"buffer": true,
+"buffer_aux_heater": false,
+"buffer_temp": true,
+"cooling": false,
+"dhw": false,
+"emergency": true,
+"pool": false,
+"power": true,
+"silent": true
+},
+"plant_id": "entry-1:192.0.2.10",
+"updated": "2026-10-22T10:00:00+00:00",
+"values": {
+"avail.aux": 3901,
+"avail.bms": 0,
+"avail.buffer": 1,
+"avail.buffer_aux": 1040,
+"avail.dhw": 0,
+"avail.emergency": 1,
+"avail.ext_buffer": 0,
+"avail.ext_dhw": 0,
+"avail.pool": 0,
+"avail.silent": 1,
+"hc1.availability": 27,
+"hc1.badge": 3,
+"hc1.comfort_eco": 0,
+"hc1.cool_curve_base_flow": 17,
+"hc1.cool_curve_base_outdoor": 20,
+"hc1.cool_curve_norm_flow": 17,
+"hc1.cool_curve_norm_outdoor": 32,
+"hc1.cool_curve_ref_room": 22,
+"hc1.cool_limit": 16.2,
+"hc1.dew_point": 17.6325,
+"hc1.flow_actual": 25.9304,
+"hc1.flow_target": 26.7993,
+"hc1.heat_curve_base_flow": 25,
+"hc1.heat_curve_base_outdoor": 20,
+"hc1.heat_curve_max_flow": 40,
+"hc1.heat_curve_norm_flow": 36,
+"hc1.heat_curve_norm_outdoor": -15,
+"hc1.heat_curve_ref_room": 22,
+"hc1.heat_limit": 16.7,
+"hc1.heat_limit_status": 0,
+"hc1.mixer": 100,
+"hc1.name": "Fußboden",
+"hc1.op_program": 0,
+"hc1.op_program_present": 3,
+"hc1.party_hours": 20,
+"hc1.party_on": 0,
+"hc1.party_temp": 20,
+"hc1.pump": true,
+"hc1.room_offset": 0,
+"hc1.room_target_cool": 24,
+"hc1.room_target_current": 21.5,
+"hc1.room_target_heat": 21.5,
+"hc1.season": 4,
+"hc1.setpoint_frost_room": 10,
+"hc1.setpoint_manual": 39,
+"hc1.setpoint_normal_cool": 24,
+"hc1.setpoint_normal_heat": 21.5,
+"hc1.setpoint_reduced_cool": 26,
+"hc1.setpoint_reduced_heat": 19,
+"hc1.status": 2,
+"hc1.target_selector": 2,
+"hc2.availability": 27,
+"hc2.badge": 3,
+"hc2.comfort_eco": 0,
+"hc2.cool_curve_base_flow": 16,
+"hc2.cool_curve_base_outdoor": 35,
+"hc2.cool_curve_norm_flow": 20,
+"hc2.cool_curve_norm_outdoor": 25,
+"hc2.cool_curve_ref_room": 24,
+"hc2.cool_limit": 18.3,
+"hc2.dew_point": 17.6325,
+"hc2.flow_actual": 25.7521,
+"hc2.flow_target": 26.5618,
+"hc2.heat_curve_base_flow": 21,
+"hc2.heat_curve_base_outdoor": 20,
+"hc2.heat_curve_max_flow": 55,
+"hc2.heat_curve_norm_flow": 50,
+"hc2.heat_curve_norm_outdoor": -15,
+"hc2.heat_curve_ref_room": 22,
+"hc2.heat_limit": 17,
+"hc2.heat_limit_status": 0,
+"hc2.mixer": 100,
+"hc2.name": "Radiatoren",
+"hc2.op_program": 0,
+"hc2.op_program_present": 3,
+"hc2.pump": true,
+"hc2.room_offset": 0,
+"hc2.room_target_cool": 22,
+"hc2.room_target_current": 21.5,
+"hc2.room_target_heat": 21.5,
+"hc2.season": 4,
+"hc2.setpoint_frost_room": 10,
+"hc2.setpoint_manual": 41,
+"hc2.setpoint_normal_cool": 22,
+"hc2.setpoint_normal_heat": 21.5,
+"hc2.setpoint_reduced_cool": 28,
+"hc2.setpoint_reduced_heat": 19,
+"hc2.status": 2,
+"hc2.target_selector": 2,
+"hc3.availability": 27,
+"hc3.badge": 3,
+"hc3.comfort_eco": 0,
+"hc3.cool_curve_base_flow": 16,
+"hc3.cool_curve_base_outdoor": 35,
+"hc3.cool_curve_norm_flow": 20,
+"hc3.cool_curve_norm_outdoor": 25,
+"hc3.cool_curve_ref_room": 25,
+"hc3.cool_limit": 22,
+"hc3.dew_point": 17.6325,
+"hc3.flow_actual": 19.5091,
+"hc3.flow_target": 19.6325,
+"hc3.heat_curve_base_flow": 25,
+"hc3.heat_curve_base_outdoor": 18,
+"hc3.heat_curve_max_flow": 45,
+"hc3.heat_curve_norm_flow": 45,
+"hc3.heat_curve_norm_outdoor": -10,
+"hc3.heat_curve_ref_room": 22,
+"hc3.heat_limit": 17,
+"hc3.heat_limit_status": 0,
+"hc3.mixer": 9.58221,
+"hc3.name": "Wintergarten",
+"hc3.op_program": 2,
+"hc3.op_program_present": 2,
+"hc3.pump": true,
+"hc3.room_offset": 0,
+"hc3.room_target_cool": 28,
+"hc3.room_target_current": 10,
+"hc3.room_target_heat": 10,
+"hc3.season": 4,
+"hc3.setpoint_frost_room": 12,
+"hc3.setpoint_manual": 40,
+"hc3.setpoint_normal_cool": 24,
+"hc3.setpoint_normal_heat": 25,
+"hc3.setpoint_reduced_cool": 28,
+"hc3.setpoint_reduced_heat": 10,
+"hc3.status": 1,
+"hc3.target_selector": 2,
+"hc4.availability": 0,
+"hp.aux_flow": 29.2487,
+"hp.aux_program": 0,
+"hp.aux_status": 4,
+"hp.buffer_top": 26.3472,
+"hp.capability": 7,
+"hp.cycles_today": 4,
+"hp.cycles_total": 6869,
+"hp.defrosts_today": 0,
+"hp.defrosts_total": 1585,
+"hp.dhw_valve": false,
+"hp.el_power": 0.704157,
+"hp.emergency_status": 0,
+"hp.energy_el_prev_year": 3259,
+"hp.energy_el_year": 2322,
+"hp.energy_heat_prev_year": 14301,
+"hp.energy_heat_total": 41491,
+"hp.energy_heat_year": 8806,
+"hp.flow": 29.6373,
+"hp.flow_rate": 1.30177,
+"hp.heat_output": 6.80929,
+"hp.hours_total": 9549,
+"hp.jaz_prev_year": 4.38816,
+"hp.jaz_year": 3.79242,
+"hp.outdoor": 12.1851,
+"hp.outdoor_avg": 12.1841,
+"hp.pressure": 1.75324,
+"hp.program": 0,
+"hp.return": 25.0777,
+"hp.silent_program": 0,
+"hp.status": 1,
+"hp.sum_fault": 1,
+"hp.system_status": 1
+}
+},
+"labels_en": {
+"hc1.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc1.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc1.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc1.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc1.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc1.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc1.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc1.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hc2.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc2.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc2.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc2.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc2.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc2.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc2.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc2.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hc3.comfort_eco": {
+"0": "Comfort",
+"1": "Eco"
+},
+"hc3.heat_limit_status": {
+"0": "On",
+"1": "Summer",
+"2": "Forced heating",
+"3": "OFF - Room too warm",
+"4": "Heating limit active"
+},
+"hc3.op_program": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc3.op_program_present": {
+"0": "Comfort",
+"1": "Off",
+"2": "Reduced",
+"3": "Standard mode",
+"4": "Manual heating",
+"5": "Manual cooling",
+"6": "Eco",
+"7": "Party",
+"8": "Holiday"
+},
+"hc3.pump": {
+"0": "Off",
+"1": "On",
+"2": "Automatic"
+},
+"hc3.season": {
+"0": "Automatic",
+"1": "By date",
+"2": "Summer (cooling only)",
+"3": "Winter (heating only)",
+"4": "Automatic (heating/cooling)"
+},
+"hc3.status": {
+"0": "Operating program switched off",
+"1": "Reduced heating",
+"10": "Manual cooling",
+"11": "Heating phase screed drying program",
+"12": "Holding phase screed drying program",
+"13": "Cooling phase screed drying program",
+"14": "Party mode",
+"15": "Maximum temperature shutdown",
+"16": "Service mode heating",
+"17": "Service mode cooling",
+"18": "Dew point undershot",
+"19": "Emergency mode",
+"2": "Standard heating",
+"20": "Forced throttling",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"23": "Unknown state 23",
+"24": "Unknown state 24",
+"3": "Reduced cooling",
+"4": "Standard cooling",
+"5": "Frost protection mode",
+"6": "Defrost mode",
+"7": "DHW priority",
+"8": "Heating/cooling limit active",
+"9": "Manual heating"
+},
+"hc3.target_selector": {
+"0": "Room heating",
+"1": "Room cooling",
+"2": "Setpoint heating",
+"3": "Setpoint cooling"
+},
+"hp.aux_program": {
+"0": "Automatic",
+"1": "Switched off"
+},
+"hp.aux_status": {
+"0": "Standby",
+"1": "Heating mode",
+"10": "Switched off manually",
+"11": "Minimum system pressure",
+"12": "Starting procedure",
+"13": "Shutdown procedure",
+"2": "Standby",
+"3": "DHW",
+"4": "Outdoor temperature shutdown",
+"5": "Fault",
+"6": "Frost protection mode",
+"7": "Maximum temperature shutdown",
+"8": "Locked externally",
+"9": "DHW"
+},
+"hp.emergency_status": {
+"0": "Passive",
+"1": "Reduced, unconfirmed",
+"2": "Reduced, confirmed",
+"3": "Standard, confirmed",
+"4": "Plant fault"
+},
+"hp.program": {
+"0": "Automatic",
+"1": "Manual heating",
+"2": "Manual cooling",
+"3": "Switched off"
+},
+"hp.silent_program": {
+"0": "Off",
+"1": "Time program"
+},
+"hp.status": {
+"0": "Off",
+"1": "Heating",
+"10": "Operating mode change",
+"11": "Pump pre-run",
+"12": "Standby",
+"13": "Pump overrun",
+"14": "Fault",
+"15": "Current limitation",
+"16": "DHW sequencing",
+"17": "Switched off manually",
+"18": "Starting procedure",
+"19": "Shutdown procedure",
+"2": "Cooling",
+"20": "Minimum system pressure",
+"21": "Unknown state 21",
+"22": "Unknown state 22",
+"3": "DHW",
+"4": "Defrost",
+"5": "Locked externally",
+"6": "Manual heating",
+"7": "Manual cooling",
+"8": "Outdoor temperature shutdown",
+"9": "Changeover"
+},
+"hp.sum_fault": {
+"0": "None",
+"1": "OK",
+"2": "Lock off",
+"3": "Lock on",
+"4": "Fault off",
+"5": "Fault on",
+"6": "Alarm off",
+"7": "Alarm on",
+"8": "Info off",
+"9": "Info on"
+},
+"hp.system_status": {
+"0": "Switched off",
+"1": "Heating mode",
+"2": "DHW mode",
+"3": "Cooling mode",
+"4": "Defrost mode heating",
+"5": "Defrost mode DHW"
+}
+},
+"plants": {
+"plants": [
+{
+"available": true,
+"badges": [
+"off_grey",
+"fault_orange",
+"auto_comfort_grey",
+"auto_comfort_red",
+"auto_comfort_blue",
+"auto_eco_grey",
+"auto_eco_red",
+"auto_eco_blue",
+"heat_comfort_grey",
+"heat_comfort_red",
+"heat_eco_grey",
+"heat_eco_red",
+"cool_comfort_grey",
+"cool_comfort_blue",
+"cool_eco_grey",
+"cool_eco_blue",
+"off_frost_red",
+"vacation_grey",
+"vacation_red",
+"party_grey",
+"party_red",
+"party_blue",
+"vacation_blue"
+],
+"capabilities": {
+"aux": true,
+"aux_temp": true,
+"bms": false,
+"buffer": true,
+"buffer_aux_heater": false,
+"buffer_temp": true,
+"cooling": false,
+"dhw": false,
+"emergency": true,
+"pool": false,
+"power": true,
+"silent": true
+},
+"circuits": [
+{
+"climate": "climate.192_0_2_10_climate_hc1",
+"cool": false,
+"device_id": "device-2",
+"heat": true,
+"humidity": false,
+"index": 1,
+"name": "Fußboden",
+"room_sensor": false
+},
+{
+"climate": "climate.192_0_2_10_climate_hc2",
+"cool": false,
+"device_id": "device-3",
+"heat": true,
+"humidity": false,
+"index": 2,
+"name": "Radiatoren",
+"room_sensor": false
+},
+{
+"climate": "climate.192_0_2_10_climate_hc3",
+"cool": false,
+"device_id": "device-4",
+"heat": true,
+"humidity": false,
+"index": 3,
+"name": "Wintergarten",
+"room_sensor": false
+}
+],
+"device_id": "device-1",
+"dhw": null,
+"entry_id": "entry-1",
+"flash_writes": "sensor.192_0_2_10_flash_writes",
+"host": "192.0.2.10",
+"model": "AIRHAWK518C11A",
+"plant_id": "entry-1:192.0.2.10",
+"roles": {
+"avail.aux": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esm_0gaaaae"
+},
+"avail.bms": {
+"entity_id": null
+},
+"avail.buffer": {
+"entity_id": null
+},
+"avail.buffer_aux": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esnbhqaaaae"
+},
+"avail.dhw": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_esmsiwaaaae"
+},
+"avail.emergency": {
+"entity_id": null
+},
+"avail.ext_buffer": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ainnnaaaaae"
+},
+"avail.ext_dhw": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_aip_jgaaaae"
+},
+"avail.pool": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_aim3dqaaaae"
+},
+"avail.silent": {
+"entity_id": null
+},
+"hc1.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esntpaaaaae"
+},
+"hc1.badge": {
+"entity_id": null
+},
+"hc1.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkui58aae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc1.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir458aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5ni58aae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn458aae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmari58aae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpy58aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdii58aae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.cool_limit_status": {
+"entity_id": null
+},
+"hc1.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cimemy58aae",
+"unit": "°C"
+},
+"hc1.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_aykvbyijaae",
+"unit": "°C"
+},
+"hc1.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7y58aae",
+"unit": "°C"
+},
+"hc1.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwi58aae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl8458aae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5my58aae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38i58aae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw458aae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1i58aae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vi58aae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_o58aae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc1.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc1.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_bijekiijsja",
+"unit": "%"
+},
+"hc1.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7o58aae",
+"writable": true
+},
+"hc1.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqvy58ige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc1.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc1.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc1.party_on": {
+"entity_id": null
+},
+"hc1.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc1.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_byipecijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc1.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw458aae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc1.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36o58aae",
+"unit": "°C"
+},
+"hc1.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cimexi58aae",
+"unit": "°"
+},
+"hc1.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw458aae",
+"unit": "°C"
+},
+"hc1.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc1.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7i58aae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc1.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqo58aae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_asmxei58aae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko458aae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmheo58aae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_458aae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asokto58aae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc1.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogo58aae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc1.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc2.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esmolaaaaae"
+},
+"hc2.badge": {
+"entity_id": null
+},
+"hc2.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkuo1maae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc2.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir_1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5no1maae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn_1maae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmaro1maae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpe1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdio1maae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.cool_limit_status": {
+"entity_id": null
+},
+"hc2.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cip_1maae",
+"unit": "°C"
+},
+"hc2.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_aylrqiijaae",
+"unit": "°C"
+},
+"hc2.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7e1maae",
+"unit": "°C"
+},
+"hc2.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwo1maae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl8_1maae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5me1maae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38o1maae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw_1maae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1o1maae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vo1maae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_u1maae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc2.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc2.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_biiavyijsja",
+"unit": "%"
+},
+"hc2.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7u1maae",
+"writable": true
+},
+"hc2.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqve1mige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc2.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc2.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc2.party_on": {
+"entity_id": null
+},
+"hc2.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc2.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_byj62cijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc2.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw_1maae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc2.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36u1maae",
+"unit": "°C"
+},
+"hc2.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cipkjo1maae",
+"unit": "°"
+},
+"hc2.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw_1maae",
+"unit": "°C"
+},
+"hc2.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc2.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7o1maae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc2.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqu1maae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_aspyye1maae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko_1maae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmheu1maae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_1maae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asoktu1maae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc2.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogu1maae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc2.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc3.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_esmvhaaaaae"
+},
+"hc3.badge": {
+"entity_id": null
+},
+"hc3.comfort_eco": {
+"entity_id": "select.192_0_2_10_select_aipkumxcaae",
+"labels": {
+"0": "Komfort",
+"1": "Eco"
+},
+"options": {
+"0": "Komfort",
+"1": "Eco"
+},
+"writable": true
+},
+"hc3.cool_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acnir8xcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acn5nmxcaae",
+"max": 25.0,
+"min": 5.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_acmrn8xcaae",
+"max": 20.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acmarmxcaae",
+"max": 40.0,
+"min": 20.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnxpcxcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_limit": {
+"entity_id": "number.192_0_2_10_number_acpdimxcaae",
+"max": 40.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.cool_limit_status": {
+"entity_id": null
+},
+"hc3.dew_point": {
+"entity_id": "sensor.192_0_2_10_sensor_cineusxcaae",
+"unit": "°C"
+},
+"hc3.flow_actual": {
+"entity_id": "sensor.192_0_2_10_sensor_ayliqsijaae",
+"unit": "°C"
+},
+"hc3.flow_target": {
+"entity_id": "sensor.192_0_2_10_sensor_acjz7cxcaae",
+"unit": "°C"
+},
+"hc3.heat_curve_base_flow": {
+"entity_id": "number.192_0_2_10_number_acpuwmxcaae",
+"max": 40.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_base_outdoor": {
+"entity_id": "number.192_0_2_10_number_acpl88xcaae",
+"max": 30.0,
+"min": -10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_max_flow": {
+"entity_id": "number.192_0_2_10_number_acm5mcxcaae",
+"max": 70.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_norm_flow": {
+"entity_id": "number.192_0_2_10_number_aco38mxcaae",
+"max": 90.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_norm_outdoor": {
+"entity_id": "number.192_0_2_10_number_acogw8xcaae",
+"max": 5.0,
+"min": -30.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_curve_ref_room": {
+"entity_id": "number.192_0_2_10_number_acnx1mxcaae",
+"max": 30.0,
+"min": 10.0,
+"step": 1.0,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_limit": {
+"entity_id": "number.192_0_2_10_number_acm8vmxcaae",
+"max": 30.0,
+"min": 0.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.heat_limit_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cyo9_sxcaae",
+"labels": {
+"0": "Ein",
+"1": "Sommer",
+"2": "Zwangsheizung",
+"3": "Aus - Raum zu warm",
+"4": "Heizgrenze aktiv"
+}
+},
+"hc3.humidity": {
+"entity_id": null,
+"unit": "%"
+},
+"hc3.mixer": {
+"entity_id": "sensor.192_0_2_10_sensor_biijvcijsja",
+"unit": "%"
+},
+"hc3.name": {
+"entity_id": "text.192_0_2_10_text_bcnl7sxcaae",
+"writable": true
+},
+"hc3.op_program": {
+"entity_id": "select.192_0_2_10_select_aiiqvcxcige",
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+},
+"options": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Partybetrieb",
+"8": "Urlaub"
+},
+"writable": true
+},
+"hc3.op_program_present": {
+"entity_id": null,
+"labels": {
+"0": "Komfort",
+"1": "Aus",
+"2": "Reduziert",
+"3": "Normalbetrieb",
+"4": "Handbetrieb Heizen",
+"5": "Handbetrieb Kühlen",
+"6": "Eco",
+"7": "Party",
+"8": "Urlaub"
+}
+},
+"hc3.party_hours": {
+"entity_id": null,
+"unit": "h"
+},
+"hc3.party_on": {
+"entity_id": null
+},
+"hc3.party_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc3.pump": {
+"entity_id": "sensor.192_0_2_10_sensor_bykpnyijaae",
+"labels": {
+"0": "Aus",
+"1": "Ein",
+"2": "Automatik"
+}
+},
+"hc3.room_offset": {
+"entity_id": "number.192_0_2_10_number_acnzw8xcaae",
+"max": 3.0,
+"min": -3.0,
+"step": 0.5,
+"unit": "K",
+"writable": true
+},
+"hc3.room_target_cool": {
+"entity_id": "sensor.192_0_2_10_sensor_cio36sxcaae",
+"unit": "°C"
+},
+"hc3.room_target_current": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ciot_mxcaae",
+"unit": "°"
+},
+"hc3.room_target_heat": {
+"entity_id": "sensor.192_0_2_10_sensor_cipcw8xcaae",
+"unit": "°C"
+},
+"hc3.room_temp": {
+"entity_id": null,
+"unit": "°C"
+},
+"hc3.season": {
+"enabled": false,
+"entity_id": "select.192_0_2_10_select_aimn7mxcaae",
+"labels": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer (nur Kühlen)",
+"3": "Winter (nur Heizen)",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"options": {
+"0": "Automatik",
+"1": "Nach Datum",
+"2": "Sommer",
+"3": "Winter",
+"4": "Automatik (Heizen/Kühlen)"
+},
+"writable": true
+},
+"hc3.setpoint_frost_room": {
+"entity_id": "number.192_0_2_10_number_asocqsxcaae",
+"max": 20.0,
+"min": 5.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_manual": {
+"entity_id": "number.192_0_2_10_number_asodpsxcaae",
+"max": 68.0,
+"min": 7.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_normal_cool": {
+"entity_id": "number.192_0_2_10_number_asnko8xcaae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_normal_heat": {
+"entity_id": "number.192_0_2_10_number_asmhesxcaae",
+"max": 30.0,
+"min": 15.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_reduced_cool": {
+"entity_id": "number.192_0_2_10_number_aspp_8xcaae",
+"max": 35.0,
+"min": 20.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.setpoint_reduced_heat": {
+"entity_id": "number.192_0_2_10_number_asoktsxcaae",
+"max": 25.0,
+"min": 10.0,
+"step": 0.1,
+"unit": "°C",
+"writable": true
+},
+"hc3.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymogsxcaae",
+"labels": {
+"0": "Betriebswahl abgeschaltet",
+"1": "Reduziert Heizbetrieb",
+"10": "Handbetrieb Kühlen",
+"11": "Aufheizphase Ausheizprogramm",
+"12": "Haltephase Ausheizprogramm",
+"13": "Auskühlphase Ausheizprogramm",
+"14": "Partybetrieb",
+"15": "TWVmax-Abschaltung",
+"16": "Service-Mode Heizen",
+"17": "Service-Mode Kühlen",
+"18": "Taupunktunterschreitung",
+"19": "Notbetrieb",
+"2": "Normal Heizbetrieb",
+"20": "Zwangsdrosselung",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"23": "Unbekannter Zustand 23",
+"24": "Unbekannter Zustand 24",
+"3": "Reduziert Kühlbetrieb",
+"4": "Normal Kühlbetrieb",
+"5": "Frostschutzbetrieb",
+"6": "Abtaubetrieb",
+"7": "Warmwasservorrang",
+"8": "Heiz-/ Kühlgrenze aktiv",
+"9": "Handbetrieb Heizen"
+}
+},
+"hc3.target_selector": {
+"entity_id": null,
+"labels": {
+"0": "Raum Heizen",
+"1": "Raum Kühlen",
+"2": "Sollwert Heizen",
+"3": "Sollwert Kühlen"
+}
+},
+"hc4.availability": {
+"entity_id": "sensor.192_0_2_10_sensor_espi9aaaaae"
+},
+"hp.aux_flow": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_ayikniijaae",
+"unit": "°C"
+},
+"hp.aux_program": {
+"entity_id": "select.192_0_2_10_select_ainimcdzaae",
+"labels": {
+"0": "Automatik",
+"1": "Abgeschaltet"
+},
+"options": {
+"0": "Automatik",
+"1": "Abgeschaltet"
+},
+"writable": true
+},
+"hp.aux_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cym4omdzaae",
+"labels": {
+"0": "Standby",
+"1": "Heizbetrieb",
+"10": "Manuell abgeschaltet",
+"11": "min. Anlagendruck",
+"12": "Minimale Auszeit",
+"13": "Minimale Einzeit",
+"2": "Standby",
+"3": "Warmwasser",
+"4": "Bivalent gesperrt",
+"5": "Störung",
+"6": "Frostschutzbetrieb",
+"7": "Maximaltemperaturabschaltung",
+"8": "Extern gesperrt",
+"9": "Warmwasser"
+}
+},
+"hp.buffer_top": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjn4iijaae",
+"unit": "°C"
+},
+"hp.capability": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_eso6g8dzaae"
+},
+"hp.cycles_today": {
+"entity_id": "sensor.192_0_2_10_sensor_aymepiijaae"
+},
+"hp.cycles_total": {
+"entity_id": "sensor.192_0_2_10_sensor_aynkcsijaae"
+},
+"hp.defrosts_today": {
+"entity_id": "sensor.192_0_2_10_sensor_aynkr4r8aae"
+},
+"hp.defrosts_total": {
+"entity_id": "sensor.192_0_2_10_sensor_ayovhir8aae"
+},
+"hp.dhw_valve": {
+"entity_id": "switch.192_0_2_10_switch_byidxcijaae",
+"writable": true
+},
+"hp.el_power": {
+"entity_id": "sensor.192_0_2_10_sensor_cipahcijaae",
+"unit": "kW"
+},
+"hp.emergency_status": {
+"enabled": false,
+"entity_id": "sensor.192_0_2_10_sensor_cynfylwvaae",
+"labels": {
+"0": "Passiv",
+"1": "Reduziert, nicht bestätigt",
+"2": "Reduziert, bestätigt",
+"3": "Standard, bestätigt",
+"4": "Anlagenstörung"
+}
+},
+"hp.energy_el_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcm2oyijaae",
+"unit": "kWh"
+},
+"hp.energy_el_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcp7vsijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcpomiijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_total": {
+"entity_id": "sensor.192_0_2_10_sensor_aymxfsijaae",
+"unit": "kWh"
+},
+"hp.energy_heat_year": {
+"entity_id": "sensor.192_0_2_10_sensor_dcnbaiijaae",
+"unit": "kWh"
+},
+"hp.flow": {
+"entity_id": "sensor.192_0_2_10_sensor_ayjzqiijaae",
+"unit": "°C"
+},
+"hp.flow_rate": {
+"entity_id": "sensor.192_0_2_10_sensor_ayizciijaae",
+"unit": "m³/h"
+},
+"hp.heat_output": {
+"entity_id": "sensor.192_0_2_10_sensor_cio6jyijaae",
+"unit": "kW"
+},
+"hp.hours_total": {
+"entity_id": "sensor.192_0_2_10_sensor_ayovssijaae",
+"unit": "h"
+},
+"hp.jaz_prev_year": {
+"entity_id": "sensor.192_0_2_10_sensor_cim6siijaae"
+},
+"hp.jaz_year": {
+"entity_id": "sensor.192_0_2_10_sensor_cimuvyijaae"
+},
+"hp.outdoor": {
+"entity_id": "sensor.192_0_2_10_sensor_aykwuiijaae",
+"unit": "°C"
+},
+"hp.outdoor_avg": {
+"entity_id": "sensor.192_0_2_10_sensor_acmzwiijaae",
+"unit": "°C"
+},
+"hp.pressure": {
+"entity_id": "number.192_0_2_10_number_aykaccijaae",
+"max": 16.0,
+"min": 0.0,
+"step": 1.0,
+"unit": "bar",
+"writable": true
+},
+"hp.program": {
+"entity_id": "select.192_0_2_10_select_aimu5mdzaae",
+"labels": {
+"0": "Automatik",
+"1": "Handbetrieb Heizen",
+"2": "Handbetrieb Kühlen",
+"3": "Abgeschaltet"
+},
+"options": {
+"0": "Automatik",
+"1": "Handbetrieb Heizen",
+"2": "Handbetrieb Kühlen",
+"3": "Abgeschaltet"
+},
+"writable": true
+},
+"hp.return": {
+"entity_id": "sensor.192_0_2_10_sensor_ayilscijaae",
+"unit": "°C"
+},
+"hp.silent_program": {
+"entity_id": "select.192_0_2_10_select_aip5j8dzaae",
+"labels": {
+"0": "Aus",
+"1": "Zeitprogramm"
+},
+"options": {
+"0": "Aus",
+"1": "Zeitprogramm"
+},
+"writable": true
+},
+"hp.status": {
+"entity_id": "sensor.192_0_2_10_sensor_cynmemdzaae",
+"labels": {
+"0": "Aus",
+"1": "Heizen",
+"10": "Betriebsartwechsel",
+"11": "Pumpenvorlauf",
+"12": "Standby",
+"13": "Pumpennachlauf",
+"14": "Störung",
+"15": "Strombegrenzung",
+"16": "Warmwasser Folgeschaltung",
+"17": "Manuell abgeschaltet",
+"18": "Minimale Auszeit",
+"19": "Minimale Einzeit",
+"2": "Kühlen",
+"20": "min. Anlagendruck",
+"21": "Unbekannter Zustand 21",
+"22": "Unbekannter Zustand 22",
+"3": "Warmwasser",
+"4": "Abtauen",
+"5": "Extern gesperrt",
+"6": "Handbetrieb Heizen",
+"7": "Handbetrieb Kühlen",
+"8": "Bivalent gesperrt",
+"9": "Umschaltung"
+}
+},
+"hp.sum_fault": {
+"entity_id": "select.192_0_2_10_select_bslz1iwcaae",
+"labels": {
+"0": "Null",
+"1": "Störungsfrei",
+"2": "Sperre aus",
+"3": "Sperre ein",
+"4": "Störung aus",
+"5": "Störung ein",
+"6": "Alarm aus",
+"7": "Alarm ein",
+"8": "Info aus",
+"9": "Info ein"
+},
+"options": {
+"0": "Null",
+"1": "OK",
+"2": "Sperre aus",
+"3": "Sperre ein",
+"4": "Störung aus",
+"5": "Störung ein",
+"6": "Alarm aus",
+"7": "Alarm ein",
+"8": "Info aus",
+"9": "Info ein"
+},
+"writable": true
+},
+"hp.system_status": {
+"entity_id": "sensor.192_0_2_10_sensor_cymoimdzaae",
+"labels": {
+"0": "Abgeschaltet",
+"1": "Heizbetrieb",
+"2": "Warmwasserbetrieb",
+"3": "Kühlbetrieb",
+"4": "Abtaubetrieb Heizen",
+"5": "Abtaubetrieb Warmwasser"
+}
+}
+},
+"title": "AIRHAWK518C11A (192.0.2.10)"
+}
+],
+"settings": {
+"color_scheme": "ha"
+},
+"version": 1
+}
+}
+}
