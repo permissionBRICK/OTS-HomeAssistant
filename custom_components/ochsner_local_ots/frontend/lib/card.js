@@ -8,11 +8,14 @@ import { CSS, TINTS } from "./styles.js";
 import { capabilities, circuitsForDevice, hpMode, pickPlant, sections } from "./model.js";
 import { PlantView } from "../views/plant-view.js";
 import { ControlView } from "../views/control-view.js";
+import { CurveView } from "../views/curve-view.js";
 import { EfficiencyView } from "../views/efficiency-view.js";
+import { EnergyView } from "../views/energy-view.js";
 import { ScheduleView } from "../views/schedule-view.js";
 
-const VIEWS = ["all", "plant", "controls", "schedule", "efficiency"];
-const VIEW_CLASSES = { plant: PlantView, controls: ControlView, schedule: ScheduleView, efficiency: EfficiencyView };
+// "efficiency" (curve + energy in one card) stays for existing dashboards.
+const VIEWS = ["all", "plant", "controls", "schedule", "curve", "energy", "efficiency"];
+const VIEW_CLASSES = { plant: PlantView, controls: ControlView, schedule: ScheduleView, curve: CurveView, energy: EnergyView, efficiency: EfficiencyView };
 const PANEL_PATH = "ochsner-heatpump";
 const CLOCK_TICK = 30000; // "now" marks and "until" texts of the time program
 let UID = 0;
@@ -257,6 +260,8 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       case "plant": return 5;
       case "controls": return 3 + 2 * ((this.ctx && this.ctx.sec.circuits.length) || 2);
       case "efficiency": return 9;
+      case "curve": return 5;
+      case "energy": return 4;
       case "schedule": return 7;
       default: return 16;
     }
@@ -269,7 +274,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
 
   _viewList() {
     const v = this._config.view;
-    return v === "all" ? ["plant", "controls", "schedule", "efficiency"] : [v];
+    return v === "all" ? ["plant", "controls", "schedule", "curve", "energy"] : [v];
   }
 
   _ensureSkeleton() {
@@ -283,9 +288,9 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._containers = {};
     this._widths = {};
     const box = (v) => `<ha-card class="card-${v}"><div class="v" data-v="${v}"></div></ha-card>`;
-    // All: the time program sits under the controls (left column, where the
-    // taller curve column leaves room); one column on narrow screens.
-    const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc"><div class="col">${box("controls")}${box("schedule")}</div>${box("efficiency")}</div></div>`;
+    // All: controls and time program on the left, heating curve and the 24 h
+    // energy on the right; one column on narrow screens.
+    const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc"><div class="col">${box("controls")}${box("schedule")}</div><div class="col">${box("curve")}${box("energy")}</div></div></div>`;
     this.shadowRoot.innerHTML = `<style>${CSS}${TINTS}</style><style class="vars"></style><div class="msg" hidden></div>${body}`;
     this._schemeKey = null; // the new <style class="vars"> is empty
     for (const v of views) {
@@ -409,6 +414,14 @@ export class OchsnerScheduleCard extends OchsnerHeatpumpCard {
   static fixedView = "schedule";
   static get tagName() { return "ochsner-schedule-card"; }
 }
+export class OchsnerCurveCard extends OchsnerHeatpumpCard {
+  static fixedView = "curve";
+  static get tagName() { return "ochsner-curve-card"; }
+}
+export class OchsnerEnergyCard extends OchsnerHeatpumpCard {
+  static fixedView = "energy";
+  static get tagName() { return "ochsner-energy-card"; }
+}
 export class OchsnerEfficiencyCard extends OchsnerHeatpumpCard {
   static fixedView = "efficiency";
   static get tagName() { return "ochsner-efficiency-card"; }
@@ -420,6 +433,8 @@ export function registerCards() {
     [OchsnerPlantCard, "card_plant"],
     [OchsnerControlCard, "card_control"],
     [OchsnerScheduleCard, "card_schedule"],
+    [OchsnerCurveCard, "card_curve"],
+    [OchsnerEnergyCard, "card_energy"],
     [OchsnerEfficiencyCard, "card_eff"],
   ];
   const lang = docLang();
