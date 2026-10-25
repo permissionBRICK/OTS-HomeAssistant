@@ -51,7 +51,8 @@ export async function launch({ width = 1200, height = 900 } = {}) {
       try { await browser.send("Browser.close"); } catch (_e) { /* ignore */ }
       browser.ws.close();
       proc.kill("SIGKILL");
-      fs.rmSync(dir, { recursive: true, force: true });
+      // Chrome may still be writing its profile while it dies: retry, never throw.
+      try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch (_e) { /* leftover temp dir */ }
     },
   };
 }

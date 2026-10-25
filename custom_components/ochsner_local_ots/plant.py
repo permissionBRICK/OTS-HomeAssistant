@@ -976,6 +976,19 @@ _SUPPLEMENT_NAMES = {
 }
 
 
+# The controller's yearly energy totals (Energy dashboard). Setups made from
+# an old Ochsner bundle may lack them; they get a read-only sensor with the
+# same id a catalog-based setup has. key -> (id, German name, English name)
+ENERGY_SUPPLEMENTS: Dict[str, Tuple[str, str, str]] = {
+    "energy.electric_year": ("DCP7vSiJAAE=", "Strombedarf gesamt aktuelles Jahr", "Total electrical energy consumption, current year"),
+    "energy.thermal_year": ("DCNBAiiJAAE=", "Wärmeenergie gesamt aktuelles Jahr", "Total thermal energy, current year"),
+}
+
+
+def energy_supplement_ids() -> List[str]:
+    return [oid for oid, _de, _en in ENERGY_SUPPLEMENTS.values()]
+
+
 def _sup_name(key: str, language: str) -> str:
     de, en = _SUPPLEMENT_NAMES[key]
     return de if normalize_language(language) == "de" else en
@@ -1020,13 +1033,24 @@ def supplement_entities(
     supplements join the circuit device the circuit's other entities use.
     Deduplicated by read id against the stored WRITABLE entities (a read-only
     catalog sensor on the same id does not block the writable control,
-    matching the discovery merge rule).
+    matching the discovery merge rule); the read-only energy totals against
+    every stored entity.
     """
     taken = writable_read_ids(existing)
-    out: Dict[str, List[Dict[str, Any]]] = {"numbers": [], "selects": []}
+    out: Dict[str, List[Dict[str, Any]]] = {"numbers": [], "selects": [], "sensors": []}
 
     def answers(oid: str) -> bool:
         return first_value(values, oid) is not None
+
+    stored_ids = set(taken)
+    for ents in existing.values():
+        for ent in ents or []:
+            if isinstance(ent, Mapping):
+                stored_ids.add(canonical_id(ent.get("read_id") or ent.get("id")))
+    for key, (oid, de, en) in ENERGY_SUPPLEMENTS.items():
+        if answers(oid) and canonical_id(oid) not in stored_ids:
+            name = de if normalize_language(language) == "de" else en
+            out["sensors"].append({"name": name, "id": oid, "unit": "kWh", "supplement": key})
 
     for c in caps.get("circuits", []) or []:
         n = int(c["index"])

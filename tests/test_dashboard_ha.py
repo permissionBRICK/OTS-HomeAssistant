@@ -876,7 +876,7 @@ async def test_frontend_served_versioned_once(hass, frontend_env):
     (call,) = frontend_env.http.async_register_static_paths.await_args_list
     (cfg,) = call.args[0]
     version = dashboard.frontend_version(frontend_env.folder)
-    assert version.startswith("2.2.0-")
+    assert version.startswith(f"{dashboard.manifest_version()}-") and dashboard.manifest_version() != "0"
     assert cfg.url_path == f"/{DOMAIN}/frontend/{version}"
     assert cfg.path == str(frontend_env.folder) and cfg.cache_headers is True
     assert frontend_env.extra == [f"/{DOMAIN}/frontend/{version}/ochsner-heatpump.js"]

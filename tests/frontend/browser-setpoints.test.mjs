@@ -31,34 +31,36 @@ test("the main setpoint follows the mode: normal in Komfort, reduced in Eco and 
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_normal_heat", "21,5°", ""]);
   assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_reduced_heat", "19,0°", "Nacht"]);
   assert.equal(await attr(page, c, `${alt(1)} .spbadge`, "title"), "Reduziert (Eco, Nacht)");
-  // HC3 Wintergarten runs the legacy "Reduziert" program: reduced is main, the day value below
+  // HC3 Wintergarten runs the legacy "Reduziert" program: only the night setpoint is used and shown
   assert.deepEqual(await rowOf(page, c, main(3)), ["setpoint_reduced_heat", "10,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(3)), ["setpoint_normal_heat", "25,0°", "Normal"]);
+  assert.equal(await rowOf(page, c, alt(3)), null);
   assert.match(await c.text(`${tile(3)} .hcname .sub`), /Heizen \| Reduziert/, "legacy program label kept");
   // Eco under the app's control, the legacy Eco program, "Normal" and other legacy states
   await setValues(page, { "hc1.comfort_eco": 1, "hc2.op_program": 6 });
   await sleep(60);
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_reduced_heat", "19,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Normal"]);
+  assert.equal(await rowOf(page, c, alt(1)), null, "Eco: night only");
   assert.equal((await rowOf(page, c, main(2)))[0], "setpoint_reduced_heat");
   for (const prog of [3, 1, 4, 7, 8]) {
     await setValues(page, { "hc2.op_program": prog, "hc2.comfort_eco": 1 });
     await sleep(40);
     assert.equal((await rowOf(page, c, main(2)))[0], "setpoint_normal_heat", `op_program ${prog}`);
+    assert.equal(await rowOf(page, c, alt(2)), null, `op_program ${prog}: one setpoint`);
   }
   assert.deepEqual(await writes(page), []);
   assert.deepEqual(page.errors, []);
   page = await b.open("variant=house&view=controls&latency=30&lang=en");
   c = on(page);
   assert.equal((await rowOf(page, c, alt(1)))[2], "Night");
-  assert.equal((await rowOf(page, c, alt(3)))[2], "Normal");
-  assert.equal(await attr(page, c, `${alt(3)} .spbadge`, "title"), "Normal (Comfort, day)");
+  assert.equal(await rowOf(page, c, alt(3)), null);
 });
 
 test("at night in Komfort the main stays the day setpoint; the grey-out moves to it from the night row", { skip }, async () => {
   const page = await b.open("variant=house&view=controls&latency=30");
   const c = on(page);
-  assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_heat:main", "hc2.setpoint_normal_heat:main", "hc3.setpoint_reduced_heat:main"]);
+  // (Wintergarten shows one setpoint only, so nothing is greyed out there)
+  assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_heat:main", "hc2.setpoint_normal_heat:main"]);
+  assert.ok(!(await c.exists(`${tile(3)} .v.idle`)));
   assert.equal(await c.text(`${main(1)} .v`), "21,5°", "no active badge");
   const color = (sel) => page.eval(`getComputedStyle(${c.root}.querySelector(${JSON.stringify(sel + " .v")})).color`);
   const ink2 = await page.eval(`(() => { const e = document.createElement("span"); e.style.color = "var(--ohp-ink2)"; ${c.root}.appendChild(e); const v = getComputedStyle(e).color; e.remove(); return v; })()`);
@@ -89,7 +91,7 @@ test("main stepper burst on Wintergarten (reduced) writes exactly one number.set
   assert.deepEqual(await writes(page), [`number.set_value ${await eid(page, "hc3.setpoint_reduced_heat")} 11.5`]);
   // the controller recomputed the target; the marker stays on the main row
   assert.equal(await page.eval("harness.plant.values['hc3.room_target_heat']"), 11.5);
-  assert.deepEqual((await active(page, c))[2], "hc3.setpoint_reduced_heat:main");
+  assert.ok(!(await c.exists(`${main(3)} .v.idle`)), "the only setpoint is never greyed out");
   assert.ok(!(await c.exists(`${main(3)} .v.pend`)));
   // + then − back to the current value: no write at all
   await c.click(`${main(3)} [data-s="1"]`);
@@ -116,17 +118,18 @@ test("main and second row coalesce separately: one write each, to the right enti
 });
 
 test("setpoint steppers respect the role's bounds", { skip }, async () => {
-  const page = await b.open("variant=house&view=controls&latency=30");
+  // Wintergarten in Komfort with the time program: both setpoints shown
+  const page = await b.open("variant=house&view=controls&latency=30&set=hc3.op_program:0,hc3.comfort_eco:0");
   const c = on(page);
-  // Wintergarten's reduced setpoint at its minimum (10): − disabled
-  assert.equal(await disabled(page, c, `${main(3)} [data-s="-1"]`), true);
-  assert.equal(await disabled(page, c, `${main(3)} [data-s="1"]`), false);
-  // the day setpoint (second row) half a step below its maximum (30)
+  // the reduced setpoint (second row) at its minimum (10): − disabled
+  assert.equal(await disabled(page, c, `${alt(3)} [data-s="-1"]`), true);
+  assert.equal(await disabled(page, c, `${alt(3)} [data-s="1"]`), false);
+  // the day setpoint (main) half a step below its maximum (30)
   await setValues(page, { "hc3.setpoint_normal_heat": 29.8 });
   await sleep(60);
-  await c.click(`${alt(3)} [data-s="1"]`);
-  assert.match(await c.text(`${alt(3)} .v`), /30,0°/);
-  assert.equal(await disabled(page, c, `${alt(3)} [data-s="1"]`), true, "+ disabled at the maximum");
+  await c.click(`${main(3)} [data-s="1"]`);
+  assert.match(await c.text(`${main(3)} .v`), /30,0°/);
+  assert.equal(await disabled(page, c, `${main(3)} [data-s="1"]`), true, "+ disabled at the maximum");
   await sleep(1900);
   assert.deepEqual(await writes(page), [`number.set_value ${await eid(page, "hc3.setpoint_normal_heat")} 30`]);
   assert.deepEqual(page.errors, []);
@@ -136,17 +139,18 @@ test("cooling pair by target_selector, only on cool-capable circuits", { skip },
   let page = await b.open("variant=house&view=controls&latency=30");
   let c = on(page);
   const sps = await page.eval(`[...${c.root}.querySelectorAll(".hc .sp")].map((e) => e.dataset.sp)`);
-  assert.ok(sps.length === 6 && sps.every((k) => k.endsWith("_heat")), JSON.stringify(sps));
+  // Wintergarten (Reduziert) shows one setpoint, the Komfort circuits with a night setback two
+  assert.ok(sps.length === 5 && sps.every((k) => k.endsWith("_heat")), JSON.stringify(sps));
   page = await b.open("variant=full&view=controls&latency=30");
   c = on(page);
   // HC1 cools in Komfort, HC2 in Eco (25.5 + correction 0.5 = target 26)
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_normal_cool", "24,0°", ""]);
   assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_reduced_cool", "26,0°", "Nacht"]);
   assert.deepEqual(await rowOf(page, c, main(2)), ["setpoint_reduced_cool", "25,5°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(2)), ["setpoint_normal_cool", "22,0°", "Normal"]);
-  assert.equal(await attr(page, c, `${alt(2)} .spbadge`, "title"), "Normal Kühlen");
-  assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_cool:main", "hc2.setpoint_reduced_cool:main"]);
-  assert.ok(await c.exists(`${alt(2)} .v.idle`) && !(await c.exists(`${main(2)} .v.idle`)), "the inactive cooling setpoint is greyed out");
+  assert.equal(await rowOf(page, c, alt(2)), null, "Eco: night only");
+  assert.equal(await attr(page, c, `${alt(1)} .spbadge`, "title"), "Reduziert Kühlen");
+  assert.deepEqual(await active(page, c), ["hc1.setpoint_normal_cool:main"]);
+  assert.ok(await c.exists(`${alt(1)} .v.idle`) && !(await c.exists(`${main(1)} .v.idle`)), "the inactive cooling setpoint is greyed out");
   assert.ok(!(await c.exists(".sptag")), "no active badge any more");
   // the controller switches HC1's target to heating: the heating pair
   await setValues(page, { "hc1.target_selector": 2, "hc1.room_target_heat": 21.5 });
@@ -191,18 +195,18 @@ test("correction chip without ✕ when the offset entity is read-only or the pla
 });
 
 test("a disabled or non-writable setpoint entity is read-only with the hint; the other stays writable", { skip }, async () => {
-  const page = await b.open("variant=house&view=controls&latency=30&disable=hc3.setpoint_reduced_heat");
+  const page = await b.open("variant=house&view=controls&latency=30&disable=hc1.setpoint_reduced_heat");
   const c = on(page);
-  assert.equal((await rowOf(page, c, main(3)))[1], "10,0°", "value still shown");
-  assert.equal(await disabled(page, c, `${main(3)} [data-s="1"]`), true);
-  assert.equal(await disabled(page, c, `${main(3)} [data-s="-1"]`), true);
-  assert.match(await attr(page, c, `${main(3)} .stepper`, "title"), /Keine aktive Entität/);
-  assert.equal(await disabled(page, c, `${alt(3)} [data-s="1"]`), false);
-  assert.equal(await attr(page, c, `${alt(3)} .stepper`, "title"), "Raumsollwert Normal (Komfort, Tag)");
+  assert.equal((await rowOf(page, c, alt(1)))[1], "19,0°", "value still shown");
+  assert.equal(await disabled(page, c, `${alt(1)} [data-s="1"]`), true);
+  assert.equal(await disabled(page, c, `${alt(1)} [data-s="-1"]`), true);
+  assert.match(await attr(page, c, `${alt(1)} .stepper`, "title"), /Keine aktive Entität/);
+  assert.equal(await disabled(page, c, `${main(1)} [data-s="1"]`), false);
+  assert.equal(await attr(page, c, `${main(1)} .stepper`, "title"), "Raumsollwert Normal (Komfort, Tag)");
   // a role the backend marks as not writable is read-only too
-  await page.eval(`harness.plant.roleOverrides["hc3.setpoint_normal_heat"] = { writable: false }; harness.el.store.refetch(true).then(() => true)`);
+  await page.eval(`harness.plant.roleOverrides["hc1.setpoint_normal_heat"] = { writable: false }; harness.el.store.refetch(true).then(() => true)`);
   await sleep(150);
-  assert.equal(await disabled(page, c, `${alt(3)} [data-s="1"]`), true);
+  assert.equal(await disabled(page, c, `${main(1)} [data-s="1"]`), true);
   assert.deepEqual(await writes(page), []);
   assert.deepEqual(page.errors, []);
 });
@@ -215,9 +219,9 @@ test("a mode change drops queued setpoint edits", { skip }, async () => {
   await c.click(`[data-act="preset"][data-c="1"][data-v="eco"]`);
   await sleep(1900);
   assert.deepEqual(await writes(page), [`climate.set_preset_mode ${await page.eval("harness.plant.climateId(1)")} eco`]);
-  // Eco: reduced is main now; neither value changed
+  // Eco: only the reduced setpoint is shown now; neither value changed
   assert.deepEqual(await rowOf(page, c, main(1)), ["setpoint_reduced_heat", "19,0°", ""]);
-  assert.deepEqual(await rowOf(page, c, alt(1)), ["setpoint_normal_heat", "21,5°", "Normal"]);
+  assert.equal(await rowOf(page, c, alt(1)), null);
   assert.deepEqual(page.errors, []);
 });
 
@@ -257,7 +261,9 @@ test("circuit tiles: the tile's width picks one, two or three rows; the preset b
   for (const [width, rows] of [[320, 3], [360, 2], [412, 2], [1280, 2]]) {
     const page = await b.open("variant=house&view=controls&latency=30", { width, height: 1400, mobile: width < 500 });
     const c = on(page);
-    for (const n of [1, 2, 3]) {
+    // Wintergarten (Reduziert) has no small stepper
+    assert.equal((await tileBoxes(page, c, 3)).alt, null);
+    for (const n of [1, 2]) {
       const t = await tileBoxes(page, c, n);
       const at = `${width} px, hc${n}`;
       assert.ok(t.chips.every((b) => b[1] === t.chips[0][1]), `${at}: buttons on one line`);

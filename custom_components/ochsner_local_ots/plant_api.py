@@ -58,8 +58,11 @@ _PLATFORMS: Tuple[Tuple[str, str, bool], ...] = (
 
 
 def async_register(hass: HomeAssistant) -> None:
+    from . import schedule
+
     websocket_api.async_register_command(hass, ws_plants)
     websocket_api.async_register_command(hass, ws_subscribe)
+    schedule.async_register(hass)
 
 
 def iter_plants(hass: HomeAssistant) -> Iterator[Tuple[Any, Dict[str, Any]]]:

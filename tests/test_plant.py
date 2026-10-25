@@ -471,7 +471,24 @@ def test_dhw_supplements(plant_mod):
     # Without DHW nothing is generated.
     values["ESMSIwAAAAE="] = [0, 0]
     sup = P.supplement_entities(values=values, caps=P.compute_capabilities(values), existing={}, circuit_devices={}, language="de")
-    assert sup == {"numbers": [], "selects": []}
+    assert sup == {"numbers": [], "selects": [], "sensors": []}
+
+
+def test_energy_total_supplements(plant_mod, snapshot):
+    P = plant_mod
+    values = values_of(snapshot)
+    caps = P.compute_capabilities(values)
+    # An old bundle-based setup: no entity on the yearly totals.
+    sup = P.supplement_entities(values=values, caps=caps, existing={}, circuit_devices={}, language="de")
+    assert sup["sensors"] == [
+        {"name": "Strombedarf gesamt aktuelles Jahr", "id": "DCP7vSiJAAE=", "unit": "kWh", "supplement": "energy.electric_year"},
+        {"name": "Wärmeenergie gesamt aktuelles Jahr", "id": "DCNBAiiJAAE=", "unit": "kWh", "supplement": "energy.thermal_year"},
+    ]
+    # A stored sensor on the point (any spelling, any uuid) wins; a point that does not answer gets nothing.
+    existing = {"sensors": [{"id": "DCNBAiiJAAE", "uuid": "ff54f942-e14f-46a9-9665-dddff0a76f2a"}]}
+    values.pop("DCP7vSiJAAE=")
+    sup = P.supplement_entities(values=values, caps=caps, existing=existing, circuit_devices={}, language="en")
+    assert sup["sensors"] == []
 
 
 def test_circuit_device_map_reuses_existing_devices(plant_mod):

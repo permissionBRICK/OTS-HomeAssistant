@@ -30,6 +30,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ClimatixCoordinator
+from .energy import energy_classes
 from .flash_warnings import async_maybe_create_flash_wear_notifications
 
 
@@ -158,6 +159,14 @@ class ClimatixGenericSensor(CoordinatorEntity[ClimatixCoordinator], SensorEntity
         self._value_map: Dict[str, str] = {str(k): str(v) for k, v in (cfg.get(CONF_VALUE_MAP) or {}).items()}
         configured_uuid = cfg.get(CONF_UUID)
         self._attr_unique_id = str(configured_uuid) if configured_uuid else f"{host}:sensor:{self._id}".replace("=", "")
+
+        # Energy counters: device class energy, and statistics for the ones
+        # that only grow (Energy dashboard); overrides below still win.
+        energy = energy_classes(self._id, self._attr_native_unit_of_measurement)
+        if energy is not None:
+            self._attr_device_class, state_class = energy
+            if state_class is not None:
+                self._attr_state_class = state_class
 
         # Stable override key: do not depend on whether a bundle provides a UUID.
         override_key = f"{host}:sensor:{self._id}".replace("=", "")

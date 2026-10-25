@@ -11,6 +11,8 @@ const RETRY_DELAY = 30000;
 // so the first answer may still be the old structure). Then give up until
 // the feed's structure changes again.
 const STRUCTURE_REFETCH = [1000, 10000, 60000];
+// Time programs are read on demand (not polled): again after this long.
+const SCHEDULE_MAX_AGE = 10 * 60 * 1000;
 // availability bits per circuit: present, heat, cool, room sensor, humidity
 const HC_BITS = [1, 2, 4, 32, 64];
 
@@ -45,7 +47,9 @@ export class PlantStore {
     this._fetchPromise = null;
     this._refetchQueued = null;
     this._mismatch = new Map(); // plant_id → { sig, tries, timer }
+    this.schedules = new Map(); // plant_id → { at, circuits: Map(n → program) | null, error, loading }
     this._onReady = () => {
+      for (const s of this.schedules.values()) s.at = 0; // re-read after a reconnect
       this.refetch(true);
     };
   }
@@ -82,6 +86,54 @@ export class PlantStore {
 
   liveFor(plantId) {
     return this.live.get(plantId) || null;
+  }
+
+  /** The plant's time programs: { circuits: Map(n → program) | null, error, loading } or null before the first read. */
+  schedulesFor(plantId) {
+    return this.schedules.get(plantId) || null;
+  }
+
+  /** Read the plant's time programs unless a recent read (or one in flight) exists. */
+  ensureSchedules(plantId) {
+    const s = this.schedules.get(plantId);
+    const age = s ? Date.now() - s.at : Infinity;
+    if (s && (s.loading || age < (s.error ? RETRY_DELAY : SCHEDULE_MAX_AGE))) return;
+    this.fetchSchedules(plantId);
+  }
+
+  fetchSchedules(plantId, force = false) {
+    const prev = this.schedules.get(plantId);
+    if (prev && prev.loading) return prev.loading;
+    const entry = { at: prev ? prev.at : 0, circuits: prev ? prev.circuits : null, error: null, loading: null };
+    entry.loading = this.conn
+      .sendMessagePromise({ type: "ochsner_local_ots/schedules", plant_id: plantId, force })
+      .then((res) => {
+        entry.circuits = new Map(((res && res.circuits) || []).map((c) => [Number(c.index), c]));
+      })
+      .catch((err) => {
+        entry.error = { code: (err && err.code) || "error", message: (err && err.message) || String(err) };
+      })
+      .finally(() => {
+        entry.at = Date.now();
+        entry.loading = null;
+        this._emit();
+      });
+    this.schedules.set(plantId, entry);
+    return entry.loading;
+  }
+
+  /** Store whole days ({day: [[minute, value], …]}) of a circuit's program; resolves with the program read back. */
+  async saveSchedule(plantId, circuit, days) {
+    const res = await this.conn.sendMessagePromise({ type: "ochsner_local_ots/schedule/set", plant_id: plantId, circuit, days });
+    let entry = this.schedules.get(plantId);
+    if (!entry) {
+      entry = { at: Date.now(), circuits: null, error: null, loading: null };
+      this.schedules.set(plantId, entry);
+    }
+    if (!entry.circuits) entry.circuits = new Map();
+    entry.circuits.set(Number(res.index), res);
+    this._emit();
+    return res;
   }
 
   _emit() {

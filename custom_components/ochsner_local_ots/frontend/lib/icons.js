@@ -54,3 +54,7 @@ export function heroSvg(mode, col, size = 24) {
 
 export const menuSvg = `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
 export const boltSvg = `<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor"/></svg>`;
+export const clockSvg = (col = "currentColor", size = 14) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="${col}" stroke-width="2"/><path d="M12 7v5l3.5 2" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/></svg>`;
+export const moonSvg = (col = "currentColor", size = 14) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="${col}"/></svg>`;

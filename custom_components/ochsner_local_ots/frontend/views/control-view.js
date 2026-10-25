@@ -4,7 +4,8 @@
 import { esc } from "../lib/dom.js";
 import { modeColor } from "../lib/colors.js";
 import { Coalescer } from "../lib/coalesce.js";
-import { boltSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
+import { boltSvg, clockSvg, heroSvg, iconSvg, leafSvg, showerSvg } from "../lib/icons.js";
+import { NORMAL, dayNames, hasNightSetback, haNow, hm, nextChange, storedPeriods } from "../lib/schedule.js";
 import { activeSetpoint, badgeFor, roomReading, circuitKind, circuitName, convertDelta, convertTemp, displayEntity, enumLabel, haTempUnit, hcKey, num, ofDomain, role, serviceValue, SETPOINTS, setpointPair, setpointRows, val, writableEntity } from "../lib/model.js";
 import { poolEntity, poolText, programText, statusText } from "./plant-view.js";
 
@@ -59,9 +60,30 @@ export function circuitTarget(ctx, c) {
   return { value: v, min: v, max: v, step: 0.5, writable: false };
 }
 
+/**
+ * What a circuit tile shows besides its main setpoint. Both setpoints only
+ * when both are used: in Comfort with a night setback in the time program
+ * (plus today's bar). Eco and Reduced run on Night, manual Normal and
+ * Comfort without a setback on Normal: one setpoint (Comfort without a
+ * setback offers to set one up; once asked, the tile shows both).
+ * { both, strip: "bar" | "empty" | "setup" | null, program }.
+ */
+export function tileMode(ctx, c, expanded = false) {
+  const ps = presetState(ctx, c);
+  const circuits = ctx.schedules && ctx.schedules.circuits;
+  const program = circuits ? circuits.get(c.index) : undefined;
+  if (ps !== "comfort" && ps !== null) return { both: false, strip: null, program: program || null };
+  // Not read yet, or no time program on the controller: both, as before.
+  if (!program || !program.supported) return { both: true, strip: null, program: null };
+  if (hasNightSetback(program)) return { both: true, strip: "bar", program };
+  if (expanded) return { both: true, strip: "empty", program };
+  return { both: false, strip: program.writable === false ? null : "setup", program };
+}
+
 export class ControlView {
   constructor(card) {
     this.card = card;
+    this.expanded = new Set(); // circuits whose "Set up time program" was clicked
     this.coal = new Map();
     this.busy = new Map();
     this.notes = new Map();
@@ -303,6 +325,13 @@ export class ControlView {
 
   _act(act, d) {
     const ctx = this.card.ctx;
+    if (act === "tpsetup" || act === "tpopen") {
+      if (!ctx || ctx.plant.plant_id !== this.plantId) return;
+      if (act === "tpsetup") this.expanded.add(Number(d.c));
+      this.card.openSchedule(Number(d.c));
+      this.card.requestRender();
+      return;
+    }
     if (!ctx || ctx.disabled || ctx.plant.plant_id !== this.plantId) return;
     const { plant } = ctx;
     const found = d.c ? ctx.sec.circuits.find((x) => String(x.index) === d.c) : null;
@@ -503,7 +532,10 @@ export class ControlView {
     }
     const more = c.climate || displayEntity(ctx.plant, hcKey(n, "status"));
     const notes = this._noteHtml(`hc${n}`) + SETPOINTS.map((s) => this._noteHtml(hcKey(n, s.key))).join("");
-    const sp = this._setpoints(ctx, c, name);
+    const mode = tileMode(ctx, c, this.expanded.has(n));
+    const sp = this._setpoints(ctx, c, name, mode.both);
+    // Comfort without a night setback: the link takes the small setpoint's place.
+    if (mode.strip === "setup") sp.alt = `<div class="sp alt"><button class="tplink" data-act="tpsetup" data-c="${n}">${clockSvg()} ${esc(I.t("tp_setup"))}</button></div>`;
     // Room readings, flow and the correction chip need no line of their own:
     // they sit under the name or next to the small setpoint row.
     const room = this._roomLine(ctx, c);
@@ -513,12 +545,33 @@ export class ControlView {
     // One grid per tile; the tile's own width picks the arrangement (styles.js):
     // tiny = name|main, info|alt, chips; phone = name+info|main, chips|alt;
     // wide = name|main, chips|info|alt.
-    return `<div class="hc circuit" data-key="hc${n}"><div class="hcg"><div class="hcrow">
+    return `<div class="hc circuit" data-key="hc${n}"><div class="hcg${sp.alt ? "" : " noalt"}"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
         ${sp.main}</div>
       ${info}
       <div class="hcrow2">${chips}${sp.alt}</div>
-      ${season}${notes}</div></div>`;
+      ${season}${notes}</div>${mode.strip === "bar" || mode.strip === "empty" ? this._strip(ctx, c, mode) : ""}</div>`;
+  }
+
+  /** Today's time program under a circuit tile: what runs until when, a 24 h bar, the link to the program. */
+  _strip(ctx, c, mode) {
+    const { I } = ctx;
+    const n = c.index;
+    const open = this.card.canOpenSchedule() ? `<button class="tpgo" data-act="tpopen" data-c="${n}">${esc(I.t("tp_open"))} ›</button>` : "";
+    if (mode.strip === "empty") {
+      return `<div class="tstrip" data-key="tstrip"><span class="txt">${clockSvg()} ${esc(I.t("tp_no_setback"))}</span><span class="mini normal" aria-hidden="true"></span>${open}</div>`;
+    }
+    const now = haNow(ctx.hass);
+    const periodsOf = (d) => storedPeriods(mode.program, d) || [];
+    const nc = nextChange(periodsOf, now.day, now.minute);
+    const what = I.t(nc.value === NORMAL ? "tp_normal" : "tp_night");
+    const key = nc.day === null ? "tp_all_week" : nc.day === 0 ? "tp_until" : nc.day === 1 ? "tp_until_tomorrow" : "tp_until_day";
+    const day = nc.day === null ? "" : dayNames(I.lang, "long")[(now.day + nc.day) % 7];
+    // The mode word in bold: translate with a marker, escape, then insert it.
+    const txt = esc(I.t(key, { what: "\u0001", time: nc.minute === null ? "" : hm(nc.minute), day })).replace("\u0001", `<b>${esc(what)}</b>`);
+    const pct = (m) => (m / 14.4).toFixed(3);
+    const blocks = periodsOf(now.day).map(([s, e]) => `<span style="left:${pct(s)}%;width:${pct(e - s)}%"></span>`).join("");
+    return `<div class="tstrip" data-key="tstrip"><span class="txt">${clockSvg()} <span>${txt}</span></span><span class="mini" aria-hidden="true">${blocks}<em style="left:calc(${pct(now.minute)}% - 1px)"></em></span>${open}</div>`;
   }
 
   /**
@@ -527,7 +580,7 @@ export class ControlView {
    * of the pair in a small row under it; the one the controller follows
    * right now is tagged. Returns { main, alt } HTML.
    */
-  _setpoints(ctx, c, name) {
+  _setpoints(ctx, c, name, both = true) {
     const { I, live, plant } = ctx;
     const n = c.index;
     const pair = setpointPair(plant, live, c);
@@ -551,7 +604,7 @@ export class ControlView {
       const plus = can && !(typeof r.max === "number" && v >= r.max - 1e-6) ? "" : " disabled";
       const title = !can && !ctx.disabled ? I.t("entity_missing") : I.t("setpoint_title", { name: full });
       // the setpoint not in effect right now is greyed out (only when the active one is known)
-      const idle = !!active && active !== s.key;
+      const idle = both && !!active && active !== s.key;
       const badge = main ? "" : `<span class="spbadge" title="${esc(full)}">${esc(I.t(s.reduced ? "sp_night" : "sp_normal"))}</span>`;
       const btn = (d, sym, verb, dis) => `<button data-act="spstep" data-c="${n}" data-k="${s.key}" data-s="${d}" aria-label="${esc(`${verb} ${name}: ${full}`)}"${dis}>${sym}</button>`;
       const stepper = `<div class="stepper${main ? "" : " sm"}" role="group" aria-label="${esc(`${name}: ${full}`)}" title="${esc(title)}">${btn(-1, "−", I.t("lower"), minus)}
@@ -560,7 +613,7 @@ export class ControlView {
       // the small stepper is the main one scaled down as a whole, centred under it
       return `<div class="sp ${main ? "main" : "alt"}" data-sp="${s.key}">${badge}${main ? stepper : `<div class="spbox">${stepper}</div>`}</div>`;
     };
-    return { main: row(pair.main, true), alt: pair.alt ? row(pair.alt, false) : "" };
+    return { main: row(pair.main, true), alt: both && pair.alt ? row(pair.alt, false) : "" };
   }
 
   /** The circuit's room_offset entity if it may be written now, else null. */
