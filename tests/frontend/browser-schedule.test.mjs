@@ -114,14 +114,20 @@ test("typing times, adding and removing periods, the six switch point limit", { 
   await c.click(".tpeditor [data-act='tpdel'][data-i='1']");
   assert.equal(await count(page, c, ".tpeditor .period"), 1);
   assert.match(await c.text(".pendbar"), /Fußboden · Mon: 04:00–08:00/);
-  // "Normal all day" on Monday, and Tuesday joins with the same times
-  await c.click("[data-act='tpall']");
+  // Tuesday joins Monday with the same times
   await c.click(".tpeditor .days button[data-d='1']");
-  assert.match(await c.text(".pendbar"), /Fußboden · Mon, Tue: 00:00–24:00/);
+  assert.match(await c.text(".pendbar"), /Fußboden · Mon, Tue: 04:00–08:00/);
+  // "Remove schedule": every day Normal all day, the editor closes
+  assert.match(await c.text("[data-act='tpclear']"), /Remove schedule/);
+  await c.click("[data-act='tpclear']");
+  assert.ok(!(await c.exists(".tpeditor")));
+  assert.match(await c.text(".pendbar"), /Fußboden · Mon, Tue, Wed, Thu, Fri, Sat, Sun: Normal all day/);
   await c.click("[data-act='tpapply']");
   await sleep(250);
   const sent = await calls(page);
-  assert.deepEqual(sent[0].days, { 0: [], 1: [] }, "Normal all day: every switch point unused");
+  assert.deepEqual(sent[0].days, { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }, "no switch point left on any day");
+  // without a night setback the card offers the starting points again
+  assert.ok(await c.exists(".tpempty"));
   assert.deepEqual(page.errors, []);
 });
 
@@ -171,7 +177,7 @@ test("a failed write keeps the edits and says why", { skip }, async () => {
   const c = on(page);
   await page.eval("harness.fake.conn.failScheduleSet = true");
   await c.click(".drow[data-d='2']");
-  await c.click("[data-act='tpall']");
+  await c.click("[data-act='tpclear']");
   await c.click("[data-act='tpapply']");
   await sleep(250);
   assert.match(await c.text(".note.err"), /Writing to the heat pump failed/);

@@ -17,8 +17,11 @@ before(async () => {
   chrome = await launch();
 });
 after(async () => {
-  if (chrome) await chrome.close();
-  if (server) server.close();
+  try {
+    if (chrome) await chrome.close();
+  } finally {
+    if (server) server.close();
+  }
 });
 
 async function open(query, { width = 760, height = 1000, mobile = false } = {}) {

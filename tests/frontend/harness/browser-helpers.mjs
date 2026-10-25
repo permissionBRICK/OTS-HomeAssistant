@@ -21,8 +21,11 @@ export async function browser() {
       return page;
     },
     async close() {
-      await chrome.close();
-      server.close();
+      try {
+        await chrome.close();
+      } finally {
+        server.close();
+      }
     },
   };
 }
