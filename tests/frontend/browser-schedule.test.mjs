@@ -40,18 +40,16 @@ test("Komfort with a night setback: both setpoints and today's bar; Reduziert: o
   assert.deepEqual(page.errors, []);
 });
 
-test("Komfort without a night setback: one setpoint and the set-up link, which reveals both and opens the program", { skip }, async () => {
+test("Komfort without a night setback: one setpoint, the flow in the small setpoint's spot, set up on the card", { skip }, async () => {
   const page = await b.open("variant=house&view=all&latency=30&schedule=none&lang=en", { width: 1280, height: 1600 });
   const c = on(page);
-  assert.ok(!(await c.exists(`${tile(1)} .sp.alt .stepper`)), "no night setpoint");
-  assert.match(await c.text(`${tile(1)} .tplink`), /Set up time program/);
-  assert.ok(!(await c.exists(`${tile(1)} .tstrip`)), "no bar");
-  await c.click(".card-schedule .tabs button[data-c='3']");
-  await c.click(`${tile(1)} .tplink`);
-  await sleep(100);
-  assert.ok(await c.exists(`${tile(1)} .sp.alt .stepper`), "night setpoint shown once asked");
-  assert.match(await c.text(`${tile(1)} .tstrip`), /No night setback yet/);
-  assert.ok(!(await c.exists(`${tile(2)} .sp.alt .stepper`)), "only the circuit asked for");
+  for (const n of [1, 2]) {
+    assert.ok(!(await c.exists(`${tile(n)} .sp.alt`)), `hc${n}: no night setpoint and nothing in its place`);
+    assert.ok(!(await c.exists(`${tile(n)} .tstrip`)), `hc${n}: no bar`);
+  }
+  // wide tile: the flow takes the small setpoint's spot at the right edge, as in Eco
+  const right = (sel) => page.eval(`${c.root}.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().right`);
+  assert.ok(Math.abs((await right(`${tile(1)} .hcinfo`)) - (await right(`${tile(1)} .sp.main`))) < 2, "flow right-aligned under the main setpoint");
   assert.equal(await page.eval(`${c.root}.querySelector(".card-schedule .tabs button.on").dataset.c`), "1");
   assert.match(await c.text(".card-schedule .tpempty"), /Fußboden runs at Normal 21\.5° around the clock/);
   // a preset stages the whole week; Discard drops it, nothing written
@@ -168,7 +166,7 @@ test("no time program on the controller: no card, no strip, both setpoints as be
   const page = await b.open("variant=house&view=all&latency=30&schedule=unsupported", { width: 1280, height: 1600 });
   const c = on(page);
   assert.equal(await page.eval(`${c.root}.querySelector(".card-schedule").hidden`), true);
-  assert.ok(await c.exists(`${tile(1)} .sp.alt`) && !(await c.exists(".tstrip")) && !(await c.exists(".tplink")));
+  assert.ok(await c.exists(`${tile(1)} .sp.alt`) && !(await c.exists(".tstrip")));
   assert.deepEqual(page.errors, []);
 });
 

@@ -64,11 +64,11 @@ export function circuitTarget(ctx, c) {
  * What a circuit tile shows besides its main setpoint. Both setpoints only
  * when both are used: in Comfort with a night setback in the time program
  * (plus today's bar). Eco and Reduced run on Night, manual Normal and
- * Comfort without a setback on Normal: one setpoint (Comfort without a
- * setback offers to set one up; once asked, the tile shows both).
- * { both, strip: "bar" | "empty" | "setup" | null, program }.
+ * Comfort without a setback on Normal: one setpoint (a setback is set up
+ * on the time program card).
+ * { both, strip: "bar" | null, program }.
  */
-export function tileMode(ctx, c, expanded = false) {
+export function tileMode(ctx, c) {
   const ps = presetState(ctx, c);
   const circuits = ctx.schedules && ctx.schedules.circuits;
   const program = circuits ? circuits.get(c.index) : undefined;
@@ -76,14 +76,12 @@ export function tileMode(ctx, c, expanded = false) {
   // Not read yet, or no time program on the controller: both, as before.
   if (!program || !program.supported) return { both: true, strip: null, program: null };
   if (hasNightSetback(program)) return { both: true, strip: "bar", program };
-  if (expanded) return { both: true, strip: "empty", program };
-  return { both: false, strip: program.writable === false ? null : "setup", program };
+  return { both: false, strip: null, program };
 }
 
 export class ControlView {
   constructor(card) {
     this.card = card;
-    this.expanded = new Set(); // circuits whose "Set up time program" was clicked
     this.coal = new Map();
     this.busy = new Map();
     this.notes = new Map();
@@ -325,9 +323,8 @@ export class ControlView {
 
   _act(act, d) {
     const ctx = this.card.ctx;
-    if (act === "tpsetup" || act === "tpopen") {
+    if (act === "tpopen") {
       if (!ctx || ctx.plant.plant_id !== this.plantId) return;
-      if (act === "tpsetup") this.expanded.add(Number(d.c));
       this.card.openSchedule(Number(d.c));
       this.card.requestRender();
       return;
@@ -532,10 +529,8 @@ export class ControlView {
     }
     const more = c.climate || displayEntity(ctx.plant, hcKey(n, "status"));
     const notes = this._noteHtml(`hc${n}`) + SETPOINTS.map((s) => this._noteHtml(hcKey(n, s.key))).join("");
-    const mode = tileMode(ctx, c, this.expanded.has(n));
+    const mode = tileMode(ctx, c);
     const sp = this._setpoints(ctx, c, name, mode.both);
-    // Comfort without a night setback: the link takes the small setpoint's place.
-    if (mode.strip === "setup") sp.alt = `<div class="sp alt"><button class="tplink" data-act="tpsetup" data-c="${n}">${clockSvg()} ${esc(I.t("tp_setup"))}</button></div>`;
     // Room readings, flow and the correction chip need no line of their own:
     // they sit under the name or next to the small setpoint row.
     const room = this._roomLine(ctx, c);
@@ -550,7 +545,7 @@ export class ControlView {
         ${sp.main}</div>
       ${info}
       <div class="hcrow2">${chips}${sp.alt}</div>
-      ${season}${notes}</div>${mode.strip === "bar" || mode.strip === "empty" ? this._strip(ctx, c, mode) : ""}</div>`;
+      ${season}${notes}</div>${mode.strip === "bar" ? this._strip(ctx, c, mode) : ""}</div>`;
   }
 
   /** Today's time program under a circuit tile: what runs until when, a 24 h bar, the link to the program. */
@@ -558,9 +553,6 @@ export class ControlView {
     const { I } = ctx;
     const n = c.index;
     const open = this.card.canOpenSchedule() ? `<button class="tpgo" data-act="tpopen" data-c="${n}">${esc(I.t("tp_open"))} ›</button>` : "";
-    if (mode.strip === "empty") {
-      return `<div class="tstrip" data-key="tstrip"><span class="txt">${clockSvg()} ${esc(I.t("tp_no_setback"))}</span><span class="mini normal" aria-hidden="true"></span>${open}</div>`;
-    }
     const now = haNow(ctx.hass);
     const periodsOf = (d) => storedPeriods(mode.program, d) || [];
     const nc = nextChange(periodsOf, now.day, now.minute);

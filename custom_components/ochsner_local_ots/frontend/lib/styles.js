@@ -126,8 +126,8 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .hcg .modechips.preset { grid-area: chips; margin-top: 4px; }
 .hcg .modechips.season { grid-area: season; margin-top: 2px; }
 .hcg .note { grid-column: 1 / -1; margin-top: 2px; }
-/* No small setpoint (one setpoint mode) and no link in its place: the flow
-   moves over to its spot instead of hanging in the middle. */
+/* No small setpoint (one setpoint mode): the flow moves over to its spot
+   instead of hanging in the middle. */
 .hcg.noalt { grid-template-areas: "name main" "info info" "chips chips" "season season"; }
 /* The Nacht/Normal badge only fits on wide tiles; elsewhere the stepper's
    tooltip and label name the setpoint. */
@@ -262,11 +262,10 @@ svg.ch .flab text { font-size: 12px; fill: var(--ohp-ink); font-weight: 500; }
 .tstrip .txt > span { overflow: hidden; text-overflow: ellipsis; }
 .tstrip .txt b { color: var(--ohp-ink); font-weight: 500; }
 .tstrip .mini { flex: 1 1 auto; min-width: 70px; position: relative; height: 10px; border-radius: 5px; background: var(--ohp-night); overflow: hidden; }
-.tstrip .mini.normal { background: var(--ohp-heat); opacity: .55; }
 .tstrip .mini > span { position: absolute; top: 0; bottom: 0; background: var(--ohp-heat); }
 .tstrip .mini > em { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ohp-ink); border-radius: 1px; }
-.tpgo, .tplink { font-size: 12px; color: var(--primary-color, #03a9f4); background: none; border: 0; padding: 4px 2px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; min-height: 30px; }
-.tpgo:hover, .tplink:hover { text-decoration: underline; }
+.tpgo { font-size: 12px; color: var(--primary-color, #03a9f4); background: none; border: 0; padding: 4px 2px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; min-height: 30px; }
+.tpgo:hover { text-decoration: underline; }
 @container hc (width < 420px) {
   .tstrip { flex-wrap: wrap; row-gap: 6px; }
   .tstrip .mini { order: 3; flex-basis: 100%; }
