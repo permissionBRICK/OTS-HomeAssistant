@@ -220,11 +220,14 @@ export class PlantView {
     const col = modeColor(mode);
     const out = num(live, "hp.outdoor");
     const q = num(live, "hp.heat_output");
+    const el = ctx.caps.power === false ? undefined : num(live, "hp.el_power");
     const cop = liveCop(live, ctx.caps);
     const status = statusText(ctx);
     const kpis = [];
     if (out !== undefined) kpis.push(`<div class="kpi"><b>${I.num(out)}</b><small>°C ${esc(t("outdoor"))}</small></div>`);
     if (q !== undefined) kpis.push(`<div class="kpi"><b>${I.num(q)}</b><small>${esc(t(mode === "cool" ? "kw_cool" : "kw_heat"))}</small></div>`);
+    // Compressor power only (fan and pumps are missing), hence the "*" like the COP.
+    if (el !== undefined) kpis.push(`<div class="kpi" title="${esc(t("el_live_title"))}"><b>${I.num(el, el < 1 ? 2 : 1)}*</b><small>${esc(t("kw_el"))}</small></div>`);
     // Same basis as the 24 h COP tile: compressor power only, hence the "*".
     if (cop !== undefined) kpis.push(`<div class="kpi" title="${esc(t("cop_live_title"))}"><b>${I.num(cop)}*</b><small>${esc(t("cop"))}</small></div>`);
     return `
