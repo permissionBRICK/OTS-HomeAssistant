@@ -469,7 +469,9 @@ export class ScheduleView {
     const now = haNow(ctx.hass);
     const tpl = this.sel.size ? this._template(ctx) : null;
     const ticks = compact ? [0, 6, 12, 18, 24] : [0, 3, 6, 9, 12, 15, 18, 21, 24];
-    let h = `<div class="week" style="--lw:${lw}px"><div class="axis" aria-hidden="true">${ticks.map((t) => `<span style="left:${(t / 24) * 100}%">${String(t).padStart(2, "0")}</span>`).join("")}</div><div class="rows">`;
+    // hour labels under the "now" label give way to it
+    const nearNow = (t) => Math.abs(t * 60 - now.minute) < (compact ? 110 : 70);
+    let h = `<div class="week" style="--lw:${lw}px"><div class="axis" aria-hidden="true">${ticks.map((t) => `<span style="left:${(t / 24) * 100}%${nearNow(t) ? ";visibility:hidden" : ""}">${String(t).padStart(2, "0")}</span>`).join("")}</div><div class="rows">`;
     for (let d = 0; d < 7; d++) {
       const periods = this._periods(ctx, n, d);
       const pend = !!(this.pending.get(n) && this.pending.get(n).has(d));
