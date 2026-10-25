@@ -670,6 +670,36 @@ export class FakePlant {
   }
 }
 
+// ---- time programs (mirror schedule.py) ------------------------------------
+
+/** The house AirHawk's day: 00:00 Eco, 04:00 Normal, 20:00 Eco (six slots). */
+export const HOUSE_DAY = [[0, 0], [240, 1], [1200, 0], [null, 0], [null, 1], [null, 0]];
+
+/** A circuit's program as ochsner_local_ots/schedules returns it. */
+export function fakeProgram(n, { days = null, def = 1, writable = true } = {}) {
+  return {
+    index: n, supported: true, complete: true, present: 1, default: def, writable,
+    days: days || Array.from({ length: 7 }, () => HOUSE_DAY.map((s) => [...s])),
+  };
+}
+
+/** A day with no switch point (the default value all day). */
+export const EMPTY_DAY = () => Array.from({ length: 6 }, () => [null, 0]);
+
+function storeDay(slots, points) {
+  let writes = 0;
+  const out = [];
+  for (let i = 0; i < 6; i++) {
+    const cur = slots[i] || [null, 0];
+    const p = points[i];
+    const next = p ? [p[0], p[1]] : [null, cur[1]];
+    if (next[0] !== cur[0]) writes++;
+    if (next[1] !== cur[1]) writes++;
+    out.push(next);
+  }
+  return { slots: out, writes };
+}
+
 // ---- fake connection + hass ------------------------------------------------
 
 export function fakeConnection(plants, { failPlants = false } = {}) {
@@ -679,6 +709,27 @@ export function fakeConnection(plants, { failPlants = false } = {}) {
     subscriptions: 0,
     sendMessagePromise(msg) {
       conn.sent.push(msg);
+      if (msg.type === "ochsner_local_ots/schedules" || msg.type === "ochsner_local_ots/schedule/set") {
+        const p = plants.find((x) => x.plantId === msg.plant_id);
+        if (!p) return Promise.reject({ code: "not_found", message: "Unknown plant" });
+        if (!p.programs) {
+          p.programs = new Map(p.plantPayload().circuits.map((c) => [c.index, fakeProgram(c.index)]));
+        }
+        (conn.scheduleCalls = conn.scheduleCalls || []).push(msg);
+        if (msg.type === "ochsner_local_ots/schedules") {
+          const circuits = p.plantPayload().circuits.map((c) => p.programs.get(c.index) || { index: c.index, supported: false });
+          return new Promise((res) => setTimeout(() => res({ plant_id: p.plantId, circuits: JSON.parse(JSON.stringify(circuits)) }), p.latency ? 20 : 0));
+        }
+        const prog = p.programs.get(msg.circuit);
+        if (!prog || conn.failScheduleSet) return Promise.reject({ code: "write_failed", message: "Writing to the heat pump failed" });
+        let writes = 0;
+        for (const [d, points] of Object.entries(msg.days)) {
+          const r = storeDay(prog.days[Number(d)], points);
+          prog.days[Number(d)] = r.slots;
+          writes += r.writes;
+        }
+        return new Promise((res) => setTimeout(() => res({ ...JSON.parse(JSON.stringify(prog)), writes }), p.latency ? 50 : 0));
+      }
       if (msg.type === "ochsner_local_ots/plants") {
         if (failPlants) return Promise.reject({ code: "unknown_command", message: "Unknown command." });
         return Promise.resolve({

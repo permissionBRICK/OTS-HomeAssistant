@@ -1,6 +1,6 @@
 // <ochsner-heatpump-card> and its thin per-view variants.
 
-import { morph, rafBatch, fire, esc } from "./dom.js";
+import { morph, navigate, rafBatch, fire, esc } from "./dom.js";
 import { getStore } from "./store.js";
 import { makeI18n, langOf, translate } from "./i18n.js";
 import { resolveScheme, schemeVars } from "./colors.js";
@@ -9,9 +9,12 @@ import { capabilities, circuitsForDevice, hpMode, pickPlant, sections } from "./
 import { PlantView } from "../views/plant-view.js";
 import { ControlView } from "../views/control-view.js";
 import { EfficiencyView } from "../views/efficiency-view.js";
+import { ScheduleView } from "../views/schedule-view.js";
 
-const VIEWS = ["all", "plant", "controls", "efficiency"];
-const VIEW_CLASSES = { plant: PlantView, controls: ControlView, efficiency: EfficiencyView };
+const VIEWS = ["all", "plant", "controls", "schedule", "efficiency"];
+const VIEW_CLASSES = { plant: PlantView, controls: ControlView, schedule: ScheduleView, efficiency: EfficiencyView };
+const PANEL_PATH = "ochsner-heatpump";
+const CLOCK_TICK = 30000; // "now" marks and "until" texts of the time program
 let UID = 0;
 
 const docLang = () => {
@@ -70,6 +73,8 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._skeleton = null;
     this._schemeKey = null;
     this.writeDelay = 1500;
+    this._openCircuit = null; // time program to show once the view exists
+    this._tick = null;
     const render = rafBatch(() => this._render());
     // Nothing is scheduled for a card that is not on the page (late async
     // completions included); connecting renders anyway.
@@ -145,12 +150,15 @@ export class OchsnerHeatpumpCard extends HTMLElement {
   connectedCallback() {
     if (this._store && !this._unlisten) this._unlisten = this._store.addListener(this._onStore);
     for (const el of Object.values(this._containers)) if (this._ro) this._ro.observe(el);
+    if (!this._tick) this._tick = setInterval(() => (this._views.controls || this._views.schedule) && this.requestRender(), CLOCK_TICK);
     this.requestRender();
   }
 
   disconnectedCallback() {
     if (this._unlisten) this._unlisten();
     this._unlisten = null;
+    if (this._tick) clearInterval(this._tick);
+    this._tick = null;
     if (this._ro) this._ro.disconnect();
     // Removed from the page: queued −/+ writes the user can no longer see
     // are dropped and status/confirmation timers stopped (an explicitly
@@ -220,11 +228,36 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     if (entityId) fire(this, "hass-more-info", { entityId });
   }
 
+  /** Can a circuit tile open the time program (here, or in the sidebar panel)? */
+  canOpenSchedule() {
+    return !!this._views.schedule || !!(this._hass && this._hass.panels && this._hass.panels[PANEL_PATH]);
+  }
+
+  /** Show circuit n's time program: the schedule view of this card, else the sidebar panel. */
+  openSchedule(n) {
+    const view = this._views.schedule;
+    if (view) {
+      view.select(n);
+      this.requestRender();
+      const box = this._containers.schedule && this._containers.schedule.closest("ha-card");
+      if (box && box.scrollIntoView) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      return;
+    }
+    if (this.canOpenSchedule()) navigate(`/${PANEL_PATH}#time-program-${n}`);
+  }
+
+  /** Panel: open circuit n's time program as soon as it is rendered. */
+  openScheduleWhenReady(n) {
+    this._openCircuit = n;
+    this.requestRender();
+  }
+
   getCardSize() {
     switch (this._config.view) {
       case "plant": return 5;
       case "controls": return 3 + 2 * ((this.ctx && this.ctx.sec.circuits.length) || 2);
       case "efficiency": return 9;
+      case "schedule": return 7;
       default: return 16;
     }
   }
@@ -236,7 +269,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
 
   _viewList() {
     const v = this._config.view;
-    return v === "all" ? ["plant", "controls", "efficiency"] : [v];
+    return v === "all" ? ["plant", "controls", "schedule", "efficiency"] : [v];
   }
 
   _ensureSkeleton() {
@@ -250,7 +283,9 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     this._containers = {};
     this._widths = {};
     const box = (v) => `<ha-card class="card-${v}"><div class="v" data-v="${v}"></div></ha-card>`;
-    const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc">${box("controls")}${box("efficiency")}</div></div>`;
+    // All: the time program sits under the controls (left column, where the
+    // taller curve column leaves room); one column on narrow screens.
+    const body = views.length === 1 ? box(views[0]) : `<div class="all">${box("plant")}<div class="bc"><div class="col">${box("controls")}${box("schedule")}</div>${box("efficiency")}</div></div>`;
     this.shadowRoot.innerHTML = `<style>${CSS}${TINTS}</style><style class="vars"></style><div class="msg" hidden></div>${body}`;
     this._schemeKey = null; // the new <style class="vars"> is empty
     for (const v of views) {
@@ -308,6 +343,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       if (all) all.hidden = false;
     }
     const { hass, live, sec, available } = this.snapshot();
+    if (this._views.controls || this._views.schedule) store.ensureSchedules(plant.plant_id);
     const watch = new Map();
     const ctx = {
       hass,
@@ -321,6 +357,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       uid: this._uid,
       disabled: !available,
       banner: available ? "" : `<div class="banner" role="status">${esc(I.t("unavailable"))}</div>`,
+      schedules: store.schedulesFor(plant.plant_id),
       state: (eid) => {
         if (!eid) return undefined;
         const st = hass.states[eid];
@@ -329,6 +366,12 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       },
     };
     if (plant.flash_writes) ctx.state(plant.flash_writes);
+    if (this._openCircuit !== null && this._views.schedule) {
+      this._views.schedule.select(this._openCircuit);
+      const n = this._openCircuit;
+      this._openCircuit = null;
+      setTimeout(() => this.openSchedule(n), 0);
+    }
     this.ctx = ctx;
     for (const [name, view] of Object.entries(this._views)) {
       if (view.plantId === undefined) view.plantId = plant.plant_id;
@@ -337,7 +380,10 @@ export class OchsnerHeatpumpCard extends HTMLElement {
       const vctx = { ...ctx, width, narrow: width < 520 };
       this.ctx = vctx;
       try {
-        morph(el, view.render(vctx));
+        const html = view.render(vctx);
+        // A view with nothing to show (no time program) hides its card.
+        el.closest("ha-card").hidden = html === "";
+        morph(el, html);
         if (view.attach) view.attach(el);
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -359,6 +405,10 @@ export class OchsnerControlCard extends OchsnerHeatpumpCard {
   static fixedView = "controls";
   static get tagName() { return "ochsner-control-card"; }
 }
+export class OchsnerScheduleCard extends OchsnerHeatpumpCard {
+  static fixedView = "schedule";
+  static get tagName() { return "ochsner-schedule-card"; }
+}
 export class OchsnerEfficiencyCard extends OchsnerHeatpumpCard {
   static fixedView = "efficiency";
   static get tagName() { return "ochsner-efficiency-card"; }
@@ -369,6 +419,7 @@ export function registerCards() {
     [OchsnerHeatpumpCard, "card_all"],
     [OchsnerPlantCard, "card_plant"],
     [OchsnerControlCard, "card_control"],
+    [OchsnerScheduleCard, "card_schedule"],
     [OchsnerEfficiencyCard, "card_eff"],
   ];
   const lang = docLang();

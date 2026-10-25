@@ -27,6 +27,7 @@ ha-card, .card {
 }
 .all { display: flex; flex-direction: column; gap: var(--ohp-gap, 12px); container-type: inline-size; }
 .bc { display: grid; grid-template-columns: 1fr; gap: var(--ohp-gap, 12px); align-items: start; }
+.bc > .col { display: flex; flex-direction: column; gap: var(--ohp-gap, 12px); min-width: 0; }
 @container (min-width: 880px) { .bc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .hdr { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; margin-bottom: 6px; flex-wrap: wrap; }
 .hdr > .l { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
@@ -249,6 +250,75 @@ svg.ch .flab text { font-size: 12px; fill: var(--ohp-ink); font-weight: 500; }
 .tile span { font-size: 11px; line-height: 1.25; color: var(--ohp-ink2); display: block; overflow-wrap: break-word; hyphens: auto; }
 .foot { font-size: 11px; color: var(--ohp-ink2); margin-top: 8px; line-height: 1.4; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* time program: today strip in a circuit tile */
+.tstrip { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ohp-line); }
+.tstrip .txt { font-size: 12.5px; color: var(--ohp-ink2); display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
+.tstrip .txt > span { overflow: hidden; text-overflow: ellipsis; }
+.tstrip .txt b { color: var(--ohp-ink); font-weight: 500; }
+.tstrip .mini { flex: 1 1 auto; min-width: 70px; position: relative; height: 10px; border-radius: 5px; background: var(--ohp-night); overflow: hidden; }
+.tstrip .mini.normal { background: var(--ohp-heat); opacity: .55; }
+.tstrip .mini > span { position: absolute; top: 0; bottom: 0; background: var(--ohp-heat); }
+.tstrip .mini > em { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ohp-ink); border-radius: 1px; }
+.tpgo, .tplink { font-size: 12px; color: var(--primary-color, #03a9f4); background: none; border: 0; padding: 4px 2px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; min-height: 30px; }
+.tpgo:hover, .tplink:hover { text-decoration: underline; }
+@container hc (width < 420px) {
+  .tstrip { flex-wrap: wrap; row-gap: 6px; }
+  .tstrip .mini { order: 3; flex-basis: 100%; }
+  .tstrip .tpgo { margin-left: auto; }
+}
+
+/* time program card */
+.week { position: relative; user-select: none; -webkit-user-select: none; margin-top: 2px; }
+.week .axis { position: relative; height: 16px; margin-left: var(--lw); font-size: 10.5px; color: var(--ohp-ink2); }
+.week .axis span { position: absolute; transform: translateX(-50%); }
+.week .axis span:first-child { transform: none; }
+.week .axis span:last-child { transform: translateX(-100%); }
+.week .rows { position: relative; }
+.drow { display: flex; align-items: center; height: 30px; margin-bottom: 4px; cursor: pointer; border-radius: 8px; outline: none; }
+.drow .dl { width: var(--lw); flex: none; font-size: 12.5px; color: var(--ohp-ink2); padding-left: 2px; }
+.drow.today .dl { color: var(--ohp-ink); font-weight: 600; }
+.drow .bar { position: relative; flex: 1; height: 26px; border-radius: 7px; background: var(--ohp-night);
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 1px), var(--ohp-grid) calc(12.5% - 1px) 12.5%); }
+.drow:hover .bar { box-shadow: 0 0 0 1px var(--ohp-ink2); }
+.drow:focus-visible .bar { box-shadow: 0 0 0 2px var(--primary-color, #03a9f4); }
+.drow.sel .bar { box-shadow: 0 0 0 2px var(--primary-color, #03a9f4); }
+.blk { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; background: var(--tp-normal, var(--ohp-heat)); color: #111; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
+.blk.pend { background: repeating-linear-gradient(135deg, var(--tp-normal, var(--ohp-heat)) 0 6px, color-mix(in srgb, var(--tp-normal, var(--ohp-heat)) 72%, var(--ohp-card)) 6px 12px); outline: 2px solid var(--ohp-aux); outline-offset: 1px; }
+.drow .unread { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; color: var(--ohp-ink2); }
+.hdl { position: absolute; top: -4px; bottom: -4px; width: 22px; margin-left: -11px; cursor: ew-resize; touch-action: none; z-index: 2; outline: none; }
+.hdl::after { content: ""; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+.hdl:hover::after, .hdl:focus-visible::after { box-shadow: 0 0 0 2px var(--primary-color, #03a9f4); }
+.nowline { position: absolute; top: -3px; bottom: 2px; width: 2px; background: var(--ohp-ink); border-radius: 1px; pointer-events: none; z-index: 1; }
+.nowline::before { content: attr(data-t); position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 10.5px; font-weight: 600; background: var(--ohp-card); padding: 0 3px; border-radius: 3px; }
+.legend .dh { margin-left: auto; }
+.tpeditor { margin-top: 10px; border-radius: 12px; background: var(--ohp-card2); padding: 10px 12px; }
+.tpeditor .eh { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tpeditor .eh .ttl { font-size: 14px; }
+.tpeditor .days { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0 4px; }
+.tpeditor .days button { min-width: 36px; height: 30px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--ohp-line); background: transparent; color: var(--ohp-ink2); font-size: 12px; cursor: pointer; }
+.tpeditor .days button.on { background: var(--ohp-ink); color: var(--ohp-card); border-color: transparent; }
+.tpeditor .days button:disabled { cursor: default; opacity: .55; }
+.tpeditor .period { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+.tpeditor .pn { font-size: 12.5px; color: var(--ohp-ink2); min-width: 74px; display: flex; align-items: center; gap: 6px; }
+.tpeditor .pn i { width: 10px; height: 10px; border-radius: 3px; background: var(--tp-normal, var(--ohp-heat)); }
+.tpeditor input[type=time], .tpeditor select { font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--ohp-line); background: var(--ohp-card); color: var(--ohp-ink); min-height: 34px; color-scheme: inherit; }
+.tpeditor select { font-size: 12.5px; }
+.tpeditor .x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--ohp-ink2); cursor: pointer; }
+.tpeditor .addrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.addp { font-size: 12.5px; color: var(--primary-color, #03a9f4); background: none; border: 0; padding: 6px 0; cursor: pointer; min-height: 30px; }
+.addp:disabled { color: var(--ohp-ink2); cursor: default; opacity: .6; }
+.hint { font-size: 11.5px; color: var(--ohp-ink2); margin-top: 4px; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.quick.center { justify-content: center; margin-top: 10px; }
+.btn.sm { font-size: 12.5px; padding: 4px 10px; min-height: 30px; font-weight: 400; }
+.tpbanner { font-size: 12.5px; padding: 8px 10px; border-radius: 10px; margin: 2px 0 8px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: color-mix(in srgb, var(--ohp-night-ink) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ohp-night-ink) 35%, transparent); }
+.tpbanner > span { display: flex; gap: 6px; align-items: center; }
+.tpempty { text-align: center; padding: 12px 6px 4px; }
+.tpempty .big { font-size: 14px; font-weight: 500; margin: 6px 0 2px; }
+.copyrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+.copyrow .mc.on.sel { color: var(--ohp-card); background: var(--ohp-ink); }
 `;
 
 /** Text colours derived for contrast in light and dark (mixed toward the ink colour). */
@@ -258,5 +328,7 @@ export const TINTS = `
   --ohp-warn-text: color-mix(in srgb, var(--ohp-warn) 65%, var(--ohp-ink));
   --ohp-err-text: color-mix(in srgb, var(--ohp-err) 70%, var(--ohp-ink));
   --ohp-aux-text: color-mix(in srgb, var(--ohp-aux) 70%, var(--ohp-ink));
+  --ohp-night: color-mix(in srgb, #5c6bc0 20%, var(--ohp-card2));
+  --ohp-night-ink: color-mix(in srgb, #5c6bc0 65%, var(--ohp-ink));
 }
 `;

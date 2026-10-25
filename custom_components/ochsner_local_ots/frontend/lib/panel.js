@@ -129,6 +129,12 @@ export class OchsnerHeatpumpPanel extends HTMLElement {
       this._cardCfg = key;
       this._card.setConfig(cfg);
     }
+    // "Time program ›" from a circuit tile on another dashboard: #time-program-<n>
+    const hash = /^#time-program-(\d)$/.exec((globalThis.location && location.hash) || "");
+    if (hash) {
+      this._card.openScheduleWhenReady(Number(hash[1]));
+      history.replaceState(history.state, "", location.pathname + location.search);
+    }
     const links = [];
     if (plant && plant.device_id) links.push(`<a href="/config/devices/device/${esc(plant.device_id)}" data-nav="/config/devices/device/${esc(plant.device_id)}">${esc(I.t("all_values"))}</a>`);
     links.push(`<a href="/config/integrations/integration/ochsner_local_ots" data-nav="/config/integrations/integration/ochsner_local_ots">${esc(I.t("integration_settings"))}</a>`);

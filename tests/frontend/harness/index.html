@@ -45,7 +45,7 @@
 <div id="stage"></div>
 <script type="module">
 import "/custom_components/ochsner_local_ots/frontend/ochsner-heatpump.js";
-import { FakePlant, fakeHass } from "./fake-backend.js";
+import { EMPTY_DAY, FakePlant, fakeHass, fakeProgram } from "./fake-backend.js";
 
 const q = new URLSearchParams(location.search);
 const variant = q.get("variant") || "house";
@@ -77,6 +77,20 @@ for (const kv of (q.get("emergency") || "").split(",").filter(Boolean)) {
 for (const kv of (q.get("set") || "").split(",").filter(Boolean)) {
   const [k, v] = kv.split(":");
   plants[0].values[k] = Number(v);
+}
+// ?schedule=none → no night setback on any circuit; ?schedule=unsupported → no time programs;
+// ?schedule=mixed → HC1 workdays, HC2 house, HC3 none
+const sched = q.get("schedule");
+if (sched) {
+  const circuits = plants[0].plantPayload().circuits.map((c) => c.index);
+  const week = (fn) => Array.from({ length: 7 }, (_, d) => fn(d));
+  const workday = (d) => (d < 5 ? [[0, 0], [300, 1], [480, 0], [960, 1], [1320, 0], [null, 0]] : [[0, 0], [420, 1], [1350, 0], [null, 0], [null, 1], [null, 0]]);
+  plants[0].programs = new Map(circuits.map((n) => {
+    if (sched === "unsupported") return [n, { index: n, supported: false }];
+    if (sched === "none" || (sched === "mixed" && n === 3)) return [n, fakeProgram(n, { days: week(EMPTY_DAY) })];
+    if (sched === "mixed" && n === 1) return [n, fakeProgram(n, { days: week(workday) })];
+    return [n, fakeProgram(n)];
+  }));
 }
 // e.g. ?disable=hc1.heat_limit,hc1.heat_curve_max_flow → registry-disabled role entities
 for (const key of (q.get("disable") || "").split(",").filter(Boolean)) {
