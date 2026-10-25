@@ -111,6 +111,7 @@ This has been tested and confirmed working so far with:
  - Air Hawk 518
  - Air Hawk 616
  - Air Falcon 212
+ - Air Milan 1016 HM
 
 However, it is plausible that it could work with any Ochsner Heat Pump that uses the Ochsner Smart app.
 
