@@ -1021,6 +1021,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Supplement entities are runtime-only (never persisted in the entry).
         numbers = numbers + supplements["numbers"]
         selects = selects + supplements["selects"]
+        sensors = sensors + supplements["sensors"]
 
         runtime_controllers.append(
             {
@@ -1186,7 +1187,9 @@ async def _async_prepare_plant(
 
     caps = plant_lib.compute_capabilities(_current_values())
     role_ids = plant_lib.role_ids(caps)
-    extra = [oa for oa in dict.fromkeys(role_ids.values()) if oa not in coordinator.ids]
+    # (the energy totals too: a supplement sensor needs them answered and polled)
+    wanted = [*role_ids.values(), *plant_lib.energy_supplement_ids()]
+    extra = [oa for oa in dict.fromkeys(wanted) if oa not in coordinator.ids]
     if extra:
         coordinator.ids.extend(extra)
         try:
