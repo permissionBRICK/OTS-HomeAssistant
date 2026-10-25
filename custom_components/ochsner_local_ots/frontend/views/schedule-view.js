@@ -406,7 +406,7 @@ export class ScheduleView {
       }
       this.sel.clear();
       this.applying = false;
-      this._setNote("ok", `✓ ${I.t("tp_saved", { n: writes })}`, NOTE_MS);
+      this._setNote("ok", `✓ ${I.t(writes === 1 ? "tp_saved_one" : "tp_saved", { n: writes })}`, NOTE_MS);
     } catch (err) {
       if (this.disposed) return;
       this.applying = false;
@@ -555,7 +555,7 @@ export class ScheduleView {
     const busy = this.applying;
     return `<div class="pendbar" role="status"><div class="t">${esc(I.t("tp_pending"))}</div><ul>${lines.join("")}</ul>
       ${bad ? `<div class="note err">${esc(I.t("tp_too_many"))}</div>` : ""}
-      <div class="row"><span class="cost">${esc(busy ? I.t("tp_saving") : I.t("tp_writes", { n: writes }))}</span>
+      <div class="row"><span class="cost">${esc(busy ? I.t("tp_saving") : I.t(writes === 1 ? "tp_writes_one" : "tp_writes", { n: writes }))}</span>
       <div class="btns"><button class="btn" data-act="tpdiscard"${busy ? " disabled" : ""}>${esc(I.t("discard"))}</button>
       <button class="btn primary" data-act="tpapply"${busy || bad || ctx.disabled ? " disabled" : ""}>${esc(I.t("apply"))}</button></div></div></div>`;
   }

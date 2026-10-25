@@ -60,19 +60,25 @@ To enter a new address yourself, open **Settings → Devices & services → Ochs
   <img src="docs/images/mobile-cooling-hot-water-light.png" alt="Heat pump view on a phone for a plant with cooling and a hot water tank" width="45%">
 </p>
 
-The last setup step asks whether to show the **Heat pump** view in the sidebar. It contains three parts, which are also available as separate cards in the dashboard card picker (search for "Ochsner"):
+The last setup step asks whether to show the **Heat pump** view in the sidebar. It contains these cards, which are also available on their own in the dashboard card picker (search for "Ochsner"):
 
 - **Plant schematic:** outdoor unit, buffer tank, hot water tank and heating circuits, with live temperatures. The pipes from the heat pump move only while it heats, cools, makes hot water or defrosts, and a circuit's pipe only while its pump runs; the feed pipe moves only as far as the last running circuit. They take the colour of the current mode.
-- **Controls:** heat pump Auto/Off, and for each heating circuit Komfort/Eco/Off and its room setpoints (−/+, in 0.5 K steps). The big stepper is the setpoint of the selected mode: the normal (day) setpoint in Komfort, the reduced setpoint in Eco or the old "Reduziert" program. The other one is in the small stepper below it: the night setpoint in Komfort (the time program switches to it at night), the normal one in Eco and Reduziert. Wide tiles label it Night or Normal; on phones the label is left out to save a row. The one not in effect right now is greyed out. Circuits that can cool show their cooling setpoints while they cool and also get Heat/Auto/Cool. A temporary correction set in the Ochsner app shows as a chip that resets it to 0. The hot water section has its mode, setpoint and a Boost button. Circuits with a room sensor show the room temperature and humidity, and circuits that can cool also show the dew point.
-- **Heating curve and efficiency:** the heating curve of each circuit with today's operating point, and the last 24 hours of heat output split into electricity and ambient heat.
+- **Controls:** heat pump Auto/Off, and for each heating circuit Komfort/Eco/Off and its room setpoints (−/+, in 0.5 K steps). A circuit shows only the setpoints its mode uses: the night setpoint in Eco and the old "Reduziert" program, the normal (day) setpoint in the manual "Normal" program. In Komfort the circuit follows its time program: with a night setback it shows the normal setpoint, the night setpoint in a small stepper below it and a bar with today's program ("Normal until 20:00"); the one not in effect right now is greyed out. Without a night setback Komfort only uses the normal setpoint, and the tile offers to **set up a time program**. Circuits that can cool show their cooling setpoints while they cool and also get Heat/Auto/Cool. A temporary correction set in the Ochsner app shows as a chip that resets it to 0. The hot water section has its mode, setpoint and a Boost button. Circuits with a room sensor show the room temperature and humidity, and circuits that can cool also show the dew point.
+- **Time program:** when each circuit runs at its normal setpoint in Komfort; the rest of the day it runs at the night setpoint. A week grid per circuit; tap a day (or several) and drag the edges or type the times. The controller allows six switch points per day, which is up to three normal periods. Starting points for circuits without a night setback, copying a week to other circuits.
+- **Heating curve:** the heating curve of each circuit with today's operating point.
+- **Energy:** the last 24 hours of heat output split into electricity and ambient heat, with COP, cycles and the yearly performance factor.
 
 The view adapts to your plant the same way the Ochsner app does. Circuits, cooling, hot water, the buffer tank, the auxiliary heater and the pool only appear if the controller reports them.
+
+**Editing the time program:** nothing is written until you press **Apply**. Only the switch points that differ from what the controller has stored are written, and the card shows how many writes that is. A program changed in the Ochsner app shows within 10 minutes.
 
 **Editing the heating curve:** drag the curve points, the heating limit or the maximum flow temperature, or move a focused point with the arrow keys. The chart shows the result at today's outdoor temperature. Nothing is written until you press **Apply**, and each changed value costs one controller write.
 
 **Protecting the controller's flash memory:** −/+ taps are sent as a single write once you stop tapping, and switching the heat pump off asks for confirmation. The controller recalculates its targets a few seconds after a change, so a correction through the thermostat entity made right after another change is sent once the controller has settled (up to 8 seconds).
 
 The integration also creates a **thermostat** (`climate`) entity for each heating circuit and, if the plant has one, a **water heater** entity with a hot water boost button. They work with Home Assistant's own thermostat and tile cards, voice assistants and HomeKit.
+
+**Energy dashboard:** the controller's energy counters are energy sensors. The ones for the current year and the lifetime totals keep long-term statistics, so you can add them under **Settings → Dashboards → Energy → Individual devices**, for example *Total electrical energy consumption, current year* (heating, hot water, cooling, defrosting and the auxiliary heater together). The controller counts in whole kWh, and the yearly counters restart on 1 January, which Home Assistant handles as a new meter cycle. Several of the per-purpose counters are disabled by default; enable them on the device page if you want them.
 
 **Settings:** open **Settings → Devices & services → Ochsner Local OTS → Configure** to hide the sidebar view or to switch the colours from your Home Assistant theme to the Ochsner app's palette.
 
@@ -81,8 +87,9 @@ The integration also creates a **thermostat** (`climate`) entity for each heatin
 Card example (YAML):
 
 ```yaml
-type: custom:ochsner-heatpump-card   # or ochsner-plant-card / ochsner-control-card / ochsner-efficiency-card
-view: all                            # all | plant | controls | efficiency
+type: custom:ochsner-heatpump-card   # or ochsner-plant-card / ochsner-control-card / ochsner-schedule-card /
+                                     #    ochsner-curve-card / ochsner-energy-card / ochsner-efficiency-card
+view: all                            # all | plant | controls | schedule | curve | energy | efficiency (curve + energy)
 color_scheme: auto                   # auto (integration setting) | ha | ochsner
 ```
 
