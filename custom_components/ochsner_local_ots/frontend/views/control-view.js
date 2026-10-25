@@ -545,7 +545,7 @@ export class ControlView {
     // One grid per tile; the tile's own width picks the arrangement (styles.js):
     // tiny = name|main, info|alt, chips; phone = name+info|main, chips|alt;
     // wide = name|main, chips|info|alt.
-    return `<div class="hc circuit" data-key="hc${n}"><div class="hcg"><div class="hcrow">
+    return `<div class="hc circuit" data-key="hc${n}"><div class="hcg${sp.alt ? "" : " noalt"}"><div class="hcrow">
         <button class="hcname"${more ? ` data-more="${esc(more)}"` : ""}>${this._badge(ctx, c, name)}<div><span class="nm">${esc(name)}</span><div class="sub" style="font-weight:400">${esc(this._statusLine(ctx, c))}</div></div></button>
         ${sp.main}</div>
       ${info}

@@ -223,9 +223,14 @@ export class ScheduleView {
         this._setTemplate(ctx, [...tpl, p]);
         return;
       }
-      case "tpall":
-        this._setTemplate(ctx, [[0, DAY]]);
-        return;
+      case "tpclear": {
+        // Remove the time program: every day Normal all day (no night setback).
+        if (!this._editable(ctx, n)) return;
+        for (let day = 0; day < 7; day++) this._stage(ctx, n, day, [[0, DAY]]);
+        this.sel.clear();
+        this.inputError = null;
+        break;
+      }
       case "tpdone":
         this.sel.clear();
         this.inputError = null;
@@ -528,7 +533,7 @@ export class ScheduleView {
     if (this.inputError) h += `<div class="note err" role="alert">${esc(this.inputError)}</div>`;
     h += `<div class="hint">${esc(I.t("tp_outside", { t: I.temp(sp.night) }))} ${esc(I.t("tp_midnight"))}</div>`;
     const others = [0, 1, 2, 3, 4, 5, 6].filter((d) => !this.sel.has(d));
-    h += `<div class="quick"><button class="btn sm" data-act="tpall"${dis}>${esc(I.t("tp_all_normal"))}</button>
+    h += `<div class="quick"><button class="btn sm" data-act="tpclear" title="${esc(I.t("tp_clear_title"))}"${dis}>${esc(I.t("tp_clear"))}</button>
       <select data-act="tpcopyfrom" aria-label="${esc(I.t("tp_copy_from"))}"${dis}><option value="">${esc(I.t("tp_copy_from"))}</option>${others.map((d) => `<option value="${d}">${esc(long[d])}</option>`).join("")}</select></div></div>`;
     return h;
   }
@@ -548,7 +553,8 @@ export class ScheduleView {
         const points = pointsFor(periods, prog ? prog.default : 0);
         if (points.length > SLOTS) bad = true;
         writes += writeCount(prog && prog.days ? prog.days[d] : null, points);
-        const text = periods.length ? periods.map(([s, e]) => `${hm(s)}–${hm(e)}`).join(", ") : I.t("tp_night_all_day");
+        const allDay = periods.length === 1 && periods[0][0] === 0 && periods[0][1] >= DAY;
+        const text = allDay ? I.t("tp_normal_all_day") : periods.length ? periods.map(([s, e]) => `${hm(s)}–${hm(e)}`).join(", ") : I.t("tp_night_all_day");
         if (!groups.has(text)) groups.set(text, []);
         groups.get(text).push(short[d]);
       }

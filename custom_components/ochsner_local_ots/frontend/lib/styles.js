@@ -126,6 +126,9 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 .hcg .modechips.preset { grid-area: chips; margin-top: 4px; }
 .hcg .modechips.season { grid-area: season; margin-top: 2px; }
 .hcg .note { grid-column: 1 / -1; margin-top: 2px; }
+/* No small setpoint (one setpoint mode) and no link in its place: the flow
+   moves over to its spot instead of hanging in the middle. */
+.hcg.noalt { grid-template-areas: "name main" "info info" "chips chips" "season season"; }
 /* The Nacht/Normal badge only fits on wide tiles; elsewhere the stepper's
    tooltip and label name the setpoint. */
 .hcg .sp.alt .spbadge { display: none; }
@@ -141,6 +144,7 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
    may give up a few px of its centring box but never pushes a button onto a new line. */
 @container hc (min-width: 285px) {
   .hcg { grid-template-areas: "name main" "info main" "row row" "season season"; row-gap: 2px; }
+  .hcg.noalt { grid-template-areas: "name main" "info main" "row row" "season season"; }
   .hcg .hcinfo { align-self: start; padding-left: 39px; }
   .hcg > .hcrow2 { grid-area: row; display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
   .hcg .modechips.preset { margin-top: 0; gap: 5px; flex: none; }
@@ -152,6 +156,7 @@ svg.plant .hit:focus-visible rect:first-child { stroke: var(--primary-color, #03
 @container hc (min-width: 500px) {
   .hcg { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px;
     grid-template-areas: "name name main" "chips info alt" "season season season"; }
+  .hcg.noalt { grid-template-areas: "name name main" "chips info info" "season season season"; }
   .hcg > .hcrow2 { display: contents; }
   .hcg .hcname, .hcg .sp.main { margin-bottom: 6px; }
   .hcg .hcinfo { justify-self: end; align-items: flex-end; text-align: right; align-self: center; padding-left: 0; }
