@@ -32,6 +32,9 @@ export class ScheduleView {
     this.copyOpen = false;
     this.copyTo = new Set();
     this.drag = null;
+    // Full dashboard: the card waits until a circuit has a night setback or
+    // a tile asks for it; once on screen it stays until closed.
+    this.shown = false;
     this._timers = new Set();
   }
 
@@ -54,6 +57,23 @@ export class ScheduleView {
     this.sel.clear();
     this.copyOpen = false;
     this.inputError = null;
+  }
+
+  /** Show the card (also on the full dashboard) with circuit n. */
+  reveal(n) {
+    this.shown = true;
+    this.select(n);
+  }
+
+  /** Full dashboard, nothing set up after all: put the card away, dropping staged edits. */
+  hide() {
+    this.shown = false;
+    this.pending.clear();
+    this.sel.clear();
+    this.copyOpen = false;
+    this.copyTo.clear();
+    this.inputError = null;
+    this.note = null;
   }
 
   hasPending(n) {
@@ -281,6 +301,9 @@ export class ScheduleView {
         this.inputError = null;
         this.note = null;
         break;
+      case "tphide":
+        this.card.closeSchedule();
+        return;
       case "tpapply":
         this._apply();
         return;
@@ -570,14 +593,22 @@ export class ScheduleView {
 
   render(ctx) {
     const { I } = ctx;
-    const head = (extra = "") => `<div class="hdr"><div><div class="ttl">${esc(I.t("tp_title"))}</div><div class="sub">${esc(I.t("tp_sub"))}</div></div>${extra}</div>`;
+    const head = (extra = "", close = "") => `<div class="hdr${close ? " closable" : ""}"><div><div class="ttl">${esc(I.t("tp_title"))}</div><div class="sub">${esc(I.t("tp_sub"))}</div></div>${extra}${close}</div>`;
     const s = ctx.schedules;
+    const all = ctx.config.view === "all";
     if (!s || !s.circuits) {
+      // Full dashboard: no card before it is known to be needed.
+      if (all && !this.shown) return "";
       if (s && s.error) return head() + `<div class="empty">${esc(I.t("tp_error"))}</div>`;
       return head() + `<div class="empty">${esc(I.t("tp_loading"))}</div>`;
     }
     const circuits = this._circuits(ctx);
     if (!circuits.length) return "";
+    // Full dashboard without a night setback on any circuit: only on request
+    // (a tile's "Set up time program"), and then closable.
+    const unused = all && !circuits.some((x) => hasNightSetback(this._program(ctx, x.index)));
+    if (unused && !this.shown) return "";
+    this.shown = true; // stays when the last setback is removed
     for (const n of [...this.pending.keys()]) if (!circuits.some((c) => c.index === n)) this.pending.delete(n);
     if (!circuits.some((c) => c.index === this.tab)) this.select(circuits[0].index);
     const c = circuits.find((x) => x.index === this.tab);
@@ -587,7 +618,8 @@ export class ScheduleView {
     const sp = this._setpoints(ctx, c);
     const targets = circuits.filter((x) => x.index !== n && this._editable(ctx, x.index));
     const copyBtn = targets.length && editable ? `<button class="btn sm" data-act="tpcopy" aria-expanded="${this.copyOpen}">${esc(I.t("tp_copy_to"))}</button>` : "";
-    let h = head(copyBtn) + ctx.banner;
+    const hideBtn = unused ? `<button class="x" data-act="tphide" aria-label="${esc(I.t("tp_hide"))}" title="${esc(I.t("tp_hide"))}"${this.applying ? " disabled" : ""}>✕</button>` : "";
+    let h = head(copyBtn, hideBtn) + ctx.banner;
     if (this.copyOpen && targets.length) {
       h += `<div class="copyrow"><span class="sub">${esc(I.t("tp_copy_week"))}</span>${targets.map((x) => `<button class="mc${this.copyTo.has(x.index) ? " on sel" : ""}" data-act="tpcopytarget" data-c="${x.index}" aria-pressed="${this.copyTo.has(x.index)}">${esc(circuitName(x, ctx.live))}</button>`).join("")}
         <button class="btn sm primary" data-act="tpcopygo"${this.copyTo.size ? "" : " disabled"}>${esc(I.t("tp_copy"))}</button></div>`;

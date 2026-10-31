@@ -1,6 +1,7 @@
 // Time program in a real browser: the circuit tiles' rules (both setpoints and
-// today's bar only in Komfort with a night setback), the week grid, editing by
-// keyboard, mouse and typing, presets, copying, Apply/Discard.
+// today's bar only in Komfort with a night setback), when the full dashboard
+// shows the card, the week grid, editing by keyboard, mouse and typing,
+// presets, copying, Apply/Discard.
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import { CHROME, browser, on, sleep, writes } from "./harness/browser-helpers.mjs";
@@ -13,6 +14,8 @@ after(async () => { if (b) await b.close(); });
 const tile = (n) => `.hc[data-key="hc${n}"]`;
 const calls = (page, type = "ochsner_local_ots/schedule/set") => page.eval(`(harness.fake.conn.scheduleCalls || []).filter((m) => m.type === ${JSON.stringify(type)})`);
 const count = (page, c, sel) => page.eval(`${c.root}.querySelectorAll(${JSON.stringify(sel)}).length`);
+const hidden = (page, c) => page.eval(`${c.root}.querySelector(".card-schedule").hidden`);
+const tabOn = (page, c) => page.eval(`${c.root}.querySelector(".card-schedule .tabs button.on").dataset.c`);
 const setValues = (page, vals) => page.eval(`(() => { Object.assign(harness.plant.values, ${JSON.stringify(vals)}); harness.plant.push(); return true; })()`);
 
 test("Komfort with a night setback: both setpoints and today's bar; Reduziert: one setpoint, no bar", { skip }, async () => {
@@ -28,6 +31,7 @@ test("Komfort with a night setback: both setpoints and today's bar; Reduziert: o
   assert.equal(await count(page, c, ".card-schedule .tabs button"), 3);
   assert.equal(await count(page, c, ".card-schedule .drow"), 7);
   assert.equal(await count(page, c, ".card-schedule .blk"), 7);
+  assert.ok(!(await c.exists(".card-schedule [data-act='tphide']")), "nothing to close");
   assert.match(await c.text(".card-schedule .drow[data-d='0'] .blk"), /04:00–20:00/);
   // Wintergarten runs Reduziert: its tab explains that the program is paused
   await c.click(".card-schedule .tabs button[data-c='3']");
@@ -40,27 +44,94 @@ test("Komfort with a night setback: both setpoints and today's bar; Reduziert: o
   assert.deepEqual(page.errors, []);
 });
 
-test("Komfort without a night setback: one setpoint and the set-up link, which reveals both and opens the program", { skip }, async () => {
+test("no night setback anywhere: the full dashboard shows the card only once a tile's set-up link asks for it", { skip }, async () => {
   const page = await b.open("variant=house&view=all&latency=30&schedule=none&lang=en", { width: 1280, height: 1600 });
   const c = on(page);
+  assert.equal(await hidden(page, c), true, "no card while nothing is set up");
   assert.ok(!(await c.exists(`${tile(1)} .sp.alt .stepper`)), "no night setpoint");
   assert.match(await c.text(`${tile(1)} .tplink`), /Set up time program/);
   assert.ok(!(await c.exists(`${tile(1)} .tstrip`)), "no bar");
-  await c.click(".card-schedule .tabs button[data-c='3']");
   await c.click(`${tile(1)} .tplink`);
   await sleep(100);
+  assert.equal(await hidden(page, c), false, "the link shows the card");
   assert.ok(await c.exists(`${tile(1)} .sp.alt .stepper`), "night setpoint shown once asked");
   assert.match(await c.text(`${tile(1)} .tstrip`), /No night setback yet/);
   assert.ok(!(await c.exists(`${tile(2)} .sp.alt .stepper`)), "only the circuit asked for");
-  assert.equal(await page.eval(`${c.root}.querySelector(".card-schedule .tabs button.on").dataset.c`), "1");
+  assert.equal(await tabOn(page, c), "1");
   assert.match(await c.text(".card-schedule .tpempty"), /Fußboden runs at Normal 21\.5° around the clock/);
-  // a preset stages the whole week; Discard drops it, nothing written
+  // a preset stages the whole week; nothing is written yet
   await c.click(".card-schedule [data-act='tppreset'][data-p='night']");
   assert.match(await c.text(".card-schedule .pendbar"), /Fußboden · Mon, Tue, Wed, Thu, Fri, Sat, Sun: 06:00–22:00/);
   assert.match(await c.text(".card-schedule .pendbar .cost"), /28 controller writes/);
+  // feed updates, a fresh read of the programs and the clock tick leave the card and the edits alone
+  await setValues(page, {});
+  await page.eval("harness.el.store.fetchSchedules(harness.plant.plantId, true).then(() => true)");
+  await page.eval("harness.el.requestRender(); true");
+  await sleep(80);
+  assert.equal(await hidden(page, c), false);
+  assert.ok(await c.exists(".card-schedule .pendbar"), "still pending");
+  // Discard drops the edits but keeps the card
   await c.click(".card-schedule [data-act='tpdiscard']");
   assert.ok(!(await c.exists(".card-schedule .pendbar")));
+  assert.equal(await hidden(page, c), false, "Discard keeps the card");
+  // ✕ puts it away with what was staged, and folds the tile back to its link
+  await c.click(".card-schedule [data-act='tppreset'][data-p='workdays']");
+  assert.ok(await c.exists(".card-schedule .pendbar"));
+  assert.equal(await page.eval(`${c.root}.querySelector("[data-act='tphide']").getAttribute("aria-label")`), "Hide time program");
+  await c.click(".card-schedule [data-act='tphide']");
+  assert.equal(await hidden(page, c), true, "closed");
+  assert.ok(!(await c.exists(`${tile(1)} .sp.alt .stepper`)) && (await c.exists(`${tile(1)} .tplink`)), "tile back to the link");
+  // asked again, from the other circuit: its tab, nothing pending
+  await c.click(`${tile(2)} .tplink`);
+  await sleep(100);
+  assert.equal(await hidden(page, c), false);
+  assert.equal(await tabOn(page, c), "2");
+  assert.ok(!(await c.exists(".card-schedule .pendbar")), "the closed edits are gone");
   assert.deepEqual(await calls(page), []);
+  assert.deepEqual(page.errors, []);
+});
+
+test("full dashboard: a saved night setback keeps the card; removing the last one leaves it open until closed", { skip }, async () => {
+  const page = await b.open("variant=house&view=all&latency=30&schedule=none&lang=en", { width: 1280, height: 1600 });
+  const c = on(page);
+  await c.click(`${tile(1)} .tplink`);
+  await sleep(100);
+  await c.click(".card-schedule [data-act='tppreset'][data-p='night']");
+  await c.click(".card-schedule [data-act='tpapply']");
+  await sleep(250);
+  assert.equal((await calls(page)).length, 1);
+  assert.match(await c.text(".card-schedule .note.ok"), /Time program saved/);
+  assert.ok(!(await c.exists(".card-schedule [data-act='tphide']")), "a night setback exists: no ✕");
+  assert.match(await c.text(`${tile(1)} .tstrip`), /(Normal|Night) until/);
+  // back to Normal all day: the card stays on screen, now with its ✕
+  await c.click(".card-schedule .drow[data-d='0']");
+  await c.click(".card-schedule [data-act='tpclear']");
+  await c.click(".card-schedule [data-act='tpapply']");
+  await sleep(250);
+  assert.equal((await calls(page)).length, 2);
+  assert.equal(await hidden(page, c), false);
+  assert.ok(await c.exists(".card-schedule .tpempty"));
+  await c.click(".card-schedule [data-act='tphide']");
+  assert.equal(await hidden(page, c), true);
+  assert.deepEqual(page.errors, []);
+});
+
+test("the separate time program card shows without a night setback, with no ✕", { skip }, async () => {
+  const page = await b.open("variant=house&view=schedule&latency=30&schedule=none&lang=en", { width: 760, height: 1200 });
+  const c = on(page);
+  assert.equal(await hidden(page, c), false);
+  assert.ok(await c.exists(".tpempty"));
+  assert.ok(!(await c.exists("[data-act='tphide']")));
+  assert.deepEqual(page.errors, []);
+});
+
+test("the panel opened from a tile on another dashboard shows the card for that circuit", { skip }, async () => {
+  const page = await b.open("variant=house&view=panel&latency=30&schedule=none&lang=en#time-program-2", { width: 1280, height: 1600 });
+  const c = on(page, 'harness.el.shadowRoot.querySelector("ochsner-heatpump-card").shadowRoot');
+  await sleep(100);
+  assert.equal(await hidden(page, c), false);
+  assert.equal(await tabOn(page, c), "2");
+  assert.ok(await c.exists(".card-schedule [data-act='tphide']"));
   assert.deepEqual(page.errors, []);
 });
 

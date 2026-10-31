@@ -240,13 +240,20 @@ export class OchsnerHeatpumpCard extends HTMLElement {
   openSchedule(n) {
     const view = this._views.schedule;
     if (view) {
-      view.select(n);
+      view.reveal(n);
       this.requestRender();
       const box = this._containers.schedule && this._containers.schedule.closest("ha-card");
       if (box && box.scrollIntoView) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       return;
     }
     if (this.canOpenSchedule()) navigate(`/${PANEL_PATH}#time-program-${n}`);
+  }
+
+  /** Full dashboard: hide the time program again and fold the tiles that asked for it. */
+  closeSchedule() {
+    if (this._views.schedule) this._views.schedule.hide();
+    if (this._views.controls) this._views.controls.expanded.clear();
+    this.requestRender();
   }
 
   /** Panel: open circuit n's time program as soon as it is rendered. */
@@ -372,7 +379,7 @@ export class OchsnerHeatpumpCard extends HTMLElement {
     };
     if (plant.flash_writes) ctx.state(plant.flash_writes);
     if (this._openCircuit !== null && this._views.schedule) {
-      this._views.schedule.select(this._openCircuit);
+      this._views.schedule.reveal(this._openCircuit);
       const n = this._openCircuit;
       this._openCircuit = null;
       setTimeout(() => this.openSchedule(n), 0);

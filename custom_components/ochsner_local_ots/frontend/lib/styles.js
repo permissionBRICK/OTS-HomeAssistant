@@ -26,6 +26,8 @@ ha-card, .card {
   overflow: hidden;
 }
 .all { display: flex; flex-direction: column; gap: var(--ohp-gap, 12px); container-type: inline-size; }
+/* a tile's time program link scrolls here: clear of the sticky toolbar */
+.card-schedule { scroll-margin-top: calc(var(--header-height, 56px) + 8px); }
 .bc { display: grid; grid-template-columns: 1fr; gap: var(--ohp-gap, 12px); align-items: start; }
 .bc > .col { display: flex; flex-direction: column; gap: var(--ohp-gap, 12px); min-width: 0; }
 @container (min-width: 880px) { .bc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -309,7 +311,11 @@ svg.ch .flab text { font-size: 12px; fill: var(--ohp-ink); font-weight: 500; }
 .tpeditor .pn i { width: 10px; height: 10px; border-radius: 3px; background: var(--tp-normal, var(--ohp-heat)); }
 .tpeditor input[type=time], .tpeditor select { font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--ohp-line); background: var(--ohp-card); color: var(--ohp-ink); min-height: 34px; color-scheme: inherit; }
 .tpeditor select { font-size: 12.5px; }
-.tpeditor .x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--ohp-ink2); cursor: pointer; }
+.tpeditor .x, .hdr > .x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--ohp-ink2); cursor: pointer; }
+.hdr.closable { position: relative; padding-right: 36px; }
+.hdr > .x { position: absolute; top: -4px; right: -6px; }
+.hdr > .x:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.hdr > .x:disabled { opacity: .55; cursor: default; }
 .tpeditor .addrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .addp { font-size: 12.5px; color: var(--primary-color, #03a9f4); background: none; border: 0; padding: 6px 0; cursor: pointer; min-height: 30px; }
 .addp:disabled { color: var(--ohp-ink2); cursor: default; opacity: .6; }
