@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.sensor import SensorStateClass
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -32,6 +33,8 @@ from .const import (
 from .coordinator import ClimatixCoordinator
 from .energy import energy_classes
 from .flash_warnings import async_maybe_create_flash_wear_notifications
+from .plant_entity import main_device_info
+from . import settings_backup
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -378,6 +381,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
         # Always add a write-counter sensor per controller.
         entities.append(ClimatixGenericWriteCounterSensor(entry_id=entry.entry_id, host=host, base_url=base_url, device_name=device_name, device_model=device_model, device_serial=device_serial, device_sw_version=device_sw_version))
+        entities.append(OchsnerLastSettingsBackupSensor(ctrl))
 
         # Diagnostics: read counters/rates per controller.
         entities.append(
@@ -607,3 +611,53 @@ class ClimatixGenericReadRateSensor(CoordinatorEntity[ClimatixCoordinator], Sens
         return {
             "values_per_min_5m": values_per_min,
         }
+
+
+class OchsnerLastSettingsBackupSensor(SensorEntity):
+    """When the settings were last backed up (and what the backup holds)."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "last_settings_backup"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:content-save-cog"
+    _attr_should_poll = False
+
+    def __init__(self, ctrl: Dict[str, Any]) -> None:
+        self._key = str(ctrl["host"])
+        self._attr_unique_id = f"{self._key}:last_settings_backup".replace("=", "")
+        self._attr_device_info = main_device_info(ctrl)
+
+    def _latest(self) -> Optional[Dict[str, Any]]:
+        store = settings_backup.loaded_store(self.hass) if self.hass else None
+        return store.latest(self._key) if store else None
+
+    @property
+    def native_value(self):
+        latest = self._latest()
+        return settings_backup.created_at(latest) if latest else None
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        store = settings_backup.loaded_store(self.hass) if self.hass else None
+        latest = store.latest(self._key) if store else None
+        if latest is None:
+            return {"backups": 0}
+        return {
+            "backups": len(store.backups(self._key)),
+            "source": latest.get("source"),
+            "settings": len(latest.get("values") or {}),
+            "time_programs": len(latest.get("schedules") or {}),
+        }
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        @callback
+        def _changed(key: str) -> None:
+            if key == self._key:
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, settings_backup.SIGNAL_BACKUPS_CHANGED, _changed)
+        )

@@ -30,7 +30,7 @@ from homeassistant.util import slugify
 
 from custom_components import ochsner_local_ots as integration
 from custom_components.ochsner_local_ots import coordinator as coordinator_mod
-from custom_components.ochsner_local_ots import dashboard, plant_api
+from custom_components.ochsner_local_ots import dashboard, plant_api, settings_backup
 from custom_components.ochsner_local_ots import plant as P
 from custom_components.ochsner_local_ots.catalog import load_catalog
 from custom_components.ochsner_local_ots.const import (
@@ -181,8 +181,17 @@ def cooling_hc2(fake):
     fake.set("ESMOlAAAAAE=", 27 | 4)
 
 
-async def setup_plant(hass, monkeypatch, fake_controller, mutate=None, options=None):
-    """Scan the fake controller like onboarding does, then run real setup."""
+async def setup_plant(hass, monkeypatch, fake_controller, mutate=None, options=None, auto_backup=False):
+    """Scan the fake controller like onboarding does, then run real setup.
+
+    The automatic settings backup (a minute after setup) is left out unless
+    ``auto_backup``: tests unload without the config entry, which would
+    cancel it."""
+    if not auto_backup:
+        async def no_backup(hass, ctrl):
+            return None
+
+        monkeypatch.setattr(settings_backup, "async_auto_backup", no_backup)
     fake = fake_controller()
     if mutate:
         mutate(fake)
@@ -267,7 +276,9 @@ async def test_setup_polls_present_roles_and_adds_entities(hass, monkeypatch, fa
     try:
         platforms = plant.runtime["platforms"]
         assert "climate" in platforms
-        assert "water_heater" not in platforms and "button" not in platforms
+        assert "water_heater" not in platforms
+        assert "button" in platforms  # "Back up settings" on every plant
+        assert f"{KEY}:button:dhw_boost" not in plant.entities
         coordinator = plant.ctrl["coordinator"]
         ids = set(coordinator.ids)
         for role, oid in P.role_ids(P.compute_capabilities(plant.fake.values)).items():
@@ -990,7 +1001,7 @@ async def test_unload_only_unloads_loaded_platforms(hass, monkeypatch, fake_cont
     monkeypatch.setattr(hass.config_entries, "async_unload_platforms", unload)
     assert await integration.async_unload_entry(hass, plant.entry)
     platforms = unload.await_args.args[1]
-    assert "climate" in platforms and "water_heater" not in platforms and "button" not in platforms
+    assert "climate" in platforms and "water_heater" not in platforms and "button" in platforms
     assert platforms == plant.forward.await_args.args[1]
 
 
