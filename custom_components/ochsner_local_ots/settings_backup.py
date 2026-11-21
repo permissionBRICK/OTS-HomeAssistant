@@ -87,8 +87,10 @@ class BackupError(HomeAssistantError):
 _SETTING_KINDS = frozenset({(0, 256), (1, 256), (2, 256), (2, 290), (3, 12361), (4, 256)})
 
 # Writable points of a setting kind that are no user setting: the emergency
-# mode points report or confirm a fault state.
-_NOT_A_SETTING = re.compile(r"(?i)emergency|notbetrieb")
+# mode points report or confirm a fault state, and party and holiday mode are
+# temporary programs (restoring a backup taken during one would start it
+# again; their duration and temperature parameters are settings).
+_NOT_A_SETTING = re.compile(r"(?i)emergency|notbetrieb|party\s*mod|partymodus|holiday|urlaub|ferien")
 
 _PLATFORM_KEYS = (("numbers", "number"), ("selects", "select"), ("switches", "switch"), ("texts", "text"))
 
@@ -102,6 +104,21 @@ def _season_ids() -> frozenset:
 
 
 _ALWAYS_SETTINGS = _season_ids()
+
+
+def _role_ids(*keys: str) -> frozenset:
+    return frozenset(
+        P.canonical_id(P.circuit_role_ids(n)[P.hc_key(n, key)]) for n in range(1, P.HC_COUNT + 1) for key in keys
+    )
+
+
+_NEVER_SETTINGS = _role_ids("party_on")
+
+# The heating and the cooling curve's points share their names ("Fußpunkt
+# Außentemperatur"): labels say which curve they belong to.
+_CURVE_POINTS = ("base_outdoor", "base_flow", "norm_outdoor", "norm_flow")
+_HEATING_CURVE = _role_ids(*(f"heat_curve_{k}" for k in _CURVE_POINTS))
+_COOLING_CURVE = _role_ids(*(f"cool_curve_{k}" for k in _CURVE_POINTS))
 
 
 @dataclass(frozen=True)
@@ -133,6 +150,8 @@ def is_setting(cfg: Mapping[str, Any], catalog: DiscoveryCatalog) -> bool:
         return False
     if rid in _ALWAYS_SETTINGS:
         return True
+    if rid in _NEVER_SETTINGS:
+        return False
     names = [str(cfg.get("name") or "")]
     rec = catalog.points_by_id.get(rid)
     if rec is not None:
@@ -314,6 +333,7 @@ _WORDS = {
         "rejected": "the heat pump rejected the value", "kept": "the heat pump kept {value}",
         "not_restored": "not restored", "time_program_of": "Time program of circuit {n}",
         "too_many_points": "needs more than six switch points",
+        "heating_curve": "heating curve", "cooling_curve": "cooling curve",
         "skipped": "Left as they are (this plant lacks them, or they cannot be read right now): {names}.",
         "failed": "Not restored:",
     },
@@ -325,6 +345,7 @@ _WORDS = {
         "rejected": "die Wärmepumpe hat den Wert abgelehnt", "kept": "die Wärmepumpe hat {value} behalten",
         "not_restored": "nicht wiederhergestellt", "time_program_of": "Zeitprogramm von Heizkreis {n}",
         "too_many_points": "braucht mehr als sechs Schaltpunkte",
+        "heating_curve": "Heizkurve", "cooling_curve": "Kühlkurve",
         "skipped": "Bleiben unverändert (gibt es hier nicht, oder sie sind gerade nicht lesbar): {names}.",
         "failed": "Nicht wiederhergestellt:",
     },
@@ -377,6 +398,9 @@ def setting_name(setting: Optional[Setting], key: str, catalog: DiscoveryCatalog
     """'Circuit, name' of a setting (the catalog name when the plant lacks it)."""
     if setting is not None:
         name = str(setting.cfg.get("name") or key)
+        curve = "heating_curve" if key in _HEATING_CURVE else "cooling_curve" if key in _COOLING_CURVE else None
+        if curve and "kurve" not in name.lower() and "curve" not in name.lower():
+            name = f"{name} ({_words(language)[curve]})"
         circuit = str(setting.cfg.get("heating_circuit_name") or "").strip()
         return f"{circuit}, {name}" if circuit else name
     rec = catalog.points_by_id.get(key)

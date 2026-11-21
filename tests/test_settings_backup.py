@@ -87,6 +87,18 @@ async def test_settings_are_user_settings_only(hass, monkeypatch, fake_controlle
         assert P.canonical_id(SEASON1) in found
         for oid, what in NOT_SETTINGS.items():
             assert P.canonical_id(oid) not in found, what
+        # Temporary programs from an old bundle are no settings either.
+        for name, oid in (("Party mode heating circuit 1", P.circuit_role_ids(1)["hc1.party_on"]),
+                          ("Holiday mode heating circuit 1", "AiPkM458AAE=")):
+            cfg = {"name": name, "read_id": oid, "write_id": oid, "options": {"Off": 0, "On": 1}}
+            assert not B.is_setting(cfg, load_catalog()), name
+        # The two curves' points share their names; labels tell them apart.
+        catalog = load_catalog()
+        base = {k: B.setting_name(found.get(P.canonical_id(o)), P.canonical_id(o), catalog, "de")
+                for k, o in (("heat", P.circuit_role_ids(1)["hc1.heat_curve_base_outdoor"]),
+                             ("cool", P.circuit_role_ids(1)["hc1.cool_curve_base_outdoor"]))}
+        assert base == {"heat": "Fußboden, Fußpunkt Außentemperatur (Heizkurve)",
+                        "cool": "Fußboden, Fußpunkt Außentemperatur (Kühlkurve)"}
         # Nothing disabled by default (service, tests, network, privacy) but the season.
         disabled = {
             P.canonical_id(c["read_id"])
