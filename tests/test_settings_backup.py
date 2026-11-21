@@ -363,11 +363,16 @@ async def test_plan_skips_settings_this_plant_lacks(hass, monkeypatch, fake_cont
     plant = await setup_plant(hass, monkeypatch, fake_controller)
     try:
         backup, _ = await B.async_create_backup(hass, plant.ctrl, B.SOURCE_MANUAL)
-        foreign = dict(backup, values={**backup["values"], P.canonical_id("ASMv1XXZAAE="): 52.0})  # a DHW setpoint
+        foreign = dict(backup, values={
+            **backup["values"],
+            P.canonical_id("ASMv1XXZAAE="): 52.0,  # a DHW setpoint: no DHW here
+            P.canonical_id("AyKaCCiJAAE="): 1.8,  # system pressure: an entity, but no setting
+        })
         plant.fake.drop(INERTIA)  # unreadable right now
         plan = await B.async_plan_restore(hass, plant.ctrl, foreign)
         assert plan.changes == []
-        assert len(plan.skipped) == 2 and "Gebäudeträgheit" in plan.skipped
+        assert len(plan.skipped) == 3 and "Gebäudeträgheit" in plan.skipped
+        assert not [n for n in plan.skipped if n.endswith("=")]  # names, not ids
     finally:
         await teardown(hass, plant)
 

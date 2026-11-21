@@ -628,6 +628,16 @@ class RestoreResult:
     writes: int = 0
 
 
+def _entity(ctrl: Mapping[str, Any], key: str) -> Optional[Setting]:
+    """Any entity of the plant on ``key`` (for the name of a backed-up value
+    that is no setting any more)."""
+    for list_key, platform in _PLATFORM_KEYS:
+        for cfg in ctrl.get(list_key) or []:
+            if isinstance(cfg, Mapping) and P.canonical_id(cfg.get("read_id")) == key:
+                return Setting(key, str(cfg.get("read_id")), str(cfg.get("write_id") or ""), platform, cfg)
+    return None
+
+
 def plan_restore(
     ctrl: Mapping[str, Any],
     backup: Mapping[str, Any],
@@ -645,7 +655,7 @@ def plan_restore(
     for raw_key, target in (backup.get("values") or {}).items():
         key = P.canonical_id(raw_key)
         setting = found.get(key)
-        name = setting_name(setting, key, catalog, language)
+        name = setting_name(setting or _entity(ctrl, key), key, catalog, language)
         if setting is None or key not in values:
             plan.skipped.append(name)
             continue
