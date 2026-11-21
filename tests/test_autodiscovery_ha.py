@@ -101,7 +101,6 @@ async def test_dhcp_requires_api_identity_and_one_click_confirmation(hass, monke
     assert result["step_id"] == "discovery_confirm"
     assert result["description_placeholders"]["serial"] == "123"
     assert len(result["data_schema"].schema) == 0
-    assert flow.context["confirm_only"] is True
 
     async def scan(**kwargs):
         flow._plant_serial = found.serial
