@@ -9,6 +9,7 @@
     "network",
     "dhcp",
     "frontend",
+    "file_upload",
     "http",
     "panel_custom",
     "websocket_api"

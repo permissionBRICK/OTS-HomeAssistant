@@ -94,6 +94,7 @@ from .flash_warnings import async_maybe_create_flash_wear_notifications
 from .local_scan import async_local_scan_merge, async_relocalize_controllers, resolve_language
 from . import plant as plant_lib
 from . import plant_api
+from . import settings_backup
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -1059,6 +1060,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "write_counts": write_counts,
         "write_count_entities": write_count_entities,
     }
+    # The settings backups (the button, the last-backup sensor, the restore).
+    await settings_backup.async_get_store(hass)
 
     setups = []
     # Always set up sensor platform (write-counter sensor is always present).
@@ -1078,7 +1081,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if any(c["circuits"] for c in caps):
         setups.append("climate")
     if any(c["dhw"] for c in caps):
-        setups.extend(["water_heater", "button"])
+        setups.append("water_heater")
+    # "Back up settings" on every controller (and the DHW boost).
+    if runtime_controllers:
+        setups.append("button")
     # Unload exactly what this entry loaded, even if its saved catalog changes.
     hass.data[DOMAIN][entry.entry_id]["platforms"] = list(setups)
     if setups:
@@ -1087,6 +1093,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _async_watch_sections(hass, entry, rc["coordinator"], rc["plant"]["caps"])
         for rc in runtime_controllers
     ]
+    # One automatic settings backup per load, once the startup polls are done
+    # (stored only if something changed since the last backup).
+    for rc in runtime_controllers:
+        entry.async_create_background_task(
+            hass, settings_backup.async_auto_backup(hass, rc), f"{DOMAIN} settings backup"
+        )
     await _async_dashboard_changed(hass)
     return True
 

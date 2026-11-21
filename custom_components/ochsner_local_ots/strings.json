@@ -94,7 +94,8 @@
           "rescan_now": "Rescan now (add missing entities)",
           "local_scan_now": "Local catalog scan now (accountless; add missing entities)",
           "redownload_bundle": "Re-download bundle from OTS (add missing entities)",
-          "configure_entities": "Configure sensor/number device class and unit"
+          "configure_entities": "Configure sensor/number device class and unit",
+          "restore_settings": "Restore heat pump settings from a backup"
         }
       },
       "entity_override_select": {
@@ -125,6 +126,37 @@
           "ots_user": "Ochsner username",
           "ots_pass": "Ochsner password"
         }
+      },
+      "restore_select": {
+        "title": "Restore heat pump settings",
+        "description": "Choose a backup of the heat pump's settings ({count} stored), or upload a backup file. The **Download diagnostics** file of the heat pump's device page contains every stored backup.\n\nThe next page shows what differs. Nothing is written before you confirm it.",
+        "data": {
+          "backup": "Stored backup",
+          "file": "Or upload a backup file",
+          "other_controller": "Restore it anyway: this controller replaced the one the file comes from"
+        }
+      },
+      "restore_file": {
+        "title": "Choose a backup from the file",
+        "description": "The file contains {count} backups.",
+        "data": {
+          "backup": "Backup"
+        }
+      },
+      "restore_confirm": {
+        "title": "Settings that differ",
+        "description": "These {count} settings differ from the backup of {backup}. Restoring the ticked ones takes up to {writes} writes to the controller's flash memory. The current settings are backed up first, so you can go back.\n\n{skipped}",
+        "data": {
+          "changes": "Restore"
+        }
+      },
+      "restore_nothing": {
+        "title": "Nothing to restore",
+        "description": "The heat pump already has every setting of the backup of {backup}.\n\n{skipped}"
+      },
+      "restore_done": {
+        "title": "Settings restored",
+        "description": "{restored} settings restored with {writes} writes. The settings from before the restore are kept as a backup marked \"before a restore\".\n\n{failed}"
       }
     },
     "error": {
@@ -138,7 +170,20 @@
       "no_entities": "The downloaded bundle produced no entities; nothing was changed.",
       "no_controllers": "This entry has no controllers to update.",
       "no_bundle_key": "No stored bundle key found for this controller.",
-      "no_ots_ids": "The OTS config/site id is missing for this controller."
+      "no_ots_ids": "The OTS config/site id is missing for this controller.",
+      "invalid_file": "This file contains no settings backup of this integration.",
+      "other_controller": "The file was made on another heat pump controller. If this controller replaced that one, tick the box below and upload the file again.",
+      "other_model": "The file comes from a heat pump of another model, so it cannot be restored here.",
+      "no_backup": "Choose a backup or upload a backup file.",
+      "no_changes_selected": "Tick at least one setting, or close this dialog to restore nothing."
+    },
+    "progress": {
+      "restore": "Restoring the settings. This takes about a second per setting."
+    },
+    "abort": {
+      "restore_not_loaded": "The integration is not running, so the heat pump cannot be read. Try again once it has started.",
+      "restore_read_failed": "Reading the heat pump's settings failed. Nothing was written. Try again later.",
+      "restore_failed": "The restore stopped because the heat pump could not be reached. Settings written until then stay. The settings from before the restore are kept as a backup marked \"before a restore\"."
     }
   },
   "issues": {
@@ -151,6 +196,9 @@
     "button": {
       "dhw_boost": {
         "name": "DHW boost"
+      },
+      "settings_backup": {
+        "name": "Back up settings"
       }
     },
     "climate": {
@@ -167,6 +215,28 @@
       },
       "read_rate_5m": {
         "name": "Read rate (5m)"
+      },
+      "last_settings_backup": {
+        "name": "Last settings backup",
+        "state_attributes": {
+          "backups": {
+            "name": "Backups"
+          },
+          "source": {
+            "name": "Source",
+            "state": {
+              "automatic": "Automatic",
+              "manual": "Manual",
+              "before_restore": "Before a restore"
+            }
+          },
+          "settings": {
+            "name": "Settings"
+          },
+          "time_programs": {
+            "name": "Time programs"
+          }
+        }
       }
     },
     "water_heater": {
@@ -199,6 +269,9 @@
     },
     "room_target_unknown": {
       "message": "The heating circuit's room target is unknown (the heat pump did not report it). Nothing was written; please try again later."
+    },
+    "backup_failed": {
+      "message": "Reading the settings from the heat pump failed, so no backup was made. Try again later."
     }
   }
 }

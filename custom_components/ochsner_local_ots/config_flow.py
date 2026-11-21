@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -8,6 +9,8 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
+from homeassistant.components.file_upload import process_uploaded_file
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er, selector
 
 from .const import (
@@ -71,7 +74,8 @@ from .const import (
 )
 
 from .bundle_refresh import async_redownload_bundles_and_merge
-from .catalog import explicit_language
+from .catalog import explicit_language, normalize_language
+from . import settings_backup
 from .autodiscovery import (
     async_find_controllers, async_update_address, connection_from_controller,
     controllers_from_entry,
@@ -533,6 +537,17 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             self._config_entry = config_entry
 
         self._pending_options: Dict[str, Any] = {}
+        # Settings restore: the chosen controller and backup, the backups of
+        # an uploaded file, the planned differences and the running restore.
+        self._restore_ctrl: Optional[Dict[str, Any]] = None
+        self._restore_backup: Optional[Dict[str, Any]] = None
+        self._restore_file_backups: List[Dict[str, Any]] = []
+        self._restore_plan: Optional[settings_backup.Plan] = None
+        self._restore_keys: List[str] = []
+        self._restore_task: Optional[asyncio.Task] = None
+        self._restore_result: Optional[settings_backup.RestoreResult] = None
+        self._restore_failed = False
+        self._offer_other_controller = False
 
     @staticmethod
     def _clone_options(options: Dict[str, Any]) -> Dict[str, Any]:
@@ -653,6 +668,10 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
                                 self._pending_options = out
                                 return await self.async_step_entity_override_select()
 
+                            if bool(user_input.get(RESTORE_SETTINGS, False)):
+                                self._pending_options = out
+                                return await self.async_step_restore_select()
+
                             return self.async_create_entry(title="", data=out)
 
         schema = vol.Schema(
@@ -722,6 +741,7 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
         if self._has_bundle_controllers():
             schema = schema.extend({vol.Optional(CONF_REDOWNLOAD_BUNDLE, default=redownload_default): selector.BooleanSelector()})
         schema = schema.extend({vol.Optional("configure_entities", default=edit_entities_default): selector.BooleanSelector()})
+        schema = schema.extend({vol.Optional(RESTORE_SETTINGS, default=False): selector.BooleanSelector()})
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
@@ -1316,3 +1336,235 @@ class ClimatixGenericOptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
             description_placeholders={"note": "Credentials are not stored in Home Assistant."},
         )
+
+    # --- settings restore ---------------------------------------------------
+
+    def _runtime_controllers(self) -> List[Dict[str, Any]]:
+        runtime = (self.hass.data.get(DOMAIN) or {}).get(self.config_entry.entry_id)
+        return list(runtime.get("controllers") or []) if isinstance(runtime, dict) else []
+
+    def _ui_language(self) -> str:
+        return normalize_language(getattr(self.hass.config, "language", None) or "en")
+
+    def _match_export(
+        self, controllers: List[Dict[str, Any]], exports: List[Dict[str, Any]], allow_other: bool
+    ) -> tuple[Optional[Dict[str, Any]], List[Dict[str, Any]], Optional[str]]:
+        """(controller, backups, error) for an uploaded file: the controller the
+        file was made on, or with ``allow_other`` the only controller when it
+        is of the file's model (a replacement controller)."""
+        for export in exports:
+            fp = export["controller"].get("fingerprint")
+            for ctrl in controllers:
+                if fp and fp == settings_backup.fingerprint(ctrl.get("device_serial")):
+                    return ctrl, export["backups"], None
+        if len(controllers) != 1 or len(exports) != 1:
+            return None, [], "other_controller"
+        ctrl, export = controllers[0], exports[0]
+        model = export["controller"].get("model")
+        if model and ctrl.get("device_model") and model != ctrl.get("device_model"):
+            return None, [], "other_model"
+        if not allow_other:
+            return None, [], "other_controller"
+        return ctrl, export["backups"], None
+
+    async def async_step_restore_select(self, user_input: Optional[Dict[str, Any]] = None):
+        """Choose a stored backup, or upload a file (the diagnostics download)."""
+        controllers = self._runtime_controllers()
+        if not controllers:
+            return self.async_abort(reason="restore_not_loaded")
+        store = await settings_backup.async_get_store(self.hass)
+        language = self._ui_language()
+        options: List[Dict[str, str]] = []
+        for index, ctrl in enumerate(controllers):
+            prefix = f"{ctrl.get('device_name')}: " if len(controllers) > 1 else ""
+            for backup in store.backups(str(ctrl["host"])):
+                options.append(
+                    {"value": f"{index}:{backup['id']}", "label": prefix + settings_backup.backup_label(backup, language)}
+                )
+
+        errors: Dict[str, str] = {}
+        if user_input is not None:
+            file_id = user_input.get(RESTORE_FILE)
+            if file_id:
+                try:
+                    data = await self.hass.async_add_executor_job(_read_uploaded_json, self.hass, file_id)
+                    exports = settings_backup.parse_import(data)
+                except ValueError:
+                    errors[RESTORE_FILE] = "invalid_file"
+                else:
+                    ctrl, backups, error = self._match_export(
+                        controllers, exports, bool(user_input.get(RESTORE_OTHER_CONTROLLER, False))
+                    )
+                    if error:
+                        errors["base"] = error
+                        self._offer_other_controller = error == "other_controller" and len(controllers) == 1
+                    else:
+                        self._restore_ctrl = ctrl
+                        self._restore_file_backups = [
+                            {**b, "source": settings_backup.SOURCE_FILE, "source_original": b.get("source")}
+                            for b in backups
+                        ]
+                        if len(backups) > 1:
+                            return await self.async_step_restore_file()
+                        self._restore_backup = self._restore_file_backups[0]
+                        return await self.async_step_restore_confirm()
+            else:
+                index, _, backup_id = str(user_input.get(RESTORE_BACKUP) or "").partition(":")
+                ctrl = controllers[int(index)] if index.isdigit() and int(index) < len(controllers) else None
+                backup = store.get(str(ctrl["host"]), backup_id) if ctrl else None
+                if backup is None:
+                    errors["base"] = "no_backup"
+                else:
+                    self._restore_ctrl, self._restore_backup = ctrl, backup
+                    return await self.async_step_restore_confirm()
+
+        fields: Dict[Any, Any] = {}
+        if options:
+            fields[vol.Optional(RESTORE_BACKUP, default=options[0]["value"])] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=options, mode=selector.SelectSelectorMode.DROPDOWN)
+            )
+        fields[vol.Optional(RESTORE_FILE)] = selector.FileSelector(selector.FileSelectorConfig(accept=".json,application/json"))
+        if self._offer_other_controller:
+            fields[vol.Optional(RESTORE_OTHER_CONTROLLER, default=False)] = selector.BooleanSelector()
+        return self.async_show_form(
+            step_id="restore_select",
+            data_schema=vol.Schema(fields),
+            errors=errors,
+            description_placeholders={"count": str(len(options))},
+        )
+
+    async def async_step_restore_file(self, user_input: Optional[Dict[str, Any]] = None):
+        """Choose one of the backups in the uploaded file."""
+        backups = self._restore_file_backups
+        if user_input is not None:
+            choice = str(user_input.get(RESTORE_BACKUP) or "0")
+            self._restore_backup = backups[int(choice)] if choice.isdigit() and int(choice) < len(backups) else backups[0]
+            return await self.async_step_restore_confirm()
+        language = self._ui_language()
+        options = [
+            {"value": str(i), "label": settings_backup.backup_label({**b, "source": b.get("source_original", "")}, language)}
+            for i, b in enumerate(backups)
+        ]
+        return self.async_show_form(
+            step_id="restore_file",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(RESTORE_BACKUP, default="0"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options, mode=selector.SelectSelectorMode.DROPDOWN)
+                    )
+                }
+            ),
+            description_placeholders={"count": str(len(backups))},
+        )
+
+    def _skipped_text(self, plan: settings_backup.Plan) -> str:
+        if not plan.skipped:
+            return ""
+        names = plan.skipped[:12] + (["…"] if len(plan.skipped) > 12 else [])
+        return settings_backup.skipped_sentence(names, self._ui_language())
+
+    async def async_step_restore_confirm(self, user_input: Optional[Dict[str, Any]] = None):
+        """The differences between the backup and the heat pump, all ticked."""
+        errors: Dict[str, str] = {}
+        if self._restore_plan is None:
+            try:
+                self._restore_plan = await settings_backup.async_plan_restore(
+                    self.hass, self._restore_ctrl, self._restore_backup
+                )
+            except HomeAssistantError as err:
+                _LOGGER.debug("Planning the settings restore failed: %s", err)
+                return self.async_abort(reason="restore_read_failed")
+        elif user_input is not None:
+            known = {c.key for c in self._restore_plan.changes}
+            keys = [k for k in user_input.get(RESTORE_CHANGES) or [] if k in known]
+            if keys:
+                self._restore_keys = keys
+                return await self.async_step_restore_run()
+            errors["base"] = "no_changes_selected"
+
+        plan = self._restore_plan
+        language = self._ui_language()
+        backup_text = settings_backup.backup_label(self._restore_backup, language)
+        if not plan.changes:
+            return self.async_show_form(
+                step_id="restore_nothing",
+                data_schema=vol.Schema({}),
+                description_placeholders={"backup": backup_text, "skipped": self._skipped_text(plan)},
+            )
+        options = [{"value": c.key, "label": c.label} for c in plan.changes]
+        return self.async_show_form(
+            step_id="restore_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(RESTORE_CHANGES, default=[c.key for c in plan.changes]): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options, multiple=True, mode=selector.SelectSelectorMode.LIST
+                        )
+                    )
+                }
+            ),
+            errors=errors,
+            description_placeholders={
+                "backup": backup_text,
+                "count": str(len(plan.changes)),
+                "writes": str(plan.writes),
+                "skipped": self._skipped_text(plan),
+            },
+        )
+
+    async def async_step_restore_nothing(self, user_input: Optional[Dict[str, Any]] = None):
+        return self.async_create_entry(title="", data=self._pending_options)
+
+    async def _async_run_restore(self) -> None:
+        try:
+            self._restore_result = await settings_backup.async_restore(
+                self.hass, self._restore_ctrl, self._restore_backup, self._restore_keys
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Restoring the heat pump settings failed: %s", err)
+            self._restore_failed = True
+
+    async def async_step_restore_run(self, user_input: Optional[Dict[str, Any]] = None):
+        if self._restore_task is None:
+            self._restore_task = self.hass.async_create_task(self._async_run_restore())
+        if not self._restore_task.done():
+            return self.async_show_progress(
+                step_id="restore_run", progress_action="restore", progress_task=self._restore_task
+            )
+        return self.async_show_progress_done(next_step_id="restore_done")
+
+    async def async_step_restore_done(self, user_input: Optional[Dict[str, Any]] = None):
+        if self._restore_failed or self._restore_result is None:
+            return self.async_abort(reason="restore_failed")
+        if user_input is not None:
+            return self.async_create_entry(title="", data=self._pending_options)
+        result = self._restore_result
+        return self.async_show_form(
+            step_id="restore_done",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "restored": str(len(result.restored)),
+                "writes": str(result.writes),
+                "failed": settings_backup.failed_text(result.failed, self._ui_language()),
+            },
+        )
+
+
+RESTORE_SETTINGS = "restore_settings"
+RESTORE_BACKUP = "backup"
+RESTORE_FILE = "file"
+RESTORE_OTHER_CONTROLLER = "other_controller"
+RESTORE_CHANGES = "changes"
+# Larger uploads are no backup of this integration.
+_MAX_UPLOAD_BYTES = 5_000_000
+
+
+def _read_uploaded_json(hass: Any, file_id: str) -> Any:
+    """The uploaded file's JSON (ValueError when it is none)."""
+    with process_uploaded_file(hass, file_id) as path:
+        if path.stat().st_size > _MAX_UPLOAD_BYTES:
+            raise ValueError("file too large")
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as err:
+            raise ValueError("not a JSON file") from err

@@ -94,7 +94,8 @@
           "rescan_now": "Jetzt scannen (fehlende Entitäten hinzufügen)",
           "local_scan_now": "Lokalen Katalog-Scan ausführen (ohne Konto; fehlende Entitäten hinzufügen)",
           "redownload_bundle": "Bundle von OTS neu herunterladen (fehlende Entitäten hinzufügen)",
-          "configure_entities": "Geräteklasse und Einheit für Sensoren/Nummern konfigurieren"
+          "configure_entities": "Geräteklasse und Einheit für Sensoren/Nummern konfigurieren",
+          "restore_settings": "Wärmepumpen-Einstellungen aus einer Sicherung wiederherstellen"
         }
       },
       "entity_override_select": {
@@ -125,6 +126,37 @@
           "ots_user": "Ochsner Benutzername",
           "ots_pass": "Ochsner Passwort"
         }
+      },
+      "restore_select": {
+        "title": "Wärmepumpen-Einstellungen wiederherstellen",
+        "description": "Wähle eine Sicherung der Wärmepumpen-Einstellungen ({count} gespeichert) oder lade eine Sicherungsdatei hoch. Die Datei von **Diagnosedaten herunterladen** auf der Geräteseite der Wärmepumpe enthält alle gespeicherten Sicherungen.\n\nDie nächste Seite zeigt die Unterschiede. Geschrieben wird erst, wenn du sie bestätigst.",
+        "data": {
+          "backup": "Gespeicherte Sicherung",
+          "file": "Oder Sicherungsdatei hochladen",
+          "other_controller": "Trotzdem wiederherstellen: Dieser Regler hat den ersetzt, von dem die Datei stammt"
+        }
+      },
+      "restore_file": {
+        "title": "Sicherung aus der Datei wählen",
+        "description": "Die Datei enthält {count} Sicherungen.",
+        "data": {
+          "backup": "Sicherung"
+        }
+      },
+      "restore_confirm": {
+        "title": "Abweichende Einstellungen",
+        "description": "Diese {count} Einstellungen weichen von der Sicherung vom {backup} ab. Die angehakten wiederherzustellen kostet bis zu {writes} Schreibvorgänge im Flash-Speicher des Reglers. Die aktuellen Einstellungen werden vorher gesichert, du kannst also zurück.\n\n{skipped}",
+        "data": {
+          "changes": "Wiederherstellen"
+        }
+      },
+      "restore_nothing": {
+        "title": "Nichts wiederherzustellen",
+        "description": "Die Wärmepumpe hat bereits alle Einstellungen der Sicherung vom {backup}.\n\n{skipped}"
+      },
+      "restore_done": {
+        "title": "Einstellungen wiederhergestellt",
+        "description": "{restored} Einstellungen mit {writes} Schreibvorgängen wiederhergestellt. Die Einstellungen von vor der Wiederherstellung bleiben als Sicherung „vor einer Wiederherstellung“ erhalten.\n\n{failed}"
       }
     },
     "error": {
@@ -138,7 +170,20 @@
       "no_bundle_key": "Kein gespeicherter Bundle-Key für diesen Controller gefunden.",
       "no_ots_ids": "OTS Config-/Site-ID für diesen Controller fehlt.",
       "no_selection": "Bitte eine Entität auswählen.",
-      "invalid_range": "Maximum muss größer als Minimum sein."
+      "invalid_range": "Maximum muss größer als Minimum sein.",
+      "invalid_file": "Diese Datei enthält keine Einstellungssicherung dieser Integration.",
+      "other_controller": "Die Datei stammt von einem anderen Wärmepumpen-Regler. Wenn dieser Regler ihn ersetzt hat, hake das Feld unten an und lade die Datei noch einmal hoch.",
+      "other_model": "Die Datei stammt von einer Wärmepumpe eines anderen Modells und kann hier nicht wiederhergestellt werden.",
+      "no_backup": "Wähle eine Sicherung oder lade eine Sicherungsdatei hoch.",
+      "no_changes_selected": "Hake mindestens eine Einstellung an, oder schließe den Dialog, um nichts wiederherzustellen."
+    },
+    "progress": {
+      "restore": "Die Einstellungen werden wiederhergestellt. Das dauert etwa eine Sekunde pro Einstellung."
+    },
+    "abort": {
+      "restore_not_loaded": "Die Integration läuft nicht, daher kann die Wärmepumpe nicht gelesen werden. Versuche es erneut, sobald sie gestartet ist.",
+      "restore_read_failed": "Die Einstellungen der Wärmepumpe konnten nicht gelesen werden. Es wurde nichts geschrieben. Versuche es später erneut.",
+      "restore_failed": "Die Wiederherstellung wurde abgebrochen, weil die Wärmepumpe nicht erreichbar war. Bis dahin geschriebene Einstellungen bleiben. Die Einstellungen von vor der Wiederherstellung bleiben als Sicherung „vor einer Wiederherstellung“ erhalten."
     }
   },
   "issues": {
@@ -151,6 +196,9 @@
     "button": {
       "dhw_boost": {
         "name": "Warmwasser Boost"
+      },
+      "settings_backup": {
+        "name": "Einstellungen sichern"
       }
     },
     "climate": {
@@ -167,6 +215,28 @@
       },
       "read_rate_5m": {
         "name": "Leserate (5 min)"
+      },
+      "last_settings_backup": {
+        "name": "Letzte Einstellungssicherung",
+        "state_attributes": {
+          "backups": {
+            "name": "Sicherungen"
+          },
+          "source": {
+            "name": "Quelle",
+            "state": {
+              "automatic": "Automatisch",
+              "manual": "Manuell",
+              "before_restore": "Vor einer Wiederherstellung"
+            }
+          },
+          "settings": {
+            "name": "Einstellungen"
+          },
+          "time_programs": {
+            "name": "Zeitprogramme"
+          }
+        }
       }
     },
     "water_heater": {
@@ -199,6 +269,9 @@
     },
     "room_target_unknown": {
       "message": "Der Raumsollwert des Heizkreises ist nicht bekannt (die Wärmepumpe hat ihn nicht gemeldet). Es wurde nichts geschrieben; bitte später erneut versuchen."
+    },
+    "backup_failed": {
+      "message": "Die Einstellungen der Wärmepumpe konnten nicht gelesen werden, daher wurde keine Sicherung erstellt. Versuche es später erneut."
     }
   }
 }
