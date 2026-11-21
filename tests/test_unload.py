@@ -11,12 +11,14 @@ pytest.importorskip("homeassistant")
 pytest.importorskip("pytest_asyncio")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from homeassistant import loader
+from homeassistant import config_entries, loader
 from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 
 from custom_components import ochsner_local_ots as integration
 from custom_components.ochsner_local_ots.const import DOMAIN
+
+_UNLOAD_RETURNS_NONE = hasattr(config_entries, "_async_process_entry_method_result")
 
 
 @pytest.mark.asyncio
@@ -61,7 +63,9 @@ async def test_unload_only_forwards_platforms_loaded_for_this_entry(
             calls.append(platform)
             if platform not in loaded:
                 raise ValueError("Config entry was never loaded!")
-            return True
+            # Like HA's own platforms: None since 2026.11 (a bool is
+            # deprecated there), True before.
+            return None if _UNLOAD_RETURNS_NONE else True
 
         return SimpleNamespace(
             domain=platform,

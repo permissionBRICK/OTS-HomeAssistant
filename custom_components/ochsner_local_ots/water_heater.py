@@ -34,6 +34,10 @@ _DEFAULT_BOUNDS = {
     "dhw.setpoint_boost": (40.0, 75.0),
 }
 
+# Home Assistant 2026.11 renamed the temperature members to native_*; older
+# versions read only the old names (see climate.py).
+_LEGACY_TEMPERATURE_API = not hasattr(WaterHeaterEntity, "native_target_temperature")
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]
@@ -47,7 +51,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "dhw"
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    if _LEGACY_TEMPERATURE_API:
+        _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_precision = PRECISION_HALVES
     _attr_target_temperature_step = 0.5
     _attr_operation_list = list(P.DHW_OPERATIONS)
@@ -85,12 +91,16 @@ class OchsnerDhwWaterHeater(CoordinatorEntity[ClimatixCoordinator], WaterHeaterE
         return P.dhw_operation(self._values)
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def native_current_temperature(self) -> Optional[float]:
         return P.as_float(self._get("dhw.temp"))
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def native_target_temperature(self) -> Optional[float]:
         return P.as_float(self._get(self._setpoint_role()))
+
+    if _LEGACY_TEMPERATURE_API:
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
 
     @property
     def min_temp(self) -> float:

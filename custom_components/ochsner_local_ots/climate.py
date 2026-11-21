@@ -33,6 +33,12 @@ from .const import DOMAIN
 from .coordinator import ClimatixCoordinator
 from .plant_entity import async_write_planned, circuit_device_info, plant_runtime
 
+# Home Assistant 2026.11 renamed the temperature members to native_* and logs
+# a deprecation warning for every entity class still providing the old ones.
+# Older versions (down to the 2026.8 minimum) read only the old names, so the
+# entity provides them there as aliases.
+_LEGACY_TEMPERATURE_API = not hasattr(ClimateEntity, "native_target_temperature")
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     store = hass.data[DOMAIN][entry.entry_id]
@@ -48,7 +54,9 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
     _attr_has_entity_name = True
     _attr_name = None
     _attr_translation_key = "heating_circuit"
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    if _LEGACY_TEMPERATURE_API:
+        _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_target_temperature_step = P.OFFSET_STEP
     _attr_preset_modes = list(P.PRESET_VALUES)
     _enable_turn_on_off_backwards_compatibility = False
@@ -173,7 +181,7 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         return P.preset_mode(self._get("comfort_eco"))
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def native_target_temperature(self) -> Optional[float]:
         base = self._settled_base()
         offset = P.as_float(self._get("room_offset"))
         if base is not None and offset is not None:
@@ -181,10 +189,14 @@ class OchsnerCircuitClimate(CoordinatorEntity[ClimatixCoordinator], ClimateEntit
         return P.circuit_target(self._values, self._ids)
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def native_current_temperature(self) -> Optional[float]:
         if not self._room_sensor:
             return None
         return P.as_float(self._get("room_temp"))
+
+    if _LEGACY_TEMPERATURE_API:
+        target_temperature = native_target_temperature
+        current_temperature = native_current_temperature
 
     @property
     def current_humidity(self) -> Optional[float]:

@@ -340,7 +340,6 @@ class ClimatixGenericConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if error is None:
                     return await self._async_finish_local_entry()
                 errors["base"] = error
-        self._set_confirm_only()
         return self.async_show_form(
             step_id="discovery_confirm", data_schema=vol.Schema({}), errors=errors,
             description_placeholders={"model": self._discovered.model,

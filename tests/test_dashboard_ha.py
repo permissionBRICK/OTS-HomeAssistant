@@ -7,7 +7,10 @@ sanitized AirHawk 518 snapshot (tests/fixtures); nothing touches a network.
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
+import logging
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -134,6 +137,8 @@ def manual_clock(settle_clock, monkeypatch):
 async def hass(tmp_path):
     instance = HomeAssistant(str(tmp_path))
     instance.config_entries = ConfigEntries(instance, {})
+    # HA 2026.11's entity registry waits for the config entries to load.
+    await instance.config_entries.async_initialize()
     instance.config.language = "de"
     frame.async_setup(instance)
     dr.async_setup(instance)
@@ -335,10 +340,10 @@ async def test_climate_state_heat_only(hass, monkeypatch, fake_controller):
         assert c.hvac_mode == "heat"
         assert c.preset_mode == "comfort" and c.preset_modes == ["comfort", "eco"]
         assert c.hvac_action == "heating"  # badge 3 auto_comfort_red
-        assert c.target_temperature == 21.5  # selector 2 -> room target heating
+        assert c.native_target_temperature == 21.5  # selector 2 -> room target heating
         assert (c.min_temp, c.max_temp) == (18.5, 24.5)
         assert c.target_temperature_step == 0.5
-        assert c.current_temperature is None  # no room sensor bit
+        assert c.native_current_temperature is None  # no room sensor bit
         attrs = c.extra_state_attributes
         assert attrs["badge"] == "auto_comfort_red"
         assert attrs["operating_program"] == "Komfort"
@@ -347,7 +352,7 @@ async def test_climate_state_heat_only(hass, monkeypatch, fake_controller):
         assert attrs["flow_target"] == pytest.approx(26.7993)
         assert isinstance(attrs["circuit_status"], str) and attrs["circuit_status"] != "2"
         c3 = plant.entities[f"{KEY}:climate:hc3"]
-        assert c3.target_temperature == 10.0  # Wintergarten: frost setpoint
+        assert c3.native_target_temperature == 10.0  # Wintergarten: frost setpoint
 
         # HA's own state rendering works with these values.
         c.hass = hass
@@ -357,6 +362,7 @@ async def test_climate_state_heat_only(hass, monkeypatch, fake_controller):
         assert caps["preset_modes"] == ["comfort", "eco"]
         state = c.state_attributes
         assert state["temperature"] == 21.5 and state["hvac_action"] == "heating"
+        assert state["current_temperature"] is None
         assert state["preset_mode"] == "comfort"
     finally:
         await teardown(hass, plant)
@@ -396,7 +402,7 @@ async def test_climate_write_sequences(hass, monkeypatch, fake_controller):
         await c.async_set_temperature(temperature=22.5)
         assert fake.writes == [(OFF1, 1.0)]
         # Shown at once as base 21.5 + 1 K (this fake never recomputes targets).
-        assert c.target_temperature == 22.5
+        assert c.native_target_temperature == 22.5
         fake.set("CiPcW458AAE=", 22.5)  # the controller applies the correction
         await plant.ctrl["coordinator"].async_refresh_ids(["CiPcW458AAE="])
         assert (c.min_temp, c.max_temp) == (18.5, 24.5)  # base stays 21.5
@@ -445,15 +451,15 @@ async def test_dhw_water_heater_and_boost(hass, monkeypatch, fake_controller):
         assert wh.device_info["identifiers"] == {(DOMAIN, KEY)}
         assert wh.operation_list == ["off", "eco", "performance", "high_demand"]
         assert wh.current_operation == "performance"
-        assert wh.current_temperature == 48.5
-        assert wh.target_temperature == 50.0  # comfort setpoint
+        assert wh.native_current_temperature == 48.5
+        assert wh.native_target_temperature == 50.0  # comfort setpoint
         assert (wh.min_temp, wh.max_temp) == (5.0, 75.0)
         assert wh.extra_state_attributes == {"offset": 0.0, "effective_target": 50.0, "boost": False}
 
         fake.writes.clear()
         await wh.async_set_operation_mode("eco")
         assert fake.writes == [(CE, 1)]
-        assert wh.current_operation == "eco" and wh.target_temperature == 45.0
+        assert wh.current_operation == "eco" and wh.native_target_temperature == 45.0
         fake.writes.clear()
         await wh.async_set_temperature(temperature=46.3)
         assert fake.writes == [("ASOp1XXZAAE=", 46.5)]  # the eco setpoint, 0.5 steps
@@ -482,6 +488,7 @@ async def test_dhw_water_heater_and_boost(hass, monkeypatch, fake_controller):
         assert wh.capability_attributes["target_temp_step"] == 0.5
         assert wh.capability_attributes["operation_list"] == ["off", "eco", "performance", "high_demand"]
         assert wh.state_attributes["temperature"] == 40.0  # boost setpoint after the clamp
+        assert wh.state_attributes["current_temperature"] == 48.5
 
         # DHW supplements exist next to the catalog's read-only sensors.
         assert f"{KEY}:number:ACPOwnXZAAE" in plant.entities
@@ -489,6 +496,19 @@ async def test_dhw_water_heater_and_boost(hass, monkeypatch, fake_controller):
         assert f"{KEY}:sensor:ACPOwnXZAAE" in plant.entities
     finally:
         await teardown(hass, plant)
+
+
+@pytest.mark.parametrize("module", ["climate", "water_heater"])
+def test_no_deprecated_temperature_members(module, caplog):
+    """Home Assistant 2026.11+ logs a warning at import for each entity class
+    that still provides temperature_unit / current_temperature /
+    target_temperature instead of the native_* members (issue #35)."""
+    name = f"{integration.__name__}._deprecation_probe_{module}"
+    spec = importlib.util.spec_from_file_location(name, Path(integration.__file__).with_name(f"{module}.py"))
+    probe = importlib.util.module_from_spec(spec)
+    with caplog.at_level(logging.WARNING):
+        spec.loader.exec_module(probe)
+    assert [r.getMessage() for r in caplog.records if "deprecated" in r.getMessage()] == []
 
 
 # --- websocket ----------------------------------------------------------------
@@ -1227,7 +1247,7 @@ async def test_unknown_offset_is_reread_once_then_refused(hass, monkeypatch, fak
         fake.set("CiPcW458AAE=", 23.5)
         await coordinator.async_refresh_ids(["CiPcW458AAE="])
         _forget(coordinator, OFF1)
-        assert c.target_temperature == 23.5 and c.extra_state_attributes["room_offset"] is None
+        assert c.native_target_temperature == 23.5 and c.extra_state_attributes["room_offset"] is None
         assert (c.min_temp, c.max_temp) == (7, 35)  # HA defaults: base unknown
         fake.writes.clear()
         fake.reads.clear()
@@ -1300,7 +1320,7 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         offset = plant.entities[f"{KEY}:number:ACNZw458AAE"]  # supplement
         comfort_eco = plant.entities[f"{KEY}:select:AiPKUI58AAE"]  # supplement
         setpoint = plant.entities[f"{KEY}:number:ASMhEo58AAE"]  # catalog number
-        assert c.target_temperature == 21.5
+        assert c.native_target_temperature == 21.5
 
         # Supplement correction +1 K: the climate target follows at once ...
         fake.reads.clear()
@@ -1308,28 +1328,28 @@ async def test_any_write_rereads_the_sections_dependents(hass, monkeypatch, fake
         # One read before deciding, one for the write and its dependents.
         assert len(fake.reads) == 2 and fake.reads[0] == [OFF1]
         assert {OFF1, TARGET1, BADGE1, "ACJz7Y58AAE=", "CyP/dY58AAE="} <= set(fake.reads[1])
-        assert c.target_temperature == 22.5
+        assert c.native_target_temperature == 22.5
         # ... so asking for the shown target does not overshoot to +2 K.
         fake.writes.clear()
         await c.async_set_temperature(temperature=22.5)
         assert fake.writes == []
         await c.async_set_temperature(temperature=23.0)
-        assert fake.writes == [(OFF1, 1.5)] and c.target_temperature == 23.0
+        assert fake.writes == [(OFF1, 1.5)] and c.native_target_temperature == 23.0
 
         # Existing catalog number (normal setpoint) -> target re-read too.
         await setpoint.async_set_native_value(22.0)
-        assert c.target_temperature == 23.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+        assert c.native_target_temperature == 23.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
 
         # Comfort/eco select -> target and badge follow.
         await comfort_eco.async_select_option("Eco")
-        assert c.target_temperature == 20.5 and c.preset_mode == "eco"
+        assert c.native_target_temperature == 20.5 and c.preset_mode == "eco"
         assert c.extra_state_attributes["badge"] == "auto_eco_red"
 
         # Climate preset write: one read before planning, one re-read covers
         # the write and the dependents.
         fake.reads.clear()
         await c.async_set_preset_mode("comfort")
-        assert len(fake.reads) == 2 and c.target_temperature == 23.5
+        assert len(fake.reads) == 2 and c.native_target_temperature == 23.5
         assert fake.reads[0] == P.mode_input_ids(c._ids)
 
         # A point outside every plant section only re-reads itself.
@@ -1380,7 +1400,7 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
     fake, coordinator = plant.fake, plant.ctrl["coordinator"]
     try:
         c = plant.entities[f"{KEY}:climate:hc1"]
-        assert c.target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
+        assert c.native_target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
 
         # 22.5 °C: the controller applies +1 K, the response times out.
         fake.lose_response = True
@@ -1390,10 +1410,10 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
             await c.async_set_temperature(temperature=22.5)
         assert fake.writes == [(OFF1, 1.0)] and fake.values[TARGET1] == [22.5, 22.5]
         assert {OFF1, TARGET1, BADGE1, "CyP/dY58AAE="} <= set(fake.reads[-1])
-        assert c.target_temperature == 22.5
+        assert c.native_target_temperature == 22.5
         # Retrying 22.5 °C writes nothing (it used to write +2 K -> 23.5 °C).
         await c.async_set_temperature(temperature=22.5)
-        assert fake.writes == [(OFF1, 1.0)] and c.target_temperature == 22.5
+        assert fake.writes == [(OFF1, 1.0)] and c.native_target_temperature == 22.5
 
         # Lost response and the re-read fails too: target and correction
         # become unknown instead of keeping their stale values ...
@@ -1404,13 +1424,13 @@ async def test_lost_write_response_still_rereads_the_dependents(hass, monkeypatc
         assert fake.fail_reads == 0 and not coordinator.last_update_success
         values = coordinator.data["values"]
         assert OFF1 not in values and TARGET1 not in values
-        assert c.target_temperature is None
+        assert c.native_target_temperature is None
         # ... so the next relative change reads them first: 23.0 °C is reached.
         fake.writes.clear()
         fake.reads.clear()
         await c.async_set_temperature(temperature=23.0)
         assert OFF1 in fake.reads[0] and TARGET1 in fake.reads[0]
-        assert fake.writes == [] and c.target_temperature == 23.0
+        assert fake.writes == [] and c.native_target_temperature == 23.0
 
         # Still unreadable: refused with the translated error, nothing written.
         fake.lose_response, fake.fail_rereads = True, 2
@@ -1488,11 +1508,11 @@ async def test_reread_omitting_a_dependent_marks_it_unknown(hass, monkeypatch, f
         assert fake.writes[-1] == (OFF1, 1.0)
         values = coordinator.data["values"]
         assert TARGET1 not in values and CURRENT_TARGET1 not in values and OFF1 in values
-        assert c.target_temperature is None
+        assert c.native_target_temperature is None
         fake.read = real_read
         fake.writes.clear()
         await c.async_set_temperature(temperature=22.5)
-        assert fake.writes == [] and c.target_temperature == 22.5
+        assert fake.writes == [] and c.native_target_temperature == 22.5
     finally:
         await teardown(hass, plant)
 
@@ -1539,7 +1559,7 @@ async def test_cancelled_command_leaves_no_stale_values(hass, monkeypatch, fake_
     fake, coordinator = plant.fake, plant.ctrl["coordinator"]
     try:
         c = plant.entities[f"{KEY}:climate:hc1"]
-        assert c.target_temperature == 21.5 and coordinator.data["values"][OFF1] == [0, 0]
+        assert c.native_target_temperature == 21.5 and coordinator.data["values"][OFF1] == [0, 0]
         fake.gate_read = {"preread": 1, "reread": 2}.get(where, 0)
         fake.gate_write = where in ("write", "write_outside_session")
         fake.reads.clear()
@@ -1564,7 +1584,7 @@ async def test_cancelled_command_leaves_no_stale_values(hass, monkeypatch, fake_
             # The controller reached 22.5 °C; HA keeps no 21.5 °C / +0 K.
             assert fake.writes == [(OFF1, 1.0)] and fake.values[TARGET1] == [22.5, 22.5]
             assert OFF1 not in values and TARGET1 not in values and BADGE1 not in values
-            assert c.target_temperature is None
+            assert c.native_target_temperature is None
 
         # The next relative command reads first and gets the controller there.
         goal = 22.5 if where == "preread" else 21.5
@@ -1573,7 +1593,7 @@ async def test_cancelled_command_leaves_no_stale_values(hass, monkeypatch, fake_
         await c.async_set_temperature(temperature=goal)
         assert OFF1 in fake.reads[0]
         assert fake.writes == [(OFF1, 1.0 if where == "preread" else 0.0)]
-        assert fake.values[TARGET1] == [goal, goal] and c.target_temperature == goal
+        assert fake.values[TARGET1] == [goal, goal] and c.native_target_temperature == goal
     finally:
         await teardown(hass, plant)
 
@@ -1628,13 +1648,13 @@ async def test_plus_then_minus_lands_back_on_zero(hass, monkeypatch, fake_contro
     fake, coordinator = plant.fake, plant.ctrl["coordinator"]
     try:
         c = plant.entities[f"{KEY}:climate:hc1"]
-        assert c.target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+        assert c.native_target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
         fake.writes.clear()
         await c.async_set_temperature(temperature=22.0)  # nothing written before: no wait
         assert fake.writes == [(OFF1, 0.5)]
         # The re-read still has the old target; the entity is consistent anyway.
         assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
-        assert c.target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+        assert c.native_target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
 
         await manual_clock.advance(5)
         task = hass.async_create_task(c.async_set_temperature(temperature=21.5))
@@ -1643,12 +1663,12 @@ async def test_plus_then_minus_lands_back_on_zero(hass, monkeypatch, fake_contro
         await manual_clock.advance(SETTLE - 5)
         await task
         assert fake.writes == [(OFF1, 0.5), (OFF1, 0.0)]
-        assert c.target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+        assert c.native_target_temperature == 21.5 and (c.min_temp, c.max_temp) == (18.5, 24.5)
 
         await manual_clock.advance(SETTLE)
         assert fake.values[OFF1] == [0.0, 0.0] and fake.values[TARGET1] == [21.5, 21.5]
         assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
-        assert c.target_temperature == 21.5
+        assert c.native_target_temperature == 21.5
     finally:
         await teardown(hass, plant)
 
@@ -1669,7 +1689,7 @@ async def test_settle_wait_holds_the_lock_and_can_be_cancelled(hass, monkeypatch
         with pytest.raises(asyncio.CancelledError):
             await task
         assert not coordinator.write_lock.locked() and fake.writes == []
-        assert c.target_temperature == 22.5
+        assert c.native_target_temperature == 22.5
 
         # The next command still waits for the rest of the window, then plans
         # from the recomputed target (22.5 = base 21.5 + 1 K).
@@ -1678,7 +1698,7 @@ async def test_settle_wait_holds_the_lock_and_can_be_cancelled(hass, monkeypatch
         assert not task.done()
         await manual_clock.advance(0.5)
         await task
-        assert fake.writes == [(OFF1, 1.5)] and c.target_temperature == 23.0
+        assert fake.writes == [(OFF1, 1.5)] and c.native_target_temperature == 23.0
     finally:
         await teardown(hass, plant)
 
@@ -1691,7 +1711,7 @@ async def test_preset_change_then_temperature_plans_from_the_new_target(
     fake = plant.fake
     try:
         c = plant.entities[f"{KEY}:climate:hc1"]
-        assert c.target_temperature == 21.5  # comfort: normal setpoint 21.5
+        assert c.native_target_temperature == 21.5  # comfort: normal setpoint 21.5
         await c.async_set_preset_mode("eco")
         assert c.preset_mode == "eco"
         # The preset moved the base: no base until a settled read (the
@@ -1707,7 +1727,7 @@ async def test_preset_change_then_temperature_plans_from_the_new_target(
         # Eco target 19 °C (reduced setpoint): +1 K. Planned from the old
         # comfort target it would have been −1.5 K.
         assert fake.writes == [(OFF1, 1.0)]
-        assert c.target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
+        assert c.native_target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
     finally:
         await teardown(hass, plant)
 
@@ -1737,7 +1757,7 @@ async def test_follow_up_reread_once_after_the_settle(hass, monkeypatch, fake_co
         # HA got the recomputed values (eco: 19 + 1 K) ...
         assert coordinator.data["values"][TARGET1] == [20.0, 20.0]
         assert updates and TARGET1 in updates[-1]
-        assert c.target_temperature == 20.0 and c.extra_state_attributes["badge"] == "auto_eco_red"
+        assert c.native_target_temperature == 20.0 and c.extra_state_attributes["badge"] == "auto_eco_red"
         # ... and polls them normally again.
         assert all(coordinator._poll_state[oid].counter == 0 for oid in (TARGET1, BADGE1, OFF1))
         assert coordinator._should_poll(TARGET1)
@@ -1773,32 +1793,32 @@ async def test_base_ignores_reads_in_the_settle_window(hass, monkeypatch, fake_c
         await manual_clock.advance(4)
         await coordinator.async_refresh_ids([OFF1, TARGET1])
         assert coordinator.data["values"][TARGET1] == [21.5, 21.5]
-        assert c.target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
+        assert c.native_target_temperature == 22.0 and (c.min_temp, c.max_temp) == (18.5, 24.5)
 
         # Settled reads update it: the follow-up, then a change made elsewhere.
         await manual_clock.advance(SETTLE - 4)
-        assert coordinator.data["values"][TARGET1] == [22.0, 22.0] and c.target_temperature == 22.0
+        assert coordinator.data["values"][TARGET1] == [22.0, 22.0] and c.native_target_temperature == 22.0
         fake.set(SP_NORMAL1, 22.0)
         fake.set(TARGET1, 22.5)
         await coordinator.async_refresh_ids([OFF1, TARGET1])
-        assert c.target_temperature == 22.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+        assert c.native_target_temperature == 22.5 and (c.min_temp, c.max_temp) == (19.0, 25.0)
         # The correction changed in the app: read alone, it moves the shown
         # target with it; the target read alone then matches.
         fake.set(OFF1, 1.0)
         await coordinator.async_refresh_ids([OFF1])
-        assert c.target_temperature == 23.0
+        assert c.native_target_temperature == 23.0
         fake.set(TARGET1, 23.0)
         await coordinator.async_refresh_ids([TARGET1])
-        assert c.target_temperature == 23.0 and (c.min_temp, c.max_temp) == (19.0, 25.0)
+        assert c.native_target_temperature == 23.0 and (c.min_temp, c.max_temp) == (19.0, 25.0)
         # A target read alone that does not match (e.g. the preset changed in
         # the app, the unchanged correction not polled with it): the
         # controller's target is shown and both are polled next.
         fake.set(TARGET1, 20.0)
         await coordinator.async_refresh_ids([TARGET1])
-        assert c.target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
+        assert c.native_target_temperature == 20.0 and (c.min_temp, c.max_temp) == (16.0, 22.0)
         assert {OFF1, TARGET1} <= coordinator._force_poll
         await coordinator.async_refresh()
-        assert c._settled_base() == 19.0 and c.target_temperature == 20.0
+        assert c._settled_base() == 19.0 and c.native_target_temperature == 20.0
     finally:
         await teardown(hass, plant)
 
@@ -1810,9 +1830,9 @@ async def test_dhw_target_is_the_stored_setpoint_and_follows_up(hass, monkeypatc
     try:
         wh = plant.entities[f"{KEY}:water_heater:dhw"]
         await wh.async_set_temperature(temperature=52)  # absolute setpoint: no settle wait
-        assert fake.writes[-1] == (DHW_COMFORT_SP, 52.0) and wh.target_temperature == 52.0
+        assert fake.writes[-1] == (DHW_COMFORT_SP, 52.0) and wh.native_target_temperature == 52.0
         await wh.async_set_temperature(temperature=53)  # right away, still no wait
-        assert fake.writes[-1] == (DHW_COMFORT_SP, 53.0) and wh.target_temperature == 53.0
+        assert fake.writes[-1] == (DHW_COMFORT_SP, 53.0) and wh.native_target_temperature == 53.0
         # The computed DHW target is re-read once more after the settle.
         fake.reads.clear()
         await manual_clock.advance(SETTLE)
@@ -1908,7 +1928,7 @@ async def test_failed_read_before_planning(hass, monkeypatch, fake_controller):
         assert fake.writes == [(FLOW_NORM1, cached)]
 
         # Relative change: refused, never computed from the cached values.
-        assert c.target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
+        assert c.native_target_temperature == 21.5 and c.extra_state_attributes["room_offset"] == 0
         fake.fail_reads = 1
         fake.writes.clear()
         with pytest.raises(HomeAssistantError) as err:
@@ -1916,7 +1936,7 @@ async def test_failed_read_before_planning(hass, monkeypatch, fake_controller):
         assert err.value.translation_key in {"room_offset_unknown", "room_target_unknown"}
         assert fake.writes == [] and fake.fail_reads == 0
         # The cache is left alone (the next poll or command reads again).
-        assert c.target_temperature == 21.5
+        assert c.native_target_temperature == 21.5
 
         # DHW setpoint: which setpoint is active is unknown -> refused.
         fake.fail_reads = 1
