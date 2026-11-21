@@ -137,6 +137,8 @@ def manual_clock(settle_clock, monkeypatch):
 async def hass(tmp_path):
     instance = HomeAssistant(str(tmp_path))
     instance.config_entries = ConfigEntries(instance, {})
+    # HA 2026.11's entity registry waits for the config entries to load.
+    await instance.config_entries.async_initialize()
     instance.config.language = "de"
     frame.async_setup(instance)
     dr.async_setup(instance)
