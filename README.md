@@ -98,6 +98,23 @@ Notes:
 - Values that rarely change are polled less often. A change made outside Home Assistant, for example in the Ochsner app, can take a few minutes to show. Changes made in Home Assistant show immediately.
 - Requires Home Assistant 2026.8 or newer.
 
+### 4) Backing up and restoring the heat pump's settings
+
+The integration keeps backups of the settings you can change on the heat pump: heating and cooling curves, heating limits, building inertia, room and hot water setpoints, operating programs, circuit names, sensor offsets and the time programs of the heating circuits. Service, test and network settings are never part of a backup. Taking a backup only reads the controller, so it costs no flash writes.
+
+- **Automatically:** a minute after Home Assistant starts, or after the integration reloads, it reads the settings. It keeps them as a new backup only if something changed since the last one.
+- **On demand:** press **Back up settings** in the Configuration section of the heat pump's device page. The **Last settings backup** sensor shows when the newest backup was taken.
+- **Where they are kept:** in Home Assistant's storage (`.storage/ochsner_local_ots.settings_backups`), so Home Assistant's own backups include them. The newest 10 automatic and the newest 10 manual backups of each heat pump are kept. They stay when you remove the integration and add it again.
+- **As a file:** **Download diagnostics** in the ⋮ menu of the device page saves every backup to a file, with readable names for all settings. The file contains no password, PIN, network address or serial number.
+
+**Restoring:**
+
+1. Open **Settings → Devices & services → Ochsner Local OTS → Configure**, tick **Restore heat pump settings from a backup** and press **Submit**.
+2. Choose a stored backup, or upload a file saved with **Download diagnostics**.
+3. The next page lists every setting that differs from the backup, with its current and backed-up value, and how many flash writes restoring takes. Untick what should stay as it is.
+
+Before anything is written, the current settings are saved as a backup marked "before a restore", so you can go back. Only the settings that differ are written. A value the heat pump refuses is listed at the end. A file from another controller is restored only if you confirm that this controller replaced it, and never on a heat pump of another model.
+
 ---
 
 ## How does this work?
