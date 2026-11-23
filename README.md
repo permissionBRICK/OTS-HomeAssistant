@@ -127,6 +127,7 @@ This has been tested and confirmed working so far with:
  - Air Hawk 208
  - Air Hawk 518
  - Air Hawk 616
+ - Air Hawk 726
  - Air Falcon 212
  - Air Milan 1016 HM
 
